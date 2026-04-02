@@ -1,0 +1,4 @@
+- Build the sports club CRM with React, Supabase, and Tailwind CSS.
+- Keep the relational model aligned with the domain tables: profiles, teams, players, team_coaches, player_teams, player_parents, events, attendance, messages, audit_logs.
+- Prefer reusable components, role-aware flows, and mobile-friendly layouts.
+- Keep changes incremental so each phase remains testable and deployable.
