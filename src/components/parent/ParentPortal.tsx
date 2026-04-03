@@ -127,8 +127,14 @@ export function ParentPortal({ profile }: ParentPortalProps) {
       .sort((left, right) => left.dateTime.localeCompare(right.dateTime))
   }, [activeChild, events])
 
-  const upcomingEvents = useMemo(() => childEvents.filter((event) => new Date(event.dateTime) >= now), [childEvents])
-  const pastEvents = useMemo(() => childEvents.filter((event) => new Date(event.dateTime) < now).reverse(), [childEvents])
+  const upcomingEvents = useMemo(() => {
+    const cutoff = new Date()
+    return childEvents.filter((event) => new Date(event.dateTime) >= cutoff)
+  }, [childEvents])
+  const pastEvents = useMemo(() => {
+    const cutoff = new Date()
+    return childEvents.filter((event) => new Date(event.dateTime) < cutoff).reverse()
+  }, [childEvents])
 
   const childAttendanceCounts = useMemo(() => {
     if (!activeChildId) return null
