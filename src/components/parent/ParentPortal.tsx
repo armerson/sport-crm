@@ -14,9 +14,11 @@ const TeamMessagesPanel = lazy(async () => {
 
 interface ParentPortalProps {
   profile: UserProfile
+  activeTab: ParentTab
+  onTabChange: (tab: ParentTab) => void
 }
 
-type ParentTab = 'schedule' | 'messages'
+export type ParentTab = 'schedule' | 'messages'
 
 const PARENT_TABS = [
   { label: 'Schedule', value: 'schedule' as ParentTab },
@@ -105,8 +107,8 @@ function EventList({
   )
 }
 
-export function ParentPortal({ profile }: ParentPortalProps) {
-  const [activeTab, setActiveTab] = useState<ParentTab>('schedule')
+export function ParentPortal({ profile, activeTab, onTabChange }: ParentPortalProps) {
+  const setActiveTab = onTabChange
   const [selectedChildId, setSelectedChildId] = useState('')
   const { attendance, error, events, isConfigured, isSubmitting, loadingAttendance, loadingEvents, loadingPlayers, players, teams, updateAttendance } =
     useParentClubData(profile.children)
@@ -156,7 +158,9 @@ export function ParentPortal({ profile }: ParentPortalProps) {
 
   return (
     <section className="space-y-5">
-      <TabNav tabs={PARENT_TABS} active={activeTab} onChange={setActiveTab} />
+      <div className="hidden sm:block">
+        <TabNav tabs={PARENT_TABS} active={activeTab} onChange={setActiveTab} />
+      </div>
 
       {!isConfigured ? (
         <div className="rounded-3xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">

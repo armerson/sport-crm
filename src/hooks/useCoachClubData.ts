@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { isSupabaseConfigured, supabaseConfigError } from '../lib/supabase.ts'
+import { fetchTeamParentIds, sendPushToUsers } from '../lib/pushNotifications.ts'
 import {
   createEventWithAttendance,
   subscribeToAttendanceForEvent,
@@ -133,6 +134,19 @@ export function useCoachClubData(coachId: string, selectedTeamId: string, select
 
       try {
         await createEventWithAttendance(input, playerIds)
+
+        // Fire-and-forget: notify parents of players in this team
+        void fetchTeamParentIds(input.teamId).then((parentIds) => {
+          if (!parentIds.length) return
+          const teamName = teams.find((t) => t.id === input.teamId)?.name ?? 'your team'
+          const typeLabel = input.type === 'match' ? 'Match' : 'Training'
+          void sendPushToUsers(
+            parentIds,
+            `${typeLabel}: ${input.title}`,
+            `${teamName} — ${new Date(input.dateTime).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}`,
+            '/',
+          )
+        })
       } catch (submitError) {
         setError(getCoachErrorMessage(submitError, 'Unable to create event.'))
         throw submitError

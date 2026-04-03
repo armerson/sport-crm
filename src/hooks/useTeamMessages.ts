@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { isSupabaseConfigured, supabaseConfigError } from '../lib/supabase.ts'
+import { fetchTeamParentIds, sendPushToUsers } from '../lib/pushNotifications.ts'
 import { subscribeToTeams } from '../services/adminClub.ts'
 import { subscribeToCoachTeams } from '../services/coachClub.ts'
 import { subscribeToUserProfilesByIds, subscribeToMessagesForTeam, sendTeamMessage } from '../services/messages.ts'
@@ -170,6 +171,19 @@ export function useTeamMessages(profile: UserProfile, selectedTeamId: string) {
           teamId,
           senderId: profile.id,
           content,
+        })
+
+        // Fire-and-forget: notify parents (and coaches already have the app open)
+        void fetchTeamParentIds(teamId).then((parentIds) => {
+          const recipientIds = parentIds.filter((id) => id !== profile.id)
+          if (!recipientIds.length) return
+          const teamName = teams.find((t) => t.id === teamId)?.name ?? 'your team'
+          void sendPushToUsers(
+            recipientIds,
+            `New message in ${teamName}`,
+            `${profile.name}: ${content.slice(0, 80)}${content.length > 80 ? '…' : ''}`,
+            '/',
+          )
         })
       } catch (submitError) {
         setError(getMessagingErrorMessage(submitError, 'Unable to send message.'))

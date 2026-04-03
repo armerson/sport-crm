@@ -17,7 +17,7 @@ const TeamMessagesPanel = lazy(async () => {
   return { default: module.TeamMessagesPanel }
 })
 
-type AdminTab = 'overview' | 'manage' | 'activity' | 'messages'
+export type AdminTab = 'overview' | 'manage' | 'activity' | 'messages'
 type ManageSection = 'team' | 'player' | 'coach' | 'parent' | 'staff'
 
 const ADMIN_TABS = [
@@ -43,13 +43,17 @@ function SectionFallback() {
   )
 }
 
-export function AdminClubPanel() {
+interface AdminClubPanelProps {
+  activeTab: AdminTab
+  onTabChange: (tab: AdminTab) => void
+}
+
+export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) {
+  const setActiveTab = onTabChange
   const { profile } = useAuth()
   const { addPlayer, assignCoach, coaches, error, isConfigured, isSubmitting, loading, parents, teams, createTeam, linkParent, provisionUser, unlinkParent } =
     useAdminClubData()
   const { logs: auditLogs, loading: loadingAuditLogs, error: auditLogError } = useAuditLogs()
-
-  const [activeTab, setActiveTab] = useState<AdminTab>('overview')
   const [manageSection, setManageSection] = useState<ManageSection>('team')
   const [showAllPlayers, setShowAllPlayers] = useState(false)
 
@@ -201,7 +205,9 @@ export function AdminClubPanel() {
 
   return (
     <section className="space-y-5">
-      <TabNav tabs={ADMIN_TABS} active={activeTab} onChange={setActiveTab} />
+      <div className="hidden sm:block">
+        <TabNav tabs={ADMIN_TABS} active={activeTab} onChange={setActiveTab} />
+      </div>
 
       {!isConfigured ? (
         <div className="rounded-3xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">

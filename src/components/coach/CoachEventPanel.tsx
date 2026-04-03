@@ -17,6 +17,8 @@ const TeamMessagesPanel = lazy(async () => {
 interface CoachEventPanelProps {
   coachId: string
   profile: import('../../types/auth.ts').UserProfile
+  activeTab: CoachTab
+  onTabChange: (tab: CoachTab) => void
 }
 
 interface EventFormState {
@@ -26,7 +28,7 @@ interface EventFormState {
   location: string
 }
 
-type CoachTab = 'schedule' | 'create' | 'messages'
+export type CoachTab = 'schedule' | 'create' | 'messages'
 
 const COACH_TABS = [
   { label: 'Schedule', value: 'schedule' as CoachTab },
@@ -42,8 +44,8 @@ function SectionFallback() {
   )
 }
 
-export function CoachEventPanel({ coachId, profile }: CoachEventPanelProps) {
-  const [activeTab, setActiveTab] = useState<CoachTab>('schedule')
+export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: CoachEventPanelProps) {
+  const setActiveTab = onTabChange
   const [selectedTeamId, setSelectedTeamId] = useState('')
   const [selectedEventId, setSelectedEventId] = useState('')
   const [localError, setLocalError] = useState<string | null>(null)
@@ -117,7 +119,9 @@ export function CoachEventPanel({ coachId, profile }: CoachEventPanelProps) {
 
   return (
     <section className="space-y-5">
-      <TabNav tabs={COACH_TABS} active={activeTab} onChange={setActiveTab} />
+      <div className="hidden sm:block">
+        <TabNav tabs={COACH_TABS} active={activeTab} onChange={setActiveTab} />
+      </div>
 
       {!isConfigured ? (
         <div className="rounded-3xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">

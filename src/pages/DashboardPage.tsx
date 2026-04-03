@@ -1,6 +1,11 @@
-import { Suspense, lazy } from 'react'
+import { Suspense, lazy, useState } from 'react'
 import { Button } from '../components/ui/Button.tsx'
+import { BottomNav, ADMIN_BOTTOM_NAV, COACH_BOTTOM_NAV, PARENT_BOTTOM_NAV } from '../components/ui/BottomNav.tsx'
+import { NotificationBanner } from '../components/ui/NotificationBanner.tsx'
 import { useAuth } from '../hooks/useAuth.ts'
+import type { AdminTab } from '../components/admin/AdminClubPanel.tsx'
+import type { CoachTab } from '../components/coach/CoachEventPanel.tsx'
+import type { ParentTab } from '../components/parent/ParentPortal.tsx'
 
 const AdminClubPanel = lazy(async () => {
   const module = await import('../components/admin/AdminClubPanel.tsx')
@@ -40,8 +45,21 @@ function SectionFallback({ label }: { label: string }) {
   )
 }
 
+function SignOutIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <polyline points="16 17 21 12 16 7" />
+      <line x1="21" y1="12" x2="9" y2="12" />
+    </svg>
+  )
+}
+
 export function DashboardPage() {
   const { profile, signOutUser } = useAuth()
+  const [adminTab, setAdminTab] = useState<AdminTab>('overview')
+  const [coachTab, setCoachTab] = useState<CoachTab>('schedule')
+  const [parentTab, setParentTab] = useState<ParentTab>('schedule')
 
   if (!profile) {
     return null
@@ -51,38 +69,98 @@ export function DashboardPage() {
   const isAdmin = profile.role === 'admin'
   const isCoach = profile.role === 'coach'
 
-  return (
-    <main className="min-h-screen px-4 py-6 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-6xl space-y-6">
-        <header className="overflow-hidden rounded-[2rem] bg-[#123524] p-6 text-white shadow-2xl shadow-[#123524]/20 sm:p-8">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div className="space-y-2">
-              <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{activeContent.title}</h1>
-              <p className="max-w-2xl text-sm leading-6 text-white/80 sm:text-base">{activeContent.summary}</p>
-            </div>
-            <div className="flex flex-col items-start gap-3 rounded-3xl border border-white/15 bg-white/10 p-5 backdrop-blur-sm sm:min-w-72">
-              <p className="text-sm text-white/75">Signed in as</p>
-              <div>
-                <p className="text-xl font-semibold">{profile.name}</p>
-                <p className="text-sm capitalize text-white/75">{profile.role}</p>
-              </div>
-              <Button className="w-full" onClick={() => void signOutUser()} variant="secondary">
-                Sign out
-              </Button>
-            </div>
-          </div>
-        </header>
+  const activeTab = isAdmin ? adminTab : isCoach ? coachTab : parentTab
+  const bottomNavItems = isAdmin ? ADMIN_BOTTOM_NAV : isCoach ? COACH_BOTTOM_NAV : PARENT_BOTTOM_NAV
 
-        <Suspense fallback={<SectionFallback label="workspace" />}>
-          {isAdmin ? (
-            <AdminClubPanel />
-          ) : isCoach ? (
-            <CoachEventPanel coachId={profile.id} profile={profile} />
-          ) : (
-            <ParentPortal profile={profile} />
-          )}
-        </Suspense>
+  function handleTabChange(value: string) {
+    if (isAdmin) setAdminTab(value as AdminTab)
+    else if (isCoach) setCoachTab(value as CoachTab)
+    else setParentTab(value as ParentTab)
+  }
+
+  const initials = profile.name
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
+
+  return (
+    <main className="min-h-screen pb-20 sm:pb-0">
+      {/* ── Mobile header ── */}
+      <header className="flex items-center justify-between bg-[#123524] px-4 py-3 sm:hidden">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/15">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+              <circle cx="12" cy="12" r="10" fill="none" stroke="white" strokeWidth="2" />
+              <polygon points="12,6 15,10 13,10 13,18 11,18 11,10 9,10" fill="white" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-sm font-bold text-white">Club CRM</p>
+            <p className="text-[10px] text-white/60">{activeContent.title}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/25 text-[9px] font-bold text-white">
+              {initials}
+            </span>
+            <span className="max-w-[80px] truncate text-xs font-medium text-white">{profile.name.split(' ')[0]}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => void signOutUser()}
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white/80 transition active:bg-white/20"
+            aria-label="Sign out"
+          >
+            <SignOutIcon />
+          </button>
+        </div>
+      </header>
+
+      {/* ── Desktop header ── */}
+      <div className="hidden px-6 py-6 sm:block lg:px-8">
+        <div className="mx-auto max-w-6xl">
+          <header className="overflow-hidden rounded-[2rem] bg-[#123524] p-6 text-white shadow-2xl shadow-[#123524]/20 sm:p-8">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+              <div className="space-y-2">
+                <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{activeContent.title}</h1>
+                <p className="max-w-2xl text-sm leading-6 text-white/80 sm:text-base">{activeContent.summary}</p>
+              </div>
+              <div className="flex flex-col items-start gap-3 rounded-3xl border border-white/15 bg-white/10 p-5 backdrop-blur-sm sm:min-w-72">
+                <p className="text-sm text-white/75">Signed in as</p>
+                <div>
+                  <p className="text-xl font-semibold">{profile.name}</p>
+                  <p className="text-sm capitalize text-white/75">{profile.role}</p>
+                </div>
+                <Button className="w-full" onClick={() => void signOutUser()} variant="secondary">
+                  Sign out
+                </Button>
+              </div>
+            </div>
+          </header>
+        </div>
       </div>
+
+      {/* ── Main content ── */}
+      <div className="px-4 py-4 sm:px-6 sm:py-0 lg:px-8">
+        <div className="mx-auto max-w-6xl space-y-4 sm:space-y-6">
+          <NotificationBanner userId={profile.id} />
+          <Suspense fallback={<SectionFallback label="workspace" />}>
+            {isAdmin ? (
+              <AdminClubPanel activeTab={adminTab} onTabChange={(t) => setAdminTab(t)} />
+            ) : isCoach ? (
+              <CoachEventPanel coachId={profile.id} profile={profile} activeTab={coachTab} onTabChange={(t) => setCoachTab(t)} />
+            ) : (
+              <ParentPortal profile={profile} activeTab={parentTab} onTabChange={(t) => setParentTab(t)} />
+            )}
+          </Suspense>
+        </div>
+      </div>
+
+      {/* ── Mobile bottom navigation ── */}
+      <BottomNav items={bottomNavItems} active={activeTab} onChange={handleTabChange} />
     </main>
   )
 }
