@@ -8,7 +8,9 @@ export function subscribeToParentPlayers(
 ): () => void {
   const client = requireSupabase()
 
-  return subscribeToTables(`parent-players-${playerIds.join('-')}`, ['players', 'player_parents', 'player_teams'], async () => {
+  const channelName = playerIds.length > 0 ? `parent-players-${playerIds.join('-')}` : 'parent-players-empty'
+  
+  return subscribeToTables(channelName, ['players', 'player_parents', 'player_teams'], async () => {
     if (playerIds.length === 0) {
       onData([])
       return
@@ -36,7 +38,9 @@ export function subscribeToTeamsByIds(
 ): () => void {
   const client = requireSupabase()
 
-  return subscribeToTables(`teams-by-id-${teamIds.join('-')}`, ['teams', 'team_coaches', 'player_teams'], async () => {
+  const channelName = teamIds.length > 0 ? `teams-by-id-${teamIds.join('-')}` : 'teams-by-id-empty'
+  
+  return subscribeToTables(channelName, ['teams', 'team_coaches', 'player_teams'], async () => {
     if (teamIds.length === 0) {
       onData([])
       return
@@ -65,7 +69,9 @@ export function subscribeToEventsForTeams(
 ): () => void {
   const client = requireSupabase()
 
-  return subscribeToTables(`events-for-teams-${teamIds.join('-')}`, ['events'], async () => {
+  const channelName = teamIds.length > 0 ? `events-for-teams-${teamIds.join('-')}` : 'events-for-teams-empty'
+  
+  return subscribeToTables(channelName, ['events'], async () => {
     if (teamIds.length === 0) {
       onData([])
       return
@@ -93,7 +99,9 @@ export function subscribeToAttendanceForPlayers(
 ): () => void {
   const client = requireSupabase()
 
-  return subscribeToTables(`attendance-for-players-${playerIds.join('-')}`, ['attendance'], async () => {
+  const channelName = playerIds.length > 0 ? `attendance-for-players-${playerIds.join('-')}` : 'attendance-for-players-empty'
+  
+  return subscribeToTables(channelName, ['attendance'], async () => {
     if (playerIds.length === 0) {
       onData([])
       return

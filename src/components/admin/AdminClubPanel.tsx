@@ -1,64 +1,109 @@
-import { useMemo, useState } from 'react'
+import { Suspense, lazy, useMemo, useState } from 'react'
 import { Button } from '../ui/Button.tsx'
+import { ConfirmInline } from '../ui/ConfirmInline.tsx'
 import { SelectField } from '../ui/SelectField.tsx'
+import { SuccessMessage } from '../ui/SuccessMessage.tsx'
+import { TabNav } from '../ui/TabNav.tsx'
 import { TextField } from '../ui/TextField.tsx'
 import { useAdminClubData } from '../../hooks/useAdminClubData.ts'
 import { useAuditLogs } from '../../hooks/useAuditLogs.ts'
 import { useTeamPlayers } from '../../hooks/useTeamPlayers.ts'
+import { useAuth } from '../../hooks/useAuth.ts'
+import { formatDate } from '../../utils/date.ts'
 import type { ProvisionableRole } from '../../services/provisioning.ts'
 
+const TeamMessagesPanel = lazy(async () => {
+  const module = await import('../messages/TeamMessagesPanel.tsx')
+  return { default: module.TeamMessagesPanel }
+})
+
+type AdminTab = 'overview' | 'manage' | 'activity' | 'messages'
+type ManageSection = 'team' | 'player' | 'coach' | 'parent' | 'staff'
+
+const ADMIN_TABS = [
+  { label: 'Overview', value: 'overview' as AdminTab },
+  { label: 'Manage', value: 'manage' as AdminTab },
+  { label: 'Activity', value: 'activity' as AdminTab },
+  { label: 'Messages', value: 'messages' as AdminTab },
+] as const
+
+const MANAGE_SECTIONS = [
+  { label: 'Create team', value: 'team' as ManageSection },
+  { label: 'Add player', value: 'player' as ManageSection },
+  { label: 'Assign coach', value: 'coach' as ManageSection },
+  { label: 'Link parent', value: 'parent' as ManageSection },
+  { label: 'Staff account', value: 'staff' as ManageSection },
+] as const
+
+function SectionFallback() {
+  return (
+    <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-6 text-sm text-slate-500">
+      Loading messages...
+    </div>
+  )
+}
+
 export function AdminClubPanel() {
+  const { profile } = useAuth()
   const { addPlayer, assignCoach, coaches, error, isConfigured, isSubmitting, loading, parents, teams, createTeam, linkParent, provisionUser, unlinkParent } =
     useAdminClubData()
   const { logs: auditLogs, loading: loadingAuditLogs, error: auditLogError } = useAuditLogs()
+
+  const [activeTab, setActiveTab] = useState<AdminTab>('overview')
+  const [manageSection, setManageSection] = useState<ManageSection>('team')
+  const [showAllPlayers, setShowAllPlayers] = useState(false)
+
   const [teamValues, setTeamValues] = useState({ name: '', ageGroup: '' })
   const [playerValues, setPlayerValues] = useState({ name: '', dob: '', teamId: '' })
   const [assignmentValues, setAssignmentValues] = useState({ teamId: '', coachId: '' })
   const [linkValues, setLinkValues] = useState({ teamId: '', playerId: '', parentId: '' })
   const [provisionValues, setProvisionValues] = useState({ name: '', email: '', role: 'coach' as ProvisionableRole })
   const [provisionResult, setProvisionResult] = useState<{ email: string; role: ProvisionableRole; passwordSetupLink: string; inviteEmailSent: boolean } | null>(null)
+
   const [parentSearch, setParentSearch] = useState('')
   const [activeTeamId, setActiveTeamId] = useState('')
   const [localError, setLocalError] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+
   const isSingleTeamClub = teams.length === 1
   const resolvedPlayerTeamId = isSingleTeamClub ? (teams[0]?.id ?? '') : playerValues.teamId
   const resolvedAssignmentTeamId = isSingleTeamClub ? (teams[0]?.id ?? '') : assignmentValues.teamId
   const resolvedLinkTeamId = isSingleTeamClub ? (teams[0]?.id ?? '') : linkValues.teamId
   const resolvedActiveTeamId = isSingleTeamClub ? (teams[0]?.id ?? '') : activeTeamId
+
   const { players, loading: loadingPlayers } = useTeamPlayers(resolvedActiveTeamId)
   const { players: linkablePlayers, loading: loadingLinkablePlayers } = useTeamPlayers(resolvedLinkTeamId)
 
   const activeError = localError ?? error
   const teamCards = useMemo(() => teams, [teams])
+  const PLAYER_PAGE = 8
+
   const filteredParents = useMemo(() => {
     const normalizedSearch = parentSearch.trim().toLowerCase()
-
-    if (!normalizedSearch) {
-      return parents.slice(0, 100)
-    }
-
-    return parents.filter((parent) => {
-      const haystack = `${parent.name} ${parent.email}`.toLowerCase()
-      return haystack.includes(normalizedSearch)
-    })
+    if (!normalizedSearch) return parents.slice(0, 100)
+    return parents.filter((parent) => `${parent.name} ${parent.email}`.toLowerCase().includes(normalizedSearch))
   }, [parentSearch, parents])
+
   const parentById = useMemo(() => new Map(parents.map((parent) => [parent.id, parent])), [parents])
+
+  const displayedPlayers = showAllPlayers ? players : players.slice(0, PLAYER_PAGE)
+
+  function showSuccess(message: string) {
+    setSuccessMessage(null)
+    setTimeout(() => setSuccessMessage(message), 10)
+  }
 
   async function handleTeamSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setLocalError(null)
-
     if (!teamValues.name.trim() || !teamValues.ageGroup.trim()) {
       setLocalError('Team name and age group are required.')
       return
     }
-
     try {
-      await createTeam({
-        name: teamValues.name.trim(),
-        ageGroup: teamValues.ageGroup.trim(),
-      })
+      await createTeam({ name: teamValues.name.trim(), ageGroup: teamValues.ageGroup.trim() })
       setTeamValues({ name: '', ageGroup: '' })
+      showSuccess('Team saved successfully.')
     } catch {
       // Hook exposes a user-facing error.
     }
@@ -67,19 +112,14 @@ export function AdminClubPanel() {
   async function handlePlayerSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setLocalError(null)
-
     if (!playerValues.name.trim() || !playerValues.dob || !resolvedPlayerTeamId) {
       setLocalError('Player name, date of birth, and team are required.')
       return
     }
-
     try {
-      await addPlayer({
-        name: playerValues.name.trim(),
-        dob: playerValues.dob,
-        teamId: resolvedPlayerTeamId,
-      })
+      await addPlayer({ name: playerValues.name.trim(), dob: playerValues.dob, teamId: resolvedPlayerTeamId })
       setPlayerValues({ name: '', dob: '', teamId: '' })
+      showSuccess('Player added to squad.')
     } catch {
       // Hook exposes a user-facing error.
     }
@@ -88,15 +128,14 @@ export function AdminClubPanel() {
   async function handleCoachAssignment(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setLocalError(null)
-
     if (!resolvedAssignmentTeamId || !assignmentValues.coachId) {
       setLocalError('Select both a team and a coach before assigning.')
       return
     }
-
     try {
       await assignCoach(resolvedAssignmentTeamId, assignmentValues.coachId)
       setAssignmentValues((current) => ({ ...current, coachId: '' }))
+      showSuccess('Coach assigned to team.')
     } catch {
       // Hook exposes a user-facing error.
     }
@@ -105,22 +144,19 @@ export function AdminClubPanel() {
   async function handleParentLink(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setLocalError(null)
-
     if (!resolvedLinkTeamId || !linkValues.playerId || !linkValues.parentId) {
       setLocalError('Select a team, player, and parent before linking.')
       return
     }
-
     const selectedPlayer = linkablePlayers.find((player) => player.id === linkValues.playerId)
-
     if (selectedPlayer?.parentIds.includes(linkValues.parentId)) {
       setLocalError('That parent is already linked to the selected player.')
       return
     }
-
     try {
       await linkParent(linkValues.playerId, linkValues.parentId)
       setLinkValues((current) => ({ ...current, playerId: '', parentId: '' }))
+      showSuccess('Parent linked to player.')
     } catch {
       // Hook exposes a user-facing error.
     }
@@ -130,25 +166,13 @@ export function AdminClubPanel() {
     event.preventDefault()
     setLocalError(null)
     setProvisionResult(null)
-
     if (provisionValues.name.trim().length < 2 || !provisionValues.email.trim()) {
       setLocalError('Name and email are required to provision an account.')
       return
     }
-
     try {
-      const result = await provisionUser(
-        provisionValues.name.trim(),
-        provisionValues.email.trim(),
-        provisionValues.role,
-      )
-
-      setProvisionResult({
-        email: result.email,
-        role: result.role,
-        passwordSetupLink: result.passwordSetupLink,
-        inviteEmailSent: result.inviteEmailSent,
-      })
+      const result = await provisionUser(provisionValues.name.trim(), provisionValues.email.trim(), provisionValues.role)
+      setProvisionResult({ email: result.email, role: result.role, passwordSetupLink: result.passwordSetupLink, inviteEmailSent: result.inviteEmailSent })
       setProvisionValues({ name: '', email: '', role: 'coach' })
     } catch {
       // Hook exposes a user-facing error.
@@ -157,7 +181,6 @@ export function AdminClubPanel() {
 
   async function handleParentUnlink(playerId: string, parentId: string) {
     setLocalError(null)
-
     try {
       await unlinkParent(playerId, parentId)
     } catch {
@@ -170,227 +193,19 @@ export function AdminClubPanel() {
   }
 
   function formatAuditTimestamp(timestamp: string) {
-    if (!timestamp) {
-      return 'Unknown time'
-    }
-
+    if (!timestamp) return 'Unknown time'
     const parsedDate = new Date(timestamp)
-
-    if (Number.isNaN(parsedDate.getTime())) {
-      return 'Unknown time'
-    }
-
+    if (Number.isNaN(parsedDate.getTime())) return 'Unknown time'
     return parsedDate.toLocaleString()
   }
 
   return (
-    <section className="space-y-6">
-      <section className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-5">
-        <article className="rounded-[1.75rem] border border-white/70 bg-white/85 p-5 shadow-lg shadow-slate-900/5 backdrop-blur-sm">
-          <p className="text-sm font-medium text-slate-500">Admin action</p>
-          <h2 className="mt-3 text-xl font-semibold text-slate-950">Create team</h2>
-          <form className="mt-4 space-y-4" onSubmit={handleTeamSubmit}>
-            <TextField
-              label="Team name"
-              onChange={(event) => setTeamValues((current) => ({ ...current, name: event.target.value }))}
-              placeholder="Falcons"
-              value={teamValues.name}
-            />
-            <TextField
-              label="Age group"
-              onChange={(event) => setTeamValues((current) => ({ ...current, ageGroup: event.target.value }))}
-              placeholder="U12"
-              value={teamValues.ageGroup}
-            />
-            <Button className="w-full" loading={isSubmitting} type="submit">
-              Save team
-            </Button>
-          </form>
-        </article>
-
-        <article className="rounded-[1.75rem] border border-white/70 bg-white/85 p-5 shadow-lg shadow-slate-900/5 backdrop-blur-sm">
-          <p className="text-sm font-medium text-slate-500">Admin action</p>
-          <h2 className="mt-3 text-xl font-semibold text-slate-950">{isSingleTeamClub ? 'Add player to your squad' : 'Add player'}</h2>
-          <form className="mt-4 space-y-4" onSubmit={handlePlayerSubmit}>
-            <TextField
-              label="Player name"
-              onChange={(event) => setPlayerValues((current) => ({ ...current, name: event.target.value }))}
-              placeholder="Sam Kerr"
-              value={playerValues.name}
-            />
-            <TextField
-              label="Date of birth"
-              onChange={(event) => setPlayerValues((current) => ({ ...current, dob: event.target.value }))}
-              type="date"
-              value={playerValues.dob}
-            />
-            {!isSingleTeamClub ? (
-              <SelectField
-                label="Team"
-                onChange={(event) => setPlayerValues((current) => ({ ...current, teamId: event.target.value }))}
-                options={[
-                  { label: teams.length > 0 ? 'Choose a team' : 'Create a team first', value: '' },
-                  ...teams.map((team) => ({ label: `${team.name} (${team.ageGroup})`, value: team.id })),
-                ]}
-                value={playerValues.teamId}
-              />
-            ) : null}
-            <Button className="w-full" loading={isSubmitting} type="submit">
-              Add player
-            </Button>
-          </form>
-        </article>
-
-        <article className="rounded-[1.75rem] border border-white/70 bg-white/85 p-5 shadow-lg shadow-slate-900/5 backdrop-blur-sm">
-          <p className="text-sm font-medium text-slate-500">Admin action</p>
-          <h2 className="mt-3 text-xl font-semibold text-slate-950">{isSingleTeamClub ? 'Assign a coach' : 'Assign coach'}</h2>
-          <form className="mt-4 space-y-4" onSubmit={handleCoachAssignment}>
-            {!isSingleTeamClub ? (
-              <SelectField
-                label="Team"
-                onChange={(event) => setAssignmentValues((current) => ({ ...current, teamId: event.target.value }))}
-                options={[
-                  { label: teams.length > 0 ? 'Choose a team' : 'Create a team first', value: '' },
-                  ...teams.map((team) => ({ label: `${team.name} (${team.ageGroup})`, value: team.id })),
-                ]}
-                value={assignmentValues.teamId}
-              />
-            ) : null}
-            <SelectField
-              label="Coach"
-              onChange={(event) => setAssignmentValues((current) => ({ ...current, coachId: event.target.value }))}
-              options={[
-                { label: coaches.length > 0 ? 'Choose a coach' : 'No coach accounts found', value: '' },
-                ...coaches.map((coach) => ({ label: coach.name, value: coach.id })),
-              ]}
-              value={assignmentValues.coachId}
-            />
-            <Button className="w-full" loading={isSubmitting} type="submit">
-              Assign coach
-            </Button>
-          </form>
-        </article>
-
-        <article className="rounded-[1.75rem] border border-white/70 bg-white/85 p-5 shadow-lg shadow-slate-900/5 backdrop-blur-sm">
-          <p className="text-sm font-medium text-slate-500">Admin action</p>
-          <h2 className="mt-3 text-xl font-semibold text-slate-950">Link parent</h2>
-          <form className="mt-4 space-y-4" onSubmit={handleParentLink}>
-            {!isSingleTeamClub ? (
-              <SelectField
-                label="Team"
-                onChange={(event) => setLinkValues((current) => ({ ...current, teamId: event.target.value, playerId: '' }))}
-                options={[
-                  { label: teams.length > 0 ? 'Choose a team' : 'Create a team first', value: '' },
-                  ...teams.map((team) => ({ label: `${team.name} (${team.ageGroup})`, value: team.id })),
-                ]}
-                value={linkValues.teamId}
-              />
-            ) : null}
-            <SelectField
-              label="Player"
-              onChange={(event) => setLinkValues((current) => ({ ...current, playerId: event.target.value }))}
-              options={[
-                {
-                  label:
-                    resolvedLinkTeamId
-                      ? loadingLinkablePlayers
-                        ? 'Loading players...'
-                        : linkablePlayers.length > 0
-                          ? 'Choose a player'
-                          : 'No players in this team'
-                      : 'Choose a team first',
-                  value: '',
-                },
-                ...linkablePlayers.map((player) => ({ label: player.name, value: player.id })),
-              ]}
-              value={linkValues.playerId}
-            />
-            <TextField
-              label="Find parent"
-              onChange={(event) => setParentSearch(event.target.value)}
-              placeholder="Search by parent name or email"
-              value={parentSearch}
-            />
-            <SelectField
-              label="Parent account"
-              onChange={(event) => setLinkValues((current) => ({ ...current, parentId: event.target.value }))}
-              options={[
-                {
-                  label:
-                    parents.length > 0
-                      ? filteredParents.length > 0
-                        ? 'Choose a parent'
-                        : 'No parents match your search'
-                      : 'No parent accounts found',
-                  value: '',
-                },
-                ...filteredParents.slice(0, 100).map((parent) => ({ label: `${parent.name} (${parent.email})`, value: parent.id })),
-              ]}
-              value={linkValues.parentId}
-            />
-            <Button className="w-full" loading={isSubmitting} type="submit">
-              Link parent to player
-            </Button>
-          </form>
-        </article>
-
-        <article className="rounded-[1.75rem] border border-white/70 bg-white/85 p-5 shadow-lg shadow-slate-900/5 backdrop-blur-sm">
-          <p className="text-sm font-medium text-slate-500">Trusted provisioning</p>
-          <h2 className="mt-3 text-xl font-semibold text-slate-950">Create staff account</h2>
-          <form className="mt-4 space-y-4" onSubmit={handleProvisionUser}>
-            <TextField
-              label="Full name"
-              onChange={(event) => setProvisionValues((current) => ({ ...current, name: event.target.value }))}
-              placeholder="Jordan Lee"
-              value={provisionValues.name}
-            />
-            <TextField
-              label="Email"
-              onChange={(event) => setProvisionValues((current) => ({ ...current, email: event.target.value }))}
-              placeholder="jordan@club.com"
-              type="email"
-              value={provisionValues.email}
-            />
-            <SelectField
-              label="Role"
-              onChange={(event) =>
-                setProvisionValues((current) => ({
-                  ...current,
-                  role: event.target.value === 'admin' ? 'admin' : 'coach',
-                }))
-              }
-              options={[
-                { label: 'Coach', value: 'coach' },
-                { label: 'Admin', value: 'admin' },
-              ]}
-              value={provisionValues.role}
-            />
-            <Button className="w-full" loading={isSubmitting} type="submit">
-              Provision account
-            </Button>
-          </form>
-
-          {provisionResult ? (
-            <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-              <p className="font-semibold">{provisionResult.role} account created</p>
-              <p className="mt-1 break-all">{provisionResult.email}</p>
-              <p className="mt-2">
-                {provisionResult.inviteEmailSent
-                  ? 'Invite email sent successfully. Keep the setup link below as a fallback.'
-                  : 'Invite email was not sent. Share the password setup link manually.'}
-              </p>
-              <p className="mt-2">Password setup link:</p>
-              <a className="mt-1 block break-all font-semibold underline" href={provisionResult.passwordSetupLink} rel="noreferrer" target="_blank">
-                {provisionResult.passwordSetupLink}
-              </a>
-            </div>
-          ) : null}
-        </article>
-      </section>
+    <section className="space-y-5">
+      <TabNav tabs={ADMIN_TABS} active={activeTab} onChange={setActiveTab} />
 
       {!isConfigured ? (
         <div className="rounded-3xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          Supabase is not configured yet. Add your project values to .env.local before using team management.
+          Supabase is not configured. Add your project values to .env.local before using club management.
         </div>
       ) : null}
 
@@ -398,95 +213,117 @@ export function AdminClubPanel() {
         <div className="rounded-3xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">{activeError}</div>
       ) : null}
 
-      <section className="rounded-[2rem] border border-white/70 bg-white/80 p-6 shadow-lg shadow-slate-900/5 backdrop-blur-sm">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-sm font-medium text-slate-500">Live club data</p>
-            <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">{isSingleTeamClub ? 'Squad overview' : 'Teams overview'}</h2>
+      <SuccessMessage message={successMessage} />
+
+      {/* OVERVIEW TAB */}
+      {activeTab === 'overview' ? (
+        <section className="space-y-5">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-2xl font-semibold tracking-tight text-slate-950">{isSingleTeamClub ? 'Squad overview' : 'Club overview'}</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                {loading ? 'Loading...' : `${teams.length} ${teams.length === 1 ? 'team' : 'teams'} · ${coaches.length} coaches · ${parents.length} parents`}
+              </p>
+            </div>
           </div>
-          <p className="text-sm text-slate-500">{loading ? 'Loading teams...' : `${teams.length} teams, ${coaches.length} coaches, ${parents.length} parents`}</p>
-        </div>
 
-        {teams.length === 0 ? (
-          <div className="mt-6 rounded-3xl border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-500">
-            No teams yet. Create your first team to start structuring the club.
-          </div>
-        ) : (
-          <div className="mt-6 grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
-            <article className="rounded-[1.75rem] border border-slate-200 bg-slate-50/80 p-5">
-              <div className="flex items-end justify-between gap-3">
-                <div>
-                  <p className="text-sm font-medium text-slate-500">Team drill-down</p>
-                  <h3 className="mt-1 text-xl font-semibold text-slate-950">{isSingleTeamClub ? 'Active squad' : 'Select a team'}</h3>
+          {teams.length === 0 ? (
+            <div className="rounded-[2rem] border border-dashed border-slate-300 px-4 py-12 text-center">
+              <p className="text-sm font-medium text-slate-600">No teams yet</p>
+              <p className="mt-1 text-sm text-slate-400">Go to Manage to create your first team.</p>
+              <button
+                className="mt-4 text-sm font-semibold text-[#123524] underline underline-offset-2"
+                onClick={() => setActiveTab('manage')}
+                type="button"
+              >
+                Create a team
+              </button>
+            </div>
+          ) : (
+            <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+              <article className="rounded-[1.75rem] border border-white/70 bg-white/85 p-5 shadow-lg shadow-slate-900/5 backdrop-blur-sm">
+                <div className="flex items-end justify-between gap-3">
+                  <div>
+                    <h3 className="text-xl font-semibold text-slate-950">{isSingleTeamClub ? 'Active squad' : 'Squad drill-down'}</h3>
+                    {!isSingleTeamClub ? (
+                      <p className="mt-1 text-sm text-slate-500">Select a team to inspect its roster</p>
+                    ) : null}
+                  </div>
+                  <p className="text-sm text-slate-500">{loadingPlayers ? 'Loading...' : `${players.length} players`}</p>
                 </div>
-                <p className="text-sm text-slate-500">{loadingPlayers ? 'Loading players...' : `${players.length} loaded`}</p>
-              </div>
 
-              {!isSingleTeamClub ? (
-                <div className="mt-4">
-                  <SelectField
-                    label="Active team"
-                    onChange={(event) => setActiveTeamId(event.target.value)}
-                    options={[
-                      { label: 'Choose a team', value: '' },
-                      ...teams.map((team) => ({ label: `${team.name} (${team.ageGroup})`, value: team.id })),
-                    ]}
-                    value={resolvedActiveTeamId}
-                  />
-                </div>
-              ) : null}
+                {!isSingleTeamClub ? (
+                  <div className="mt-4">
+                    <SelectField
+                      label="Team"
+                      onChange={(event) => { setActiveTeamId(event.target.value); setShowAllPlayers(false) }}
+                      options={[
+                        { label: 'Choose a team', value: '' },
+                        ...teams.map((team) => ({ label: `${team.name} (${team.ageGroup})`, value: team.id })),
+                      ]}
+                      value={resolvedActiveTeamId}
+                    />
+                  </div>
+                ) : null}
 
-              <div className="mt-4 space-y-3">
-                {players.length > 0 ? (
-                  players.slice(0, 10).map((player) => (
-                    <div key={player.id} className="rounded-2xl bg-white px-4 py-3">
-                      <p className="font-medium text-slate-950">{player.name}</p>
-                      <p className="text-sm text-slate-500">{player.dob || 'DOB not set'}</p>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {player.parentIds.length > 0 ? (
-                          player.parentIds.map((parentId) => (
-                            <div key={`${player.id}-${parentId}`} className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
-                              <span>{parentById.get(parentId)?.name ?? 'Parent'}</span>
-                              <button
-                                className="text-slate-500 transition hover:text-rose-600"
-                                onClick={() => void handleParentUnlink(player.id, parentId)}
-                                type="button"
-                              >
-                                Remove
-                              </button>
+                <div className="mt-4 space-y-3">
+                  {players.length > 0 ? (
+                    <>
+                      {displayedPlayers.map((player) => (
+                        <div key={player.id} className="rounded-2xl bg-slate-50 px-4 py-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <p className="font-medium text-slate-950">{player.name}</p>
+                              <p className="text-sm text-slate-500">{formatDate(player.dob)}</p>
                             </div>
-                          ))
-                        ) : (
-                          <span className="text-xs text-slate-400">No linked parents yet.</span>
-                        )}
+                          </div>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {player.parentIds.length > 0 ? (
+                              player.parentIds.map((parentId) => (
+                                <div key={`${player.id}-${parentId}`} className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm">
+                                  <span>{parentById.get(parentId)?.name ?? 'Parent'}</span>
+                                  <ConfirmInline onConfirm={() => void handleParentUnlink(player.id, parentId)} />
+                                </div>
+                              ))
+                            ) : (
+                              <span className="text-xs text-slate-400">No linked parents</span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                      {players.length > PLAYER_PAGE ? (
+                        <button
+                          className="w-full rounded-2xl border border-dashed border-slate-300 py-2.5 text-sm font-medium text-slate-500 transition hover:border-slate-400 hover:text-slate-700"
+                          onClick={() => setShowAllPlayers((prev) => !prev)}
+                          type="button"
+                        >
+                          {showAllPlayers ? 'Show fewer players' : `Show all ${players.length} players`}
+                        </button>
+                      ) : null}
+                    </>
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-500">
+                      {resolvedActiveTeamId || isSingleTeamClub ? 'No players added yet.' : 'Select a team to inspect its players.'}
+                    </div>
+                  )}
+                </div>
+              </article>
+
+              <div className="space-y-4">
+                {teamCards.map((team) => (
+                  <article key={team.id} className="rounded-[1.75rem] border border-white/70 bg-white/85 p-5 shadow-lg shadow-slate-900/5 backdrop-blur-sm">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <h3 className="text-xl font-semibold text-slate-950">{team.name}</h3>
+                        <p className="text-sm text-slate-500">{team.ageGroup}</p>
+                      </div>
+                      <div className="flex gap-2 text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">
+                        <span className="rounded-full bg-slate-100 px-3 py-1">{team.playerCount} players</span>
+                        <span className="rounded-full bg-slate-100 px-3 py-1">{team.coachCount} coaches</span>
                       </div>
                     </div>
-                  ))
-                ) : (
-                  <div className="rounded-2xl border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-500">
-                    {resolvedActiveTeamId || isSingleTeamClub ? 'No players added yet.' : 'Select a team to inspect its players.'}
-                  </div>
-                )}
-              </div>
-            </article>
-
-            {teamCards.map((team) => {
-              return (
-                <article key={team.id} className="rounded-[1.75rem] border border-slate-200 bg-slate-50/80 p-5">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <h3 className="text-xl font-semibold text-slate-950">{team.name}</h3>
-                      <p className="text-sm text-slate-500">{team.ageGroup}</p>
-                    </div>
-                    <div className="flex gap-2 text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">
-                      <span className="rounded-full bg-white px-3 py-1">{team.playerCount} players</span>
-                      <span className="rounded-full bg-white px-3 py-1">{team.coachCount} coaches</span>
-                    </div>
-                  </div>
-
-                  <div className="mt-5 grid gap-4 sm:grid-cols-1">
-                    <div>
-                      <p className="text-sm font-medium text-slate-500">Assigned coaches</p>
+                    <div className="mt-4">
+                      <p className="text-sm font-medium text-slate-500">Coaches</p>
                       <div className="mt-2 flex flex-wrap gap-2">
                         {team.coaches.length > 0 ? (
                           team.coaches.map((coachId) => (
@@ -495,57 +332,294 @@ export function AdminClubPanel() {
                             </span>
                           ))
                         ) : (
-                          <span className="text-sm text-slate-400">No coaches assigned yet.</span>
+                          <span className="text-sm text-slate-400">No coaches assigned</span>
                         )}
                       </div>
                     </div>
+                  </article>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
+      ) : null}
 
-                  </div>
-                </article>
-              )
-            })}
+      {/* MANAGE TAB */}
+      {activeTab === 'manage' ? (
+        <section className="space-y-5">
+          <div className="overflow-x-auto">
+            <div className="flex min-w-max gap-1 rounded-2xl bg-slate-100/90 p-1">
+              {MANAGE_SECTIONS.map((section) => (
+                <button
+                  key={section.value}
+                  className={`rounded-xl px-4 py-2 text-sm font-semibold whitespace-nowrap transition ${
+                    manageSection === section.value
+                      ? 'bg-white text-slate-900 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                  onClick={() => { setManageSection(section.value); setLocalError(null); setSuccessMessage(null) }}
+                  type="button"
+                >
+                  {section.label}
+                </button>
+              ))}
+            </div>
           </div>
-        )}
-      </section>
 
-      <section className="rounded-[2rem] border border-white/70 bg-white/80 p-6 shadow-lg shadow-slate-900/5 backdrop-blur-sm">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-sm font-medium text-slate-500">Phase 2 operations</p>
-            <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">Recent admin activity</h2>
-          </div>
-          <p className="text-sm text-slate-500">{loadingAuditLogs ? 'Loading activity...' : `${auditLogs.length} recent entries`}</p>
-        </div>
+          <article className="rounded-[1.75rem] border border-white/70 bg-white/85 p-6 shadow-lg shadow-slate-900/5 backdrop-blur-sm">
+            {manageSection === 'team' ? (
+              <>
+                <h2 className="text-xl font-semibold text-slate-950">Create team</h2>
+                <p className="mt-1 text-sm text-slate-500">Add a new team to the club with a name and age group.</p>
+                <form className="mt-5 space-y-4" onSubmit={handleTeamSubmit}>
+                  <TextField
+                    label="Team name"
+                    onChange={(event) => setTeamValues((current) => ({ ...current, name: event.target.value }))}
+                    placeholder="Falcons"
+                    value={teamValues.name}
+                  />
+                  <TextField
+                    label="Age group"
+                    onChange={(event) => setTeamValues((current) => ({ ...current, ageGroup: event.target.value }))}
+                    placeholder="U12"
+                    value={teamValues.ageGroup}
+                  />
+                  <Button className="w-full" loading={isSubmitting} type="submit">
+                    Save team
+                  </Button>
+                </form>
+              </>
+            ) : null}
 
-        {auditLogError ? (
-          <div className="mt-6 rounded-3xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">{auditLogError}</div>
-        ) : null}
+            {manageSection === 'player' ? (
+              <>
+                <h2 className="text-xl font-semibold text-slate-950">{isSingleTeamClub ? 'Add player to squad' : 'Add player'}</h2>
+                <p className="mt-1 text-sm text-slate-500">Register a player and assign them to a team.</p>
+                <form className="mt-5 space-y-4" onSubmit={handlePlayerSubmit}>
+                  <TextField
+                    label="Player name"
+                    onChange={(event) => setPlayerValues((current) => ({ ...current, name: event.target.value }))}
+                    placeholder="Sam Kerr"
+                    value={playerValues.name}
+                  />
+                  <TextField
+                    label="Date of birth"
+                    onChange={(event) => setPlayerValues((current) => ({ ...current, dob: event.target.value }))}
+                    type="date"
+                    value={playerValues.dob}
+                  />
+                  {!isSingleTeamClub ? (
+                    <SelectField
+                      label="Team"
+                      onChange={(event) => setPlayerValues((current) => ({ ...current, teamId: event.target.value }))}
+                      options={[
+                        { label: teams.length > 0 ? 'Choose a team' : 'Create a team first', value: '' },
+                        ...teams.map((team) => ({ label: `${team.name} (${team.ageGroup})`, value: team.id })),
+                      ]}
+                      value={playerValues.teamId}
+                    />
+                  ) : null}
+                  <Button className="w-full" loading={isSubmitting} type="submit">
+                    Add player
+                  </Button>
+                </form>
+              </>
+            ) : null}
 
-        {auditLogs.length === 0 && !loadingAuditLogs ? (
-          <div className="mt-6 rounded-3xl border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-500">
-            No admin activity has been recorded yet.
-          </div>
-        ) : null}
+            {manageSection === 'coach' ? (
+              <>
+                <h2 className="text-xl font-semibold text-slate-950">Assign coach to team</h2>
+                <p className="mt-1 text-sm text-slate-500">Connect a coach account to a team so they can manage events and attendance.</p>
+                <form className="mt-5 space-y-4" onSubmit={handleCoachAssignment}>
+                  {!isSingleTeamClub ? (
+                    <SelectField
+                      label="Team"
+                      onChange={(event) => setAssignmentValues((current) => ({ ...current, teamId: event.target.value }))}
+                      options={[
+                        { label: teams.length > 0 ? 'Choose a team' : 'Create a team first', value: '' },
+                        ...teams.map((team) => ({ label: `${team.name} (${team.ageGroup})`, value: team.id })),
+                      ]}
+                      value={assignmentValues.teamId}
+                    />
+                  ) : null}
+                  <SelectField
+                    label="Coach"
+                    onChange={(event) => setAssignmentValues((current) => ({ ...current, coachId: event.target.value }))}
+                    options={[
+                      { label: coaches.length > 0 ? 'Choose a coach' : 'No coach accounts found', value: '' },
+                      ...coaches.map((coach) => ({ label: coach.name, value: coach.id })),
+                    ]}
+                    value={assignmentValues.coachId}
+                  />
+                  <Button className="w-full" loading={isSubmitting} type="submit">
+                    Assign coach
+                  </Button>
+                </form>
+              </>
+            ) : null}
 
-        {auditLogs.length > 0 ? (
-          <div className="mt-6 grid gap-3">
-            {auditLogs.map((log) => (
-              <article key={log.id} className="rounded-[1.5rem] border border-slate-200 bg-slate-50/80 px-4 py-4">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-950">{log.summary}</p>
-                    <p className="mt-1 text-xs uppercase tracking-[0.15em] text-slate-500">
-                      {log.action.replaceAll('_', ' ')} • {log.targetType}
+            {manageSection === 'parent' ? (
+              <>
+                <h2 className="text-xl font-semibold text-slate-950">Link parent to player</h2>
+                <p className="mt-1 text-sm text-slate-500">Associate a parent's account with a player so they can see events and respond to attendance.</p>
+                <form className="mt-5 space-y-4" onSubmit={handleParentLink}>
+                  {!isSingleTeamClub ? (
+                    <SelectField
+                      label="Team"
+                      onChange={(event) => setLinkValues((current) => ({ ...current, teamId: event.target.value, playerId: '' }))}
+                      options={[
+                        { label: teams.length > 0 ? 'Choose a team' : 'Create a team first', value: '' },
+                        ...teams.map((team) => ({ label: `${team.name} (${team.ageGroup})`, value: team.id })),
+                      ]}
+                      value={linkValues.teamId}
+                    />
+                  ) : null}
+                  <SelectField
+                    label="Player"
+                    onChange={(event) => setLinkValues((current) => ({ ...current, playerId: event.target.value }))}
+                    options={[
+                      {
+                        label: resolvedLinkTeamId
+                          ? loadingLinkablePlayers ? 'Loading players...' : linkablePlayers.length > 0 ? 'Choose a player' : 'No players in this team'
+                          : 'Choose a team first',
+                        value: '',
+                      },
+                      ...linkablePlayers.map((player) => ({ label: player.name, value: player.id })),
+                    ]}
+                    value={linkValues.playerId}
+                  />
+                  <TextField
+                    label="Find parent"
+                    onChange={(event) => setParentSearch(event.target.value)}
+                    placeholder="Search by name or email"
+                    value={parentSearch}
+                  />
+                  <SelectField
+                    label="Parent account"
+                    onChange={(event) => setLinkValues((current) => ({ ...current, parentId: event.target.value }))}
+                    options={[
+                      {
+                        label: parents.length > 0
+                          ? filteredParents.length > 0 ? 'Choose a parent' : 'No parents match your search'
+                          : 'No parent accounts found',
+                        value: '',
+                      },
+                      ...filteredParents.slice(0, 100).map((parent) => ({ label: `${parent.name} (${parent.email})`, value: parent.id })),
+                    ]}
+                    value={linkValues.parentId}
+                  />
+                  <Button className="w-full" loading={isSubmitting} type="submit">
+                    Link parent to player
+                  </Button>
+                </form>
+              </>
+            ) : null}
+
+            {manageSection === 'staff' ? (
+              <>
+                <h2 className="text-xl font-semibold text-slate-950">Create staff account</h2>
+                <p className="mt-1 text-sm text-slate-500">Provision a coach or admin account. An invite email will be sent so they can set their password.</p>
+                <form className="mt-5 space-y-4" onSubmit={handleProvisionUser}>
+                  <TextField
+                    label="Full name"
+                    onChange={(event) => setProvisionValues((current) => ({ ...current, name: event.target.value }))}
+                    placeholder="Jordan Lee"
+                    value={provisionValues.name}
+                  />
+                  <TextField
+                    label="Email"
+                    onChange={(event) => setProvisionValues((current) => ({ ...current, email: event.target.value }))}
+                    placeholder="jordan@club.com"
+                    type="email"
+                    value={provisionValues.email}
+                  />
+                  <SelectField
+                    label="Role"
+                    onChange={(event) =>
+                      setProvisionValues((current) => ({
+                        ...current,
+                        role: event.target.value === 'admin' ? 'admin' : 'coach',
+                      }))
+                    }
+                    options={[
+                      { label: 'Coach', value: 'coach' },
+                      { label: 'Admin', value: 'admin' },
+                    ]}
+                    value={provisionValues.role}
+                  />
+                  <Button className="w-full" loading={isSubmitting} type="submit">
+                    Provision account
+                  </Button>
+                </form>
+
+                {provisionResult ? (
+                  <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-900">
+                    <p className="font-semibold capitalize">{provisionResult.role} account created</p>
+                    <p className="mt-1 break-all text-emerald-700">{provisionResult.email}</p>
+                    <p className="mt-3">
+                      {provisionResult.inviteEmailSent
+                        ? 'Invite email sent. Keep the setup link below as a backup.'
+                        : 'Invite email was not sent. Share the password setup link manually.'}
                     </p>
+                    <p className="mt-2 font-medium">Password setup link:</p>
+                    <a className="mt-1 block break-all underline" href={provisionResult.passwordSetupLink} rel="noreferrer" target="_blank">
+                      {provisionResult.passwordSetupLink}
+                    </a>
                   </div>
-                  <p className="text-sm text-slate-500">{formatAuditTimestamp(log.timestamp)}</p>
-                </div>
-                <p className="mt-3 text-sm text-slate-600">Recorded by {log.actorName}</p>
-              </article>
-            ))}
+                ) : null}
+              </>
+            ) : null}
+          </article>
+        </section>
+      ) : null}
+
+      {/* ACTIVITY TAB */}
+      {activeTab === 'activity' ? (
+        <section className="space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-2xl font-semibold tracking-tight text-slate-950">Admin activity</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                {loadingAuditLogs ? 'Loading activity...' : `${auditLogs.length} recent entries`}
+              </p>
+            </div>
           </div>
-        ) : null}
-      </section>
+
+          {auditLogError ? (
+            <div className="rounded-3xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">{auditLogError}</div>
+          ) : null}
+
+          {auditLogs.length === 0 && !loadingAuditLogs ? (
+            <div className="rounded-[2rem] border border-dashed border-slate-300 px-4 py-12 text-center">
+              <p className="text-sm text-slate-500">No admin activity recorded yet.</p>
+            </div>
+          ) : (
+            <div className="grid gap-3">
+              {auditLogs.map((log) => (
+                <article key={log.id} className="rounded-[1.5rem] border border-white/70 bg-white/85 px-5 py-4 shadow-sm shadow-slate-900/5">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="font-medium text-slate-950">{log.summary}</p>
+                      <p className="mt-1 text-xs uppercase tracking-[0.15em] text-slate-500">
+                        {log.action.replaceAll('_', ' ')} · {log.targetType}
+                      </p>
+                    </div>
+                    <p className="shrink-0 text-sm text-slate-500">{formatAuditTimestamp(log.timestamp)}</p>
+                  </div>
+                  <p className="mt-2 text-sm text-slate-500">By {log.actorName}</p>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+      ) : null}
+
+      {/* MESSAGES TAB */}
+      {activeTab === 'messages' && profile ? (
+        <Suspense fallback={<SectionFallback />}>
+          <TeamMessagesPanel profile={profile} />
+        </Suspense>
+      ) : null}
     </section>
   )
 }

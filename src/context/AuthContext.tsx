@@ -79,31 +79,40 @@ async function loadUserProfile(user: User): Promise<UserProfile> {
 }
 
 function getAuthMessage(error: unknown): string {
-  if (!(error instanceof Error)) {
+  const rawMessage =
+    typeof error === 'string'
+      ? error
+      : error && typeof error === 'object' && 'message' in error && typeof error.message === 'string'
+        ? error.message
+        : null
+
+  if (!rawMessage) {
     return 'Authentication failed. Please try again.'
   }
 
-  if ('message' in error && typeof error.message === 'string') {
-    const message = error.message.toLowerCase()
+  const message = rawMessage.toLowerCase()
 
-    if (message.includes('already registered') || message.includes('already been registered')) {
-        return 'That email address is already in use.'
-    }
-
-    if (message.includes('invalid login credentials')) {
-      return 'Incorrect email or password.'
-    }
-
-    if (message.includes('email') && message.includes('invalid')) {
-        return 'Please enter a valid email address.'
-    }
-
-    if (message.includes('password') && message.includes('6')) {
-      return 'Password must be at least 6 characters.'
-    }
+  if (message.includes('already registered') || message.includes('already been registered')) {
+    return 'That email address is already in use.'
   }
 
-  return error.message
+  if (message.includes('invalid login credentials')) {
+    return 'Incorrect email or password.'
+  }
+
+  if (message.includes('email not confirmed')) {
+    return 'Check your email and confirm your account before signing in.'
+  }
+
+  if (message.includes('email') && message.includes('invalid')) {
+    return 'Please enter a valid email address.'
+  }
+
+  if (message.includes('password') && message.includes('6')) {
+    return 'Password must be at least 6 characters.'
+  }
+
+  return rawMessage
 }
 
 async function syncSessionProfile(
@@ -214,7 +223,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           throw new Error(message)
         }
 
-        if (data.user) {
+        if (data.user && data.session) {
           const { error: profileError } = await supabase.from('profiles').upsert({
             id: data.user.id,
             name,

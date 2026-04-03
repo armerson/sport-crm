@@ -95,7 +95,9 @@ alter table public.audit_logs enable row level security;
 create or replace function public.current_user_role()
 returns text
 language sql
+security definer
 stable
+set search_path = public
 as $$
   select role from public.profiles where id = auth.uid()
 $$;
@@ -103,7 +105,9 @@ $$;
 create or replace function public.is_admin()
 returns boolean
 language sql
+security definer
 stable
+set search_path = public
 as $$
   select public.current_user_role() = 'admin'
 $$;
@@ -111,7 +115,9 @@ $$;
 create or replace function public.is_coach_for_team(team uuid)
 returns boolean
 language sql
+security definer
 stable
+set search_path = public
 as $$
   select exists (
     select 1 from public.team_coaches where team_id = team and coach_id = auth.uid()
@@ -121,7 +127,9 @@ $$;
 create or replace function public.is_parent_for_player(player uuid)
 returns boolean
 language sql
+security definer
 stable
+set search_path = public
 as $$
   select exists (
     select 1 from public.player_parents where player_id = player and parent_id = auth.uid()
@@ -255,4 +263,4 @@ for insert with check (
 );
 
 create policy "audit logs admin only" on public.audit_logs
-for all using (public.is_admin()) with check (public.is_admin());
+for all using (public.is_admin()) with check (public.is_admin());goo

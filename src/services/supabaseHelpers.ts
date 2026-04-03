@@ -1,4 +1,3 @@
-import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase, supabaseConfigError } from '../lib/supabase.ts'
 import type { UserProfile } from '../types/auth.ts'
 import type { AttendanceRecord, AuditLogRecord, EventRecord, MessageRecord, PlayerRecord, TeamRecord } from '../types/club.ts'
@@ -172,23 +171,28 @@ export function subscribeToTables(channelName: string, tables: string[], refetch
   const client = requireSupabase()
   void refetch()
 
-  let channel: RealtimeChannel | null = client.channel(channelName)
+  // Use a UUID suffix so each invocation always gets a fresh channel.
+  // client.channel(name) returns the EXISTING channel when the name matches —
+  // so reusing the same name (or the same Date.now() millisecond, which React
+  // Strict Mode can trigger in back-to-back cleanup/setup cycles) hands back
+  // an already-joining channel and causes "cannot add postgres_changes callbacks
+  // after subscribe()". A random UUID is guaranteed unique per call.
+  const uniqueName = `${channelName}-${crypto.randomUUID()}`
+  const channel = client.channel(uniqueName)
 
   tables.forEach((table) => {
-    channel = channel?.on(
+    channel.on(
       'postgres_changes',
       { event: '*', schema: 'public', table },
       () => {
         void refetch()
       },
-    ) ?? null
+    )
   })
 
-  channel?.subscribe()
+  channel.subscribe()
 
   return () => {
-    if (channel) {
-      void client.removeChannel(channel)
-    }
+    void client.removeChannel(channel)
   }
 }

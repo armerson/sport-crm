@@ -32,7 +32,9 @@ export function subscribeToUserProfilesByIds(
 ): () => void {
   const client = requireSupabase()
 
-  return subscribeToTables(`message-senders-${userIds.join('-')}`, ['profiles', 'team_coaches', 'player_parents'], async () => {
+  const channelName = userIds.length > 0 ? `message-senders-${userIds.join('-')}` : 'message-senders-empty'
+  
+  return subscribeToTables(channelName, ['profiles', 'team_coaches', 'player_parents'], async () => {
     if (userIds.length === 0) {
       onData([])
       return
