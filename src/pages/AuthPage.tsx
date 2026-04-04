@@ -3,13 +3,15 @@ import { Button } from '../components/ui/Button.tsx'
 import { TextField } from '../components/ui/TextField.tsx'
 import { useAuth } from '../hooks/useAuth.ts'
 
-type AuthMode = 'sign-in' | 'sign-up'
+type AuthMode = 'sign-in' | 'sign-up' | 'forgot-password'
 
 export function AuthPage() {
-  const { clearError, error, isConfigured, signIn, signUp } = useAuth()
+  const { clearError, error, isConfigured, signIn, signUp, resetPassword } = useAuth()
   const [mode, setMode] = useState<AuthMode>('sign-in')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+  const [resetSent, setResetSent] = useState(false)
+  const [resetEmail, setResetEmail] = useState('')
   const [signInValues, setSignInValues] = useState({ email: '', password: '' })
   const [signUpValues, setSignUpValues] = useState({
     name: '',
@@ -22,9 +24,18 @@ export function AuthPage() {
     () =>
       mode === 'sign-in'
         ? 'Sign in to manage squads, attendance, and match-day communication.'
-        : 'Parents can create their own accounts. Admin and coach accounts should be provisioned by the club.',
+        : mode === 'sign-up'
+          ? 'Parents can create their own accounts. Admin and coach accounts should be provisioned by the club.'
+          : 'Enter your email and we'll send a password reset link.',
     [mode],
   )
+
+  function switchMode(next: AuthMode) {
+    clearError()
+    setFormError(null)
+    setResetSent(false)
+    setMode(next)
+  }
 
   async function handleSignInSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -34,6 +45,28 @@ export function AuthPage() {
 
     try {
       await signIn(signInValues)
+    } catch {
+      // Auth state is surfaced through context error state.
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  async function handleResetSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    clearError()
+    setFormError(null)
+
+    if (!resetEmail.trim()) {
+      setFormError('Enter your email address.')
+      return
+    }
+
+    setIsSubmitting(true)
+
+    try {
+      await resetPassword(resetEmail.trim())
+      setResetSent(true)
     } catch {
       // Auth state is surfaced through context error state.
     } finally {
@@ -113,11 +146,7 @@ export function AuthPage() {
               className={`flex-1 rounded-xl px-4 py-3 text-sm font-semibold transition ${
                 mode === 'sign-in' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
               }`}
-              onClick={() => {
-                clearError()
-                setFormError(null)
-                setMode('sign-in')
-              }}
+              onClick={() => switchMode('sign-in')}
               type="button"
             >
               Sign in
@@ -126,11 +155,7 @@ export function AuthPage() {
               className={`flex-1 rounded-xl px-4 py-3 text-sm font-semibold transition ${
                 mode === 'sign-up' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
               }`}
-              onClick={() => {
-                clearError()
-                setFormError(null)
-                setMode('sign-up')
-              }}
+              onClick={() => switchMode('sign-up')}
               type="button"
             >
               Create account
@@ -183,7 +208,58 @@ export function AuthPage() {
               <Button className="mt-2 w-full" loading={isSubmitting} type="submit">
                 Sign in
               </Button>
+              <p className="text-center text-sm text-slate-500">
+                <button
+                  className="font-medium text-[#123524] underline underline-offset-2 hover:text-[#1a4a33]"
+                  onClick={() => switchMode('forgot-password')}
+                  type="button"
+                >
+                  Forgot your password?
+                </button>
+              </p>
             </form>
+          ) : mode === 'forgot-password' ? (
+            <div className="mt-6">
+              {resetSent ? (
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-5 text-sm text-emerald-900">
+                  <p className="font-semibold">Check your inbox</p>
+                  <p className="mt-1 text-emerald-700">
+                    We've sent a password reset link to <span className="font-medium">{resetEmail}</span>. Check your spam folder if it doesn't arrive within a minute.
+                  </p>
+                  <button
+                    className="mt-4 font-medium text-emerald-800 underline underline-offset-2"
+                    onClick={() => switchMode('sign-in')}
+                    type="button"
+                  >
+                    Back to sign in
+                  </button>
+                </div>
+              ) : (
+                <form className="space-y-4" onSubmit={handleResetSubmit}>
+                  <TextField
+                    autoComplete="email"
+                    label="Email address"
+                    onChange={(event) => setResetEmail(event.target.value)}
+                    placeholder="club@example.com"
+                    required
+                    type="email"
+                    value={resetEmail}
+                  />
+                  <Button className="w-full" loading={isSubmitting} type="submit">
+                    Send reset link
+                  </Button>
+                  <p className="text-center text-sm text-slate-500">
+                    <button
+                      className="font-medium text-[#123524] underline underline-offset-2 hover:text-[#1a4a33]"
+                      onClick={() => switchMode('sign-in')}
+                      type="button"
+                    >
+                      Back to sign in
+                    </button>
+                  </p>
+                </form>
+              )}
+            </div>
           ) : (
             <form className="mt-6 space-y-4" onSubmit={handleSignUpSubmit}>
               <TextField

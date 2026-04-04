@@ -234,6 +234,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
       },
+      resetPassword: async (email: string) => {
+        if (!supabase) {
+          setError(supabaseConfigError)
+          return
+        }
+
+        setError(null)
+        const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/`,
+        })
+
+        if (resetError) {
+          const message = getAuthMessage(resetError)
+          setError(message)
+          throw new Error(message)
+        }
+      },
       signOutUser: async () => {
         if (!supabase) {
           return
