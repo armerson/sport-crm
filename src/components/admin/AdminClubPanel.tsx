@@ -61,8 +61,8 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
   const [playerValues, setPlayerValues] = useState({ name: '', dob: '', teamId: '' })
   const [assignmentValues, setAssignmentValues] = useState({ teamId: '', coachId: '' })
   const [linkValues, setLinkValues] = useState({ teamId: '', playerId: '', parentId: '' })
-  const [provisionValues, setProvisionValues] = useState({ name: '', email: '', role: 'coach' as ProvisionableRole })
-  const [provisionResult, setProvisionResult] = useState<{ email: string; role: ProvisionableRole; passwordSetupLink: string; inviteEmailSent: boolean } | null>(null)
+  const [provisionValues, setProvisionValues] = useState({ name: '', email: '', roles: ['coach'] as ProvisionableRole[] })
+  const [provisionResult, setProvisionResult] = useState<{ email: string; roles: ProvisionableRole[]; passwordSetupLink: string; inviteEmailSent: boolean } | null>(null)
 
   const [parentSearch, setParentSearch] = useState('')
   const [activeTeamId, setActiveTeamId] = useState('')
@@ -174,10 +174,14 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
       setLocalError('Name and email are required to provision an account.')
       return
     }
+    if (provisionValues.roles.length === 0) {
+      setLocalError('Select at least one role before provisioning.')
+      return
+    }
     try {
-      const result = await provisionUser(provisionValues.name.trim(), provisionValues.email.trim(), provisionValues.role)
-      setProvisionResult({ email: result.email, role: result.role, passwordSetupLink: result.passwordSetupLink, inviteEmailSent: result.inviteEmailSent })
-      setProvisionValues({ name: '', email: '', role: 'coach' })
+      const result = await provisionUser(provisionValues.name.trim(), provisionValues.email.trim(), provisionValues.roles)
+      setProvisionResult({ email: result.email, roles: result.roles, passwordSetupLink: result.passwordSetupLink, inviteEmailSent: result.inviteEmailSent })
+      setProvisionValues({ name: '', email: '', roles: ['coach'] })
     } catch {
       // Hook exposes a user-facing error.
     }
@@ -539,20 +543,29 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
                     type="email"
                     value={provisionValues.email}
                   />
-                  <SelectField
-                    label="Role"
-                    onChange={(event) =>
-                      setProvisionValues((current) => ({
-                        ...current,
-                        role: event.target.value === 'admin' ? 'admin' : 'coach',
-                      }))
-                    }
-                    options={[
-                      { label: 'Coach', value: 'coach' },
-                      { label: 'Admin', value: 'admin' },
-                    ]}
-                    value={provisionValues.role}
-                  />
+                  <fieldset>
+                    <legend className="mb-2 text-sm font-medium text-slate-700">Roles</legend>
+                    <div className="space-y-2">
+                      {(['coach', 'admin'] as ProvisionableRole[]).map((role) => (
+                        <label key={role} className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 hover:bg-slate-100">
+                          <input
+                            checked={provisionValues.roles.includes(role)}
+                            className="h-4 w-4 accent-[#123524]"
+                            onChange={(event) => {
+                              setProvisionValues((current) => ({
+                                ...current,
+                                roles: event.target.checked
+                                  ? [...current.roles, role]
+                                  : current.roles.filter((r) => r !== role),
+                              }))
+                            }}
+                            type="checkbox"
+                          />
+                          <span className="text-sm font-medium capitalize text-slate-800">{role}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>
                   <Button className="w-full" loading={isSubmitting} type="submit">
                     Provision account
                   </Button>
@@ -560,7 +573,7 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
 
                 {provisionResult ? (
                   <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-900">
-                    <p className="font-semibold capitalize">{provisionResult.role} account created</p>
+                    <p className="font-semibold capitalize">{provisionResult.roles.join(' + ')} account created</p>
                     <p className="mt-1 break-all text-emerald-700">{provisionResult.email}</p>
                     <p className="mt-3">
                       {provisionResult.inviteEmailSent

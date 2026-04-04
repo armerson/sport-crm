@@ -3,6 +3,7 @@ import { Button } from '../components/ui/Button.tsx'
 import { BottomNav, ADMIN_BOTTOM_NAV, COACH_BOTTOM_NAV, PARENT_BOTTOM_NAV } from '../components/ui/BottomNav.tsx'
 import { NotificationBanner } from '../components/ui/NotificationBanner.tsx'
 import { useAuth } from '../hooks/useAuth.ts'
+import type { UserRole } from '../types/auth.ts'
 import type { AdminTab } from '../components/admin/AdminClubPanel.tsx'
 import type { CoachTab } from '../components/coach/CoachEventPanel.tsx'
 import type { ParentTab } from '../components/parent/ParentPortal.tsx'
@@ -22,7 +23,15 @@ const ParentPortal = lazy(async () => {
   return { default: module.ParentPortal }
 })
 
-const roleContent = {
+const ROLE_ORDER: UserRole[] = ['admin', 'coach', 'parent']
+
+const ROLE_LABELS: Record<UserRole, string> = {
+  admin: 'Admin',
+  coach: 'Coach',
+  parent: 'Parent',
+}
+
+const roleContent: Record<UserRole, { title: string; summary: string }> = {
   admin: {
     title: 'Club administration',
     summary: 'Set up teams, create player records, and assign coaching staff from one place.',
@@ -35,7 +44,7 @@ const roleContent = {
     title: 'Parent portal',
     summary: 'See upcoming activities for your child and respond to attendance quickly.',
   },
-} as const
+}
 
 function SectionFallback({ label }: { label: string }) {
   return (
@@ -55,19 +64,37 @@ function SignOutIcon() {
   )
 }
 
+/** Returns the user's highest-privilege role (admin > coach > parent). */
+function defaultRole(roles: UserRole[]): UserRole {
+  for (const role of ROLE_ORDER) {
+    if (roles.includes(role)) return role
+  }
+  return 'parent'
+}
+
 export function DashboardPage() {
   const { profile, signOutUser } = useAuth()
   const [adminTab, setAdminTab] = useState<AdminTab>('overview')
   const [coachTab, setCoachTab] = useState<CoachTab>('schedule')
   const [parentTab, setParentTab] = useState<ParentTab>('schedule')
 
+  // Active role view — initialised to the user's highest-privilege role.
+  const [activeRole, setActiveRole] = useState<UserRole>(() =>
+    profile ? defaultRole(profile.roles) : 'parent',
+  )
+
   if (!profile) {
     return null
   }
 
-  const activeContent = roleContent[profile.role]
-  const isAdmin = profile.role === 'admin'
-  const isCoach = profile.role === 'coach'
+  // Sorted roles to display in consistent order (admin → coach → parent).
+  const sortedRoles = ROLE_ORDER.filter((r) => profile.roles.includes(r))
+  const hasMultipleRoles = sortedRoles.length > 1
+
+  const isAdmin = activeRole === 'admin'
+  const isCoach = activeRole === 'coach'
+
+  const activeContent = roleContent[activeRole]
 
   const activeTab = isAdmin ? adminTab : isCoach ? coachTab : parentTab
   const bottomNavItems = isAdmin ? ADMIN_BOTTOM_NAV : isCoach ? COACH_BOTTOM_NAV : PARENT_BOTTOM_NAV
@@ -102,6 +129,22 @@ export function DashboardPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {hasMultipleRoles ? (
+            <div className="flex items-center gap-1 rounded-full bg-white/10 p-1">
+              {sortedRoles.map((role) => (
+                <button
+                  key={role}
+                  type="button"
+                  onClick={() => setActiveRole(role)}
+                  className={`rounded-full px-2.5 py-1 text-[10px] font-semibold capitalize transition ${
+                    activeRole === role ? 'bg-white text-[#123524]' : 'text-white/70 hover:text-white'
+                  }`}
+                >
+                  {ROLE_LABELS[role]}
+                </button>
+              ))}
+            </div>
+          ) : null}
           <div className="flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1">
             <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/25 text-[9px] font-bold text-white">
               {initials}
@@ -127,12 +170,32 @@ export function DashboardPage() {
               <div className="space-y-2">
                 <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{activeContent.title}</h1>
                 <p className="max-w-2xl text-sm leading-6 text-white/80 sm:text-base">{activeContent.summary}</p>
+                {hasMultipleRoles ? (
+                  <div className="flex gap-1 pt-2">
+                    {sortedRoles.map((role) => (
+                      <button
+                        key={role}
+                        type="button"
+                        onClick={() => setActiveRole(role)}
+                        className={`rounded-full px-3.5 py-1.5 text-xs font-semibold capitalize transition ${
+                          activeRole === role
+                            ? 'bg-white text-[#123524]'
+                            : 'border border-white/30 text-white/70 hover:border-white/60 hover:text-white'
+                        }`}
+                      >
+                        {ROLE_LABELS[role]}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
               </div>
               <div className="flex flex-col items-start gap-3 rounded-3xl border border-white/15 bg-white/10 p-5 backdrop-blur-sm sm:min-w-72">
                 <p className="text-sm text-white/75">Signed in as</p>
                 <div>
                   <p className="text-xl font-semibold">{profile.name}</p>
-                  <p className="text-sm capitalize text-white/75">{profile.role}</p>
+                  <p className="text-sm text-white/75">
+                    {sortedRoles.map((r) => ROLE_LABELS[r]).join(' · ')}
+                  </p>
                 </div>
                 <Button className="w-full" onClick={() => void signOutUser()} variant="secondary">
                   Sign out

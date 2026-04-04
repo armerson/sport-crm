@@ -2,6 +2,10 @@ import { createClient } from 'jsr:@supabase/supabase-js@2'
 
 type ProvisionableRole = 'admin' | 'coach'
 
+function isProvisionableRole(value: unknown): value is ProvisionableRole {
+  return value === 'admin' || value === 'coach'
+}
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -46,20 +50,22 @@ Deno.serve(async (request) => {
 
   const { data: actorProfile, error: profileError } = await adminClient
     .from('profiles')
-    .select('name, role')
+    .select('name, roles')
     .eq('id', actorData.user.id)
     .maybeSingle()
 
-  if (profileError || actorProfile?.role !== 'admin') {
+  if (profileError || !actorProfile || !Array.isArray(actorProfile.roles) || !actorProfile.roles.includes('admin')) {
     return json({ error: 'Only admins can provision staff accounts.' }, 403)
   }
 
-  const payload = await request.json() as { name?: string; email?: string; role?: ProvisionableRole }
+  const payload = await request.json() as { name?: string; email?: string; roles?: unknown[] }
   const name = payload.name?.trim() ?? ''
   const email = payload.email?.trim().toLowerCase() ?? ''
-  const role = payload.role
+  const roles: ProvisionableRole[] = Array.isArray(payload.roles)
+    ? payload.roles.filter(isProvisionableRole)
+    : []
 
-  if (name.length < 2 || !email.includes('@') || (role !== 'admin' && role !== 'coach')) {
+  if (name.length < 2 || !email.includes('@') || roles.length === 0) {
     return json({ error: 'Invalid provisioning input.' }, 400)
   }
 
@@ -68,7 +74,7 @@ Deno.serve(async (request) => {
     email_confirm: true,
     user_metadata: {
       name,
-      role,
+      roles,
     },
   })
 
@@ -80,7 +86,7 @@ Deno.serve(async (request) => {
     id: createdUser.user.id,
     name,
     email,
-    role,
+    roles,
   })
 
   if (insertError) {
@@ -99,19 +105,21 @@ Deno.serve(async (request) => {
     return json({ error: linkError.message }, 400)
   }
 
+  const roleLabel = roles.join(' + ')
+
   await adminClient.from('audit_logs').insert({
     actor_id: actorData.user.id,
     actor_name: actorProfile.name,
     action: 'provision_user',
     target_type: 'profile',
     target_id: createdUser.user.id,
-    summary: `${actorProfile.name} provisioned ${role} ${name}.`,
+    summary: `${actorProfile.name} provisioned ${roleLabel} account for ${name}.`,
   })
 
   return json({
     uid: createdUser.user.id,
     email,
-    role,
+    roles,
     passwordSetupLink: linkData.properties.action_link,
     inviteEmailSent: false,
   })

@@ -182,12 +182,12 @@ export function useAdminClubData() {
         setIsSubmitting(false)
       }
     },
-    provisionUser: async (name: string, email: string, role: ProvisionableRole) => {
+    provisionUser: async (name: string, email: string, roles: ProvisionableRole[]) => {
       setIsSubmitting(true)
       setError(null)
 
       try {
-        return await provisionClubUser({ name, email, role })
+        return await provisionClubUser({ name, email, roles })
       } catch (submitError) {
         setError(getAdminErrorMessage(submitError, 'Unable to provision account.'))
         throw submitError

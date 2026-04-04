@@ -1,5 +1,5 @@
 import { supabase, supabaseConfigError } from '../lib/supabase.ts'
-import type { UserProfile } from '../types/auth.ts'
+import type { UserProfile, UserRole } from '../types/auth.ts'
 import type { AttendanceRecord, AuditLogRecord, EventRecord, MessageRecord, PlayerRecord, TeamRecord } from '../types/club.ts'
 
 export function requireSupabase() {
@@ -10,8 +10,15 @@ export function requireSupabase() {
   return supabase
 }
 
-export function normalizeRole(value: unknown): UserProfile['role'] {
-  return value === 'admin' || value === 'coach' ? value : 'parent'
+export function normalizeRoles(value: unknown): UserRole[] {
+  if (Array.isArray(value)) {
+    const valid = value.filter((r): r is UserRole => r === 'admin' || r === 'coach' || r === 'parent')
+    return valid.length > 0 ? valid : ['parent']
+  }
+
+  // Backward-compat: handle a bare string from older rows
+  if (value === 'admin' || value === 'coach') return [value]
+  return ['parent']
 }
 
 function normalizeRelationIds<T extends string>(value: unknown, key: string): T[] {
@@ -34,7 +41,7 @@ export function mapProfileRow(row: Record<string, unknown>, relations?: { teams?
     id: typeof row.id === 'string' ? row.id : '',
     name: typeof row.name === 'string' && row.name.trim().length > 0 ? row.name : 'Club member',
     email: typeof row.email === 'string' ? row.email : '',
-    role: normalizeRole(row.role),
+    roles: normalizeRoles(row.roles),
     teams: relations?.teams ?? [],
     children: relations?.children ?? [],
   }
@@ -121,7 +128,7 @@ export async function fetchCurrentProfile() {
 
   const userId = userData.user.id
   const [{ data: profileRow, error: profileError }, { data: coachRows, error: coachError }, { data: childRows, error: childError }] = await Promise.all([
-    client.from('profiles').select('id, name, email, role').eq('id', userId).single(),
+    client.from('profiles').select('id, name, email, roles').eq('id', userId).single(),
     client.from('team_coaches').select('team_id').eq('coach_id', userId),
     client.from('player_parents').select('player_id').eq('parent_id', userId),
   ])

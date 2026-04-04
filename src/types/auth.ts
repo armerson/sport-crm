@@ -6,7 +6,7 @@ export interface UserProfile {
   id: string
   name: string
   email: string
-  role: UserRole
+  roles: UserRole[]
   teams: string[]
   children: string[]
 }
@@ -18,7 +18,7 @@ export interface SignInInput {
 
 export interface SignUpInput extends SignInInput {
   name: string
-  role: UserRole
+  roles: UserRole[]
 }
 
 export interface AuthContextValue {

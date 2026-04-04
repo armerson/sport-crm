@@ -5,13 +5,13 @@ export type ProvisionableRole = 'admin' | 'coach'
 export interface ProvisionClubUserInput {
   name: string
   email: string
-  role: ProvisionableRole
+  roles: ProvisionableRole[]
 }
 
 export interface ProvisionClubUserResult {
   uid: string
   email: string
-  role: ProvisionableRole
+  roles: ProvisionableRole[]
   passwordSetupLink: string
   inviteEmailSent: boolean
 }

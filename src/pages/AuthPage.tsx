@@ -15,7 +15,6 @@ export function AuthPage() {
     name: '',
     email: '',
     password: '',
-    role: 'parent' as const,
   })
 
   const activeError = formError ?? error
@@ -64,6 +63,7 @@ export function AuthPage() {
         ...signUpValues,
         name: signUpValues.name.trim(),
         email: signUpValues.email.trim(),
+        roles: ['parent'],
       })
     } catch {
       // Auth state is surfaced through context error state.

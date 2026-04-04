@@ -56,8 +56,8 @@ export function subscribeToCoaches(
   return subscribeToTables('coach-profiles', ['profiles', 'team_coaches'], async () => {
     const { data, error } = await client
       .from('profiles')
-      .select('id, name, email, role, team_coaches(team_id)')
-      .eq('role', 'coach')
+      .select('id, name, email, roles, team_coaches(team_id)')
+      .contains('roles', ['coach'])
       .order('name', { ascending: true })
 
     if (error) {
@@ -83,8 +83,8 @@ export function subscribeToParents(
   return subscribeToTables('parent-profiles', ['profiles', 'player_parents'], async () => {
     const { data, error } = await client
       .from('profiles')
-      .select('id, name, email, role, player_parents(player_id)')
-      .eq('role', 'parent')
+      .select('id, name, email, roles, player_parents(player_id)')
+      .contains('roles', ['parent'])
       .order('name', { ascending: true })
 
     if (error) {

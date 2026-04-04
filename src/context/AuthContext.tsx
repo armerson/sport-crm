@@ -7,19 +7,15 @@ import {
 } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { isSupabaseConfigured, supabase, supabaseConfigError } from '../lib/supabase.ts'
+import { normalizeRoles } from '../services/supabaseHelpers.ts'
 import type {
   AuthContextValue,
   SignInInput,
   SignUpInput,
   UserProfile,
-  UserRole,
 } from '../types/auth.ts'
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
-
-function normalizeRole(value: unknown): UserRole {
-  return value === 'admin' || value === 'coach' ? value : 'parent'
-}
 
 async function loadUserProfile(user: User): Promise<UserProfile> {
   if (!supabase) {
@@ -27,7 +23,7 @@ async function loadUserProfile(user: User): Promise<UserProfile> {
   }
 
   const [{ data: profileRow, error: profileError }, { data: teamRows, error: teamError }, { data: childRows, error: childError }] = await Promise.all([
-    supabase.from('profiles').select('id, name, email, role').eq('id', user.id).maybeSingle(),
+    supabase.from('profiles').select('id, name, email, roles').eq('id', user.id).maybeSingle(),
     supabase.from('team_coaches').select('team_id').eq('coach_id', user.id),
     supabase.from('player_parents').select('player_id').eq('parent_id', user.id),
   ])
@@ -49,7 +45,7 @@ async function loadUserProfile(user: User): Promise<UserProfile> {
       id: user.id,
       name: (user.user_metadata.name as string | undefined) ?? 'Club Member',
       email: user.email ?? '',
-      role: 'parent',
+      roles: normalizeRoles(user.user_metadata.roles ?? user.user_metadata.role),
       teams: [],
       children: [],
     }
@@ -58,7 +54,7 @@ async function loadUserProfile(user: User): Promise<UserProfile> {
       id: fallbackProfile.id,
       name: fallbackProfile.name,
       email: fallbackProfile.email,
-      role: fallbackProfile.role,
+      roles: fallbackProfile.roles,
     })
 
     if (insertError) {
@@ -72,7 +68,7 @@ async function loadUserProfile(user: User): Promise<UserProfile> {
     id: user.id,
     name: typeof profileRow.name === 'string' && profileRow.name.length > 0 ? profileRow.name : ((user.user_metadata.name as string | undefined) ?? 'Club Member'),
     email: typeof profileRow.email === 'string' ? profileRow.email : user.email ?? '',
-    role: normalizeRole(profileRow.role),
+    roles: normalizeRoles(profileRow.roles),
     teams: Array.isArray(teamRows) ? teamRows.map((row) => row.team_id).filter(Boolean) : [],
     children: Array.isArray(childRows) ? childRows.map((row) => row.player_id).filter(Boolean) : [],
   }
@@ -198,7 +194,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           throw new Error(message)
         }
       },
-      signUp: async ({ name, email, password, role }: SignUpInput) => {
+      signUp: async ({ name, email, password, roles }: SignUpInput) => {
         if (!supabase) {
           setError(supabaseConfigError)
           return
@@ -212,7 +208,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           options: {
             data: {
               name,
-              role,
+              roles,
             },
           },
         })
@@ -228,7 +224,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             id: data.user.id,
             name,
             email,
-            role,
+            roles,
           })
 
           if (profileError) {
