@@ -4,7 +4,7 @@ export async function assignCoachToTeam(teamId: string, coachId: string) {
   const client = requireSupabase()
   const [{ data: teamRow, error: teamError }, { data: coachRow, error: coachError }, { error: relationError }] = await Promise.all([
     client.from('teams').select('id, name').eq('id', teamId).single(),
-    client.from('profiles').select('id, name').eq('id', coachId).eq('role', 'coach').single(),
+    client.from('profiles').select('id, name').eq('id', coachId).contains('roles', ['coach']).single(),
     client.from('team_coaches').upsert({ team_id: teamId, coach_id: coachId }, { onConflict: 'team_id,coach_id', ignoreDuplicates: true }),
   ])
 
@@ -32,7 +32,7 @@ export async function linkParentToPlayer(playerId: string, parentId: string) {
   const client = requireSupabase()
   const [{ data: playerRow, error: playerError }, { data: parentRow, error: parentError }, { error: relationError }] = await Promise.all([
     client.from('players').select('id, name').eq('id', playerId).single(),
-    client.from('profiles').select('id, name').eq('id', parentId).eq('role', 'parent').single(),
+    client.from('profiles').select('id, name').eq('id', parentId).contains('roles', ['parent']).single(),
     client.from('player_parents').upsert({ player_id: playerId, parent_id: parentId }, { onConflict: 'player_id,parent_id', ignoreDuplicates: true }),
   ])
 
@@ -60,7 +60,7 @@ export async function unlinkParentFromPlayer(playerId: string, parentId: string)
   const client = requireSupabase()
   const [{ data: playerRow, error: playerError }, { data: parentRow, error: parentError }, { error: relationError }] = await Promise.all([
     client.from('players').select('id, name').eq('id', playerId).single(),
-    client.from('profiles').select('id, name').eq('id', parentId).eq('role', 'parent').single(),
+    client.from('profiles').select('id, name').eq('id', parentId).contains('roles', ['parent']).single(),
     client.from('player_parents').delete().eq('player_id', playerId).eq('parent_id', parentId),
   ])
 

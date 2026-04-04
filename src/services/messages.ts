@@ -42,7 +42,7 @@ export function subscribeToUserProfilesByIds(
 
     const { data, error } = await client
       .from('profiles')
-      .select('id, name, email, role')
+      .select('id, name, email, roles')
       .in('id', userIds)
       .order('name', { ascending: true })
 
