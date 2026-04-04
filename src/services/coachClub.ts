@@ -124,6 +124,18 @@ export async function createEventWithAttendance(
   return { count: eventRows.length }
 }
 
+export async function updateEvent(eventId: string, input: Partial<EventFormInput>): Promise<void> {
+  const client = requireSupabase()
+  const updates: Record<string, unknown> = {}
+  if (input.title !== undefined) updates.title = input.title
+  if (input.type !== undefined) updates.type = input.type
+  if (input.dateTime !== undefined) updates.date_time = input.dateTime
+  if (input.location !== undefined) updates.location = input.location
+
+  const { error } = await client.from('events').update(updates).eq('id', eventId)
+  if (error) throw new Error(error.message)
+}
+
 export async function deleteEvent(eventId: string): Promise<void> {
   const client = requireSupabase()
   const { error } = await client.from('events').delete().eq('id', eventId)

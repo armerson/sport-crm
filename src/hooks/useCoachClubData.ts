@@ -5,6 +5,7 @@ import {
   createEventWithAttendance,
   deleteEvent,
   deleteEventSeries,
+  updateEvent,
   subscribeToAttendanceForEvent,
   subscribeToCoachTeams,
   subscribeToEventsForTeam,
@@ -152,6 +153,24 @@ export function useCoachClubData(coachId: string, selectedTeamId: string, select
         })
       } catch (submitError) {
         setError(getCoachErrorMessage(submitError, 'Unable to create event.'))
+        throw submitError
+      } finally {
+        setIsSubmitting(false)
+      }
+    },
+    updateEvent: async (eventId: string, input: Partial<import('../types/club.ts').EventFormInput>) => {
+      if (!isSupabaseConfigured) {
+        setError(supabaseConfigError)
+        return
+      }
+
+      setIsSubmitting(true)
+      setError(null)
+
+      try {
+        await updateEvent(eventId, input)
+      } catch (submitError) {
+        setError(getCoachErrorMessage(submitError, 'Unable to update event.'))
         throw submitError
       } finally {
         setIsSubmitting(false)

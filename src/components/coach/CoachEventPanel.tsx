@@ -74,6 +74,13 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
   const [selectedEventId, setSelectedEventId] = useState('')
   const [localError, setLocalError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [editingEventId, setEditingEventId] = useState<string | null>(null)
+  const [editValues, setEditValues] = useState<Pick<EventFormState, 'title' | 'type' | 'dateTime' | 'location'>>({
+    title: '',
+    type: 'training',
+    dateTime: '',
+    location: '',
+  })
   const [eventValues, setEventValues] = useState<EventFormState>({
     title: '',
     type: 'training',
@@ -89,6 +96,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
     activeTeamId,
     attendance,
     createEvent,
+    updateEvent,
     deleteEvent,
     deleteEventSeries,
     error,
@@ -148,6 +156,38 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
       const sessionLabel = recurrence ? `${recurrence.weeks} training sessions` : 'event'
       setSuccessMessage(`${sessionLabel.charAt(0).toUpperCase() + sessionLabel.slice(1)} created. Players have been given a pending attendance record.`)
       setActiveTab('schedule')
+    } catch {
+      // Hook exposes a user-facing error.
+    }
+  }
+
+  function startEditingEvent(eventId: string) {
+    const event = events.find((e) => e.id === eventId)
+    if (!event) return
+    // Convert stored ISO datetime to datetime-local format (no seconds, no Z)
+    const localDt = event.dateTime ? event.dateTime.slice(0, 16) : ''
+    setEditValues({ title: event.title, type: event.type, dateTime: localDt, location: event.location })
+    setEditingEventId(eventId)
+    setSelectedEventId(eventId)
+  }
+
+  async function handleUpdateEvent(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    if (!editingEventId) return
+    setLocalError(null)
+    if (!editValues.title.trim() || !editValues.dateTime || !editValues.location.trim()) {
+      setLocalError('Title, date/time, and location are required.')
+      return
+    }
+    try {
+      await updateEvent(editingEventId, {
+        title: editValues.title.trim(),
+        type: editValues.type,
+        dateTime: new Date(editValues.dateTime).toISOString(),
+        location: editValues.location.trim(),
+      })
+      setSuccessMessage('Event updated.')
+      setEditingEventId(null)
     } catch {
       // Hook exposes a user-facing error.
     }
@@ -258,8 +298,16 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                         </p>
                       </button>
 
-                      {/* Delete — separate row, not nested inside the selection button */}
-                      <div className={`mt-2 flex items-center justify-end gap-4 border-t pt-2 ${activeEventId === clubEvent.id ? 'border-white/20' : 'border-slate-200'}`}>
+                      {/* Actions — separate row, not nested inside the selection button */}
+                      <div className={`mt-2 flex items-center justify-between border-t pt-2 ${activeEventId === clubEvent.id ? 'border-white/20' : 'border-slate-200'}`}>
+                        <button
+                          className={`text-xs font-semibold transition ${activeEventId === clubEvent.id ? 'text-white/70 hover:text-white' : 'text-slate-500 hover:text-[#123524]'}`}
+                          onClick={() => startEditingEvent(clubEvent.id)}
+                          type="button"
+                        >
+                          Edit
+                        </button>
+                        <div className="flex items-center gap-4">
                         {clubEvent.recurrenceGroupId ? (
                           <ConfirmInline
                             confirmLabel="Yes, cancel remaining"
@@ -272,6 +320,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                           label="Delete event"
                           onConfirm={() => { void handleDeleteEvent(clubEvent.id) }}
                         />
+                        </div>
                       </div>
                     </div>
                   ))
@@ -295,6 +344,51 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
             </article>
 
             <article className="rounded-[1.75rem] border border-white/70 bg-white/85 p-5 shadow-lg shadow-slate-900/5 backdrop-blur-sm">
+              {editingEventId ? (
+                <>
+                  <div className="flex items-center justify-between gap-3">
+                    <h2 className="text-xl font-semibold text-slate-950">Edit event</h2>
+                    <button
+                      className="text-sm font-medium text-slate-500 hover:text-slate-700"
+                      onClick={() => setEditingEventId(null)}
+                      type="button"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                  <form className="mt-4 space-y-4" onSubmit={handleUpdateEvent}>
+                    <TextField
+                      label="Title"
+                      onChange={(e) => setEditValues((c) => ({ ...c, title: e.target.value }))}
+                      value={editValues.title}
+                    />
+                    <SelectField
+                      label="Type"
+                      onChange={(e) => setEditValues((c) => ({ ...c, type: e.target.value === 'match' ? 'match' : 'training' }))}
+                      options={[
+                        { label: 'Training', value: 'training' },
+                        { label: 'Match', value: 'match' },
+                      ]}
+                      value={editValues.type}
+                    />
+                    <TextField
+                      label="Date and time"
+                      onChange={(e) => setEditValues((c) => ({ ...c, dateTime: e.target.value }))}
+                      type="datetime-local"
+                      value={editValues.dateTime}
+                    />
+                    <TextField
+                      label="Location"
+                      onChange={(e) => setEditValues((c) => ({ ...c, location: e.target.value }))}
+                      value={editValues.location}
+                    />
+                    <Button className="w-full" loading={isSubmitting} type="submit">
+                      Save changes
+                    </Button>
+                  </form>
+                </>
+              ) : (
+                <>
               <h2 className="text-xl font-semibold text-slate-950">Attendance</h2>
               <p className="mt-1 text-sm text-slate-500">
                 {activeEventId ? 'Responses for the selected event.' : 'Select an event to view attendance.'}
@@ -354,6 +448,8 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                 <div className="mt-5 rounded-2xl border border-dashed border-slate-300 px-4 py-10 text-center text-sm text-slate-500">
                   Select an event on the left to see attendance responses.
                 </div>
+              )}
+                </>
               )}
             </article>
           </div>
