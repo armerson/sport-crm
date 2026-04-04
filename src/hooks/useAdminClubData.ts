@@ -6,11 +6,12 @@ import {
   subscribeToParents,
   subscribeToCoaches,
   subscribeToTeams,
+  subscribeToAllEvents,
   addPlayerToTeam,
   createTeam,
 } from '../services/adminClub.ts'
 import type { UserProfile } from '../types/auth.ts'
-import type { PlayerFormInput, TeamFormInput, TeamRecord } from '../types/club.ts'
+import type { EventRecord, PlayerFormInput, TeamFormInput, TeamRecord } from '../types/club.ts'
 import type { ProvisionableRole } from '../services/provisioning.ts'
 
 function getAdminErrorMessage(error: unknown, fallback: string): string {
@@ -21,6 +22,7 @@ export function useAdminClubData() {
   const [teams, setTeams] = useState<TeamRecord[]>([])
   const [coaches, setCoaches] = useState<UserProfile[]>([])
   const [parents, setParents] = useState<UserProfile[]>([])
+  const [events, setEvents] = useState<EventRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -34,7 +36,7 @@ export function useAdminClubData() {
 
     setError(null)
 
-    let pendingSubscriptions = 3
+    let pendingSubscriptions = 4
 
     const markLoaded = () => {
       pendingSubscriptions -= 1
@@ -77,10 +79,22 @@ export function useAdminClubData() {
       },
     )
 
+    const eventsSubscription = subscribeToAllEvents(
+      (nextEvents) => {
+        setEvents(nextEvents)
+        markLoaded()
+      },
+      (message) => {
+        setError(message)
+        markLoaded()
+      },
+    )
+
     return () => {
       teamsSubscription()
       coachesSubscription()
       parentsSubscription()
+      eventsSubscription()
     }
   }, [])
 
@@ -88,6 +102,7 @@ export function useAdminClubData() {
     teams,
     coaches,
     parents,
+    events,
     loading,
     error,
     isConfigured: isSupabaseConfigured,

@@ -1,6 +1,6 @@
 import type { UserProfile } from '../types/auth.ts'
-import type { PlayerFormInput, PlayerRecord, TeamFormInput, TeamRecord } from '../types/club.ts'
-import { mapPlayerRow, mapProfileRow, mapTeamRow, requireSupabase, subscribeToTables } from './supabaseHelpers.ts'
+import type { EventRecord, PlayerFormInput, PlayerRecord, TeamFormInput, TeamRecord } from '../types/club.ts'
+import { mapEventRow, mapPlayerRow, mapProfileRow, mapTeamRow, requireSupabase, subscribeToTables } from './supabaseHelpers.ts'
 
 export function subscribeToTeams(
   onData: (teams: TeamRecord[]) => void,
@@ -98,6 +98,27 @@ export function subscribeToParents(
         ? ((row as { player_parents: Array<{ player_id: string }> }).player_parents.map((entry) => entry.player_id).filter(Boolean))
         : [],
     })))
+  })
+}
+
+export function subscribeToAllEvents(
+  onData: (events: EventRecord[]) => void,
+  onError: (message: string) => void,
+): () => void {
+  const client = requireSupabase()
+
+  return subscribeToTables('all-events', ['events'], async () => {
+    const { data, error } = await client
+      .from('events')
+      .select('id, team_id, title, type, date_time, location, recurrence_group_id')
+      .order('date_time', { ascending: true })
+
+    if (error) {
+      onError('Unable to load events.')
+      return
+    }
+
+    onData((data ?? []).map((row) => mapEventRow(row as Record<string, unknown>)))
   })
 }
 

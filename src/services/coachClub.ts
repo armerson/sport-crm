@@ -131,3 +131,15 @@ export async function deleteEvent(eventId: string): Promise<void> {
     throw new Error(error.message)
   }
 }
+
+export async function deleteEventSeries(recurrenceGroupId: string, fromDateTime: string): Promise<void> {
+  const client = requireSupabase()
+  const { error } = await client
+    .from('events')
+    .delete()
+    .eq('recurrence_group_id', recurrenceGroupId)
+    .gte('date_time', fromDateTime)
+  if (error) {
+    throw new Error(error.message)
+  }
+}

@@ -90,6 +90,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
     attendance,
     createEvent,
     deleteEvent,
+    deleteEventSeries,
     error,
     events,
     isConfigured,
@@ -155,6 +156,15 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
   async function handleDeleteEvent(eventId: string) {
     try {
       await deleteEvent(eventId)
+      if (selectedEventId === eventId) setSelectedEventId('')
+    } catch {
+      // Hook exposes a user-facing error.
+    }
+  }
+
+  async function handleDeleteSeries(recurrenceGroupId: string, fromDateTime: string, eventId: string) {
+    try {
+      await deleteEventSeries(recurrenceGroupId, fromDateTime)
       if (selectedEventId === eventId) setSelectedEventId('')
     } catch {
       // Hook exposes a user-facing error.
@@ -249,7 +259,14 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                       </button>
 
                       {/* Delete — separate row, not nested inside the selection button */}
-                      <div className={`mt-2 flex justify-end border-t pt-2 ${activeEventId === clubEvent.id ? 'border-white/20' : 'border-slate-200'}`}>
+                      <div className={`mt-2 flex items-center justify-end gap-4 border-t pt-2 ${activeEventId === clubEvent.id ? 'border-white/20' : 'border-slate-200'}`}>
+                        {clubEvent.recurrenceGroupId ? (
+                          <ConfirmInline
+                            confirmLabel="Yes, cancel remaining"
+                            label="Cancel series from here"
+                            onConfirm={() => { void handleDeleteSeries(clubEvent.recurrenceGroupId!, clubEvent.dateTime, clubEvent.id) }}
+                          />
+                        ) : null}
                         <ConfirmInline
                           confirmLabel="Yes, delete"
                           label="Delete event"

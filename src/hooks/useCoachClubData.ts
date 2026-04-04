@@ -4,6 +4,7 @@ import { fetchTeamParentIds, sendPushToUsers } from '../lib/pushNotifications.ts
 import {
   createEventWithAttendance,
   deleteEvent,
+  deleteEventSeries,
   subscribeToAttendanceForEvent,
   subscribeToCoachTeams,
   subscribeToEventsForTeam,
@@ -169,6 +170,24 @@ export function useCoachClubData(coachId: string, selectedTeamId: string, select
         await deleteEvent(eventId)
       } catch (submitError) {
         setError(getCoachErrorMessage(submitError, 'Unable to delete event.'))
+        throw submitError
+      } finally {
+        setIsSubmitting(false)
+      }
+    },
+    deleteEventSeries: async (recurrenceGroupId: string, fromDateTime: string) => {
+      if (!isSupabaseConfigured) {
+        setError(supabaseConfigError)
+        return
+      }
+
+      setIsSubmitting(true)
+      setError(null)
+
+      try {
+        await deleteEventSeries(recurrenceGroupId, fromDateTime)
+      } catch (submitError) {
+        setError(getCoachErrorMessage(submitError, 'Unable to cancel series.'))
         throw submitError
       } finally {
         setIsSubmitting(false)

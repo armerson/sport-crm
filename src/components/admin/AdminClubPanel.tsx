@@ -9,7 +9,7 @@ import { useAdminClubData } from '../../hooks/useAdminClubData.ts'
 import { useAuditLogs } from '../../hooks/useAuditLogs.ts'
 import { useTeamPlayers } from '../../hooks/useTeamPlayers.ts'
 import { useAuth } from '../../hooks/useAuth.ts'
-import { formatDate } from '../../utils/date.ts'
+import { formatDate, formatDateTime } from '../../utils/date.ts'
 import type { ProvisionableRole } from '../../services/provisioning.ts'
 
 const TeamMessagesPanel = lazy(async () => {
@@ -51,7 +51,7 @@ interface AdminClubPanelProps {
 export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) {
   const setActiveTab = onTabChange
   const { profile } = useAuth()
-  const { addPlayer, assignCoach, coaches, error, isConfigured, isSubmitting, loading, parents, teams, createTeam, linkParent, provisionUser, unlinkParent } =
+  const { addPlayer, assignCoach, coaches, error, events, isConfigured, isSubmitting, loading, parents, teams, createTeam, linkParent, provisionUser, unlinkParent } =
     useAdminClubData()
   const { logs: auditLogs, loading: loadingAuditLogs, error: auditLogError } = useAuditLogs()
   const [manageSection, setManageSection] = useState<ManageSection>('team')
@@ -351,6 +351,74 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
               </div>
             </div>
           )}
+
+          {/* Upcoming events across all teams */}
+          {teams.length > 0 ? (() => {
+            const now = new Date()
+            const teamById = new Map(teams.map((t) => [t.id, t]))
+            const upcoming = events.filter((e) => new Date(e.dateTime) >= now).slice(0, 20)
+            const past = events.filter((e) => new Date(e.dateTime) < now).slice(-5).reverse()
+
+            return (
+              <article className="rounded-[1.75rem] border border-white/70 bg-white/85 p-5 shadow-lg shadow-slate-900/5 backdrop-blur-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-xl font-semibold text-slate-950">Club schedule</h3>
+                  <p className="text-sm text-slate-500">{loading ? 'Loading...' : `${upcoming.length} upcoming`}</p>
+                </div>
+
+                {upcoming.length > 0 ? (
+                  <div className="mt-4 space-y-2">
+                    {upcoming.map((event) => {
+                      const team = teamById.get(event.teamId)
+                      return (
+                        <div key={event.id} className="flex items-center gap-3 rounded-2xl bg-slate-50 px-4 py-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="font-medium text-slate-950">{event.title}</p>
+                              <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-semibold uppercase tracking-[0.12em] text-slate-600">
+                                {event.type}
+                              </span>
+                              {event.recurrenceGroupId ? (
+                                <span className="rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-semibold text-orange-700">Recurring</span>
+                              ) : null}
+                            </div>
+                            <p className="mt-0.5 text-sm text-slate-500">
+                              {team?.name ?? 'Unknown team'}{team?.ageGroup ? ` · ${team.ageGroup}` : ''} · {formatDateTime(event.dateTime)}
+                            </p>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div className="mt-4 rounded-2xl border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-500">
+                    No upcoming events scheduled.
+                  </div>
+                )}
+
+                {past.length > 0 ? (
+                  <div className="mt-5">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">Recent past</p>
+                    <div className="space-y-2">
+                      {past.map((event) => {
+                        const team = teamById.get(event.teamId)
+                        return (
+                          <div key={event.id} className="flex items-center gap-3 rounded-2xl bg-slate-50/60 px-4 py-2.5 opacity-60">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium text-slate-700">{event.title}</p>
+                              <p className="text-xs text-slate-500">
+                                {team?.name ?? 'Unknown team'} · {formatDateTime(event.dateTime)}
+                              </p>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ) : null}
+              </article>
+            )
+          })() : null}
         </section>
       ) : null}
 
