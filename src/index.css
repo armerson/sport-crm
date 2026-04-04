@@ -1,10 +1,17 @@
 @import "tailwindcss";
 
+/* Safe area insets for iOS notch / home indicator */
+@layer utilities {
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
 :root {
   color: #112031;
-  background:
-    radial-gradient(circle at top, rgba(241, 138, 63, 0.22), transparent 32%),
-    linear-gradient(180deg, #f6efe3 0%, #eef4f6 40%, #f7fafb 100%);
   font-family: 'Avenir Next', 'Segoe UI', sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -18,11 +25,19 @@ html {
 
 body {
   min-height: 100vh;
+  min-height: 100dvh;
   margin: 0;
+  /* Fixed background covers the notch area on iOS with black-translucent status bar */
+  background-attachment: fixed;
+  background-color: #f7fafb;
+  background-image:
+    radial-gradient(circle at top, rgba(241, 138, 63, 0.22), transparent 32%),
+    linear-gradient(180deg, #f6efe3 0%, #eef4f6 40%, #f7fafb 100%);
 }
 
 #root {
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 button,

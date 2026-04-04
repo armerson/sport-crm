@@ -1,6 +1,7 @@
 import { Suspense, lazy, useState } from 'react'
 import { Button } from '../components/ui/Button.tsx'
 import { BottomNav, ADMIN_BOTTOM_NAV, COACH_BOTTOM_NAV, PARENT_BOTTOM_NAV } from '../components/ui/BottomNav.tsx'
+import { InstallBanner } from '../components/ui/InstallBanner.tsx'
 import { NotificationBanner } from '../components/ui/NotificationBanner.tsx'
 import { useAuth } from '../hooks/useAuth.ts'
 import type { UserRole } from '../types/auth.ts'
@@ -209,6 +210,7 @@ export function DashboardPage() {
       {/* ── Main content ── */}
       <div className="px-4 py-4 sm:px-6 sm:py-0 lg:px-8">
         <div className="mx-auto max-w-6xl space-y-4 sm:space-y-6">
+          <InstallBanner />
           <NotificationBanner userId={profile.id} />
           <Suspense fallback={<SectionFallback label="workspace" />}>
             {isAdmin ? (
