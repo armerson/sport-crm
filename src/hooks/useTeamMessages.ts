@@ -30,7 +30,7 @@ export function useTeamMessages(profile: UserProfile, selectedTeamId: string) {
       return undefined
     }
 
-    if (profile.role === 'admin') {
+    if (profile.roles.includes('admin')) {
       const unsubscribe = subscribeToTeams(
         (nextTeams) => {
           setTeams(nextTeams)
@@ -46,7 +46,7 @@ export function useTeamMessages(profile: UserProfile, selectedTeamId: string) {
       return unsubscribe
     }
 
-    if (profile.role === 'coach') {
+    if (profile.roles.includes('coach')) {
       const unsubscribe = subscribeToCoachTeams(
         profile.id,
         (nextTeams) => {
@@ -78,7 +78,7 @@ export function useTeamMessages(profile: UserProfile, selectedTeamId: string) {
   }, [profile])
 
   useEffect(() => {
-    if (!isSupabaseConfigured || profile.role !== 'parent') {
+    if (!isSupabaseConfigured || !profile.roles.includes('parent')) {
       return undefined
     }
 
@@ -96,7 +96,7 @@ export function useTeamMessages(profile: UserProfile, selectedTeamId: string) {
     )
 
     return unsubscribe
-  }, [childTeamIds, profile.role])
+  }, [childTeamIds, profile.roles])
 
   useEffect(() => {
     if (!isSupabaseConfigured || !activeTeamId) {
