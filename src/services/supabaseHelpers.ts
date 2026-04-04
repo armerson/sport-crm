@@ -83,6 +83,7 @@ export function mapEventRow(row: Record<string, unknown>): EventRecord {
     type: row.type === 'match' ? 'match' : 'training',
     dateTime: typeof row.date_time === 'string' ? row.date_time : '',
     location: typeof row.location === 'string' ? row.location : '',
+    recurrenceGroupId: typeof row.recurrence_group_id === 'string' ? row.recurrence_group_id : null,
   }
 }
 

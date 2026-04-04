@@ -3,11 +3,12 @@ import { isSupabaseConfigured, supabaseConfigError } from '../lib/supabase.ts'
 import { fetchTeamParentIds, sendPushToUsers } from '../lib/pushNotifications.ts'
 import {
   createEventWithAttendance,
+  deleteEvent,
   subscribeToAttendanceForEvent,
   subscribeToCoachTeams,
   subscribeToEventsForTeam,
 } from '../services/coachClub.ts'
-import type { AttendanceRecord, EventFormInput, EventRecord, TeamRecord } from '../types/club.ts'
+import type { AttendanceRecord, EventFormInput, EventRecord, RecurrenceOptions, TeamRecord } from '../types/club.ts'
 
 function getCoachErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback
@@ -123,7 +124,7 @@ export function useCoachClubData(coachId: string, selectedTeamId: string, select
     error,
     isSubmitting,
     isConfigured: isSupabaseConfigured,
-    createEvent: async (input: EventFormInput, playerIds: string[]) => {
+    createEvent: async (input: EventFormInput, playerIds: string[], recurrence?: RecurrenceOptions) => {
       if (!isSupabaseConfigured) {
         setError(supabaseConfigError)
         return
@@ -133,22 +134,41 @@ export function useCoachClubData(coachId: string, selectedTeamId: string, select
       setError(null)
 
       try {
-        await createEventWithAttendance(input, playerIds)
+        const { count } = await createEventWithAttendance(input, playerIds, recurrence)
 
-        // Fire-and-forget: notify parents of players in this team
+        // One push notification regardless of how many sessions were created
         void fetchTeamParentIds(input.teamId).then((parentIds) => {
           if (!parentIds.length) return
           const teamName = teams.find((t) => t.id === input.teamId)?.name ?? 'your team'
           const typeLabel = input.type === 'match' ? 'Match' : 'Training'
+          const recurringLabel = recurrence ? ` (${count} sessions)` : ''
           void sendPushToUsers(
             parentIds,
-            `${typeLabel}: ${input.title}`,
+            `${typeLabel}: ${input.title}${recurringLabel}`,
             `${teamName} — ${new Date(input.dateTime).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}`,
             '/',
           )
         })
       } catch (submitError) {
         setError(getCoachErrorMessage(submitError, 'Unable to create event.'))
+        throw submitError
+      } finally {
+        setIsSubmitting(false)
+      }
+    },
+    deleteEvent: async (eventId: string) => {
+      if (!isSupabaseConfigured) {
+        setError(supabaseConfigError)
+        return
+      }
+
+      setIsSubmitting(true)
+      setError(null)
+
+      try {
+        await deleteEvent(eventId)
+      } catch (submitError) {
+        setError(getCoachErrorMessage(submitError, 'Unable to delete event.'))
         throw submitError
       } finally {
         setIsSubmitting(false)

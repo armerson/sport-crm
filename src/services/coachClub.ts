@@ -1,4 +1,4 @@
-import type { AttendanceRecord, EventFormInput, EventRecord, TeamRecord } from '../types/club.ts'
+import type { AttendanceRecord, EventFormInput, EventRecord, RecurrenceOptions, TeamRecord } from '../types/club.ts'
 import { mapAttendanceRow, mapEventRow, mapTeamRow, requireSupabase, subscribeToTables } from './supabaseHelpers.ts'
 
 export function subscribeToCoachTeams(
@@ -35,7 +35,7 @@ export function subscribeToEventsForTeam(
   return subscribeToTables(`team-events-${teamId}`, ['events'], async () => {
     const { data, error } = await client
       .from('events')
-      .select('id, team_id, title, type, date_time, location')
+      .select('id, team_id, title, type, date_time, location, recurrence_group_id')
       .eq('team_id', teamId)
       .order('date_time', { ascending: true })
 
@@ -74,37 +74,60 @@ export function subscribeToAttendanceForEvent(
 export async function createEventWithAttendance(
   input: EventFormInput,
   playerIds: string[],
-) {
+  recurrence?: RecurrenceOptions,
+): Promise<{ count: number }> {
   const client = requireSupabase()
-  const { data: eventRow, error: eventError } = await client
-    .from('events')
-    .insert({
+
+  // Build the list of events to insert. Recurring events share a recurrence_group_id.
+  const recurrenceGroupId = recurrence ? crypto.randomUUID() : null
+  const daysInterval = recurrence?.pattern === 'fortnightly' ? 14 : 7
+  const sessionCount = recurrence ? recurrence.weeks : 1
+
+  const eventsToInsert = Array.from({ length: sessionCount }, (_, i) => {
+    const date = new Date(input.dateTime)
+    date.setDate(date.getDate() + i * daysInterval)
+    return {
       team_id: input.teamId,
       title: input.title,
       type: input.type,
-      date_time: input.dateTime,
+      date_time: date.toISOString(),
       location: input.location,
-    })
-    .select('id')
-    .single()
+      recurrence_group_id: recurrenceGroupId,
+    }
+  })
 
-  if (eventError || !eventRow) {
+  const { data: eventRows, error: eventError } = await client
+    .from('events')
+    .insert(eventsToInsert)
+    .select('id')
+
+  if (eventError || !eventRows || eventRows.length === 0) {
     throw new Error(eventError?.message ?? 'Unable to create event.')
   }
 
-  if (playerIds.length === 0) {
-    return
+  if (playerIds.length > 0) {
+    const attendanceRecords = eventRows.flatMap((eventRow) =>
+      playerIds.map((playerId) => ({
+        event_id: eventRow.id,
+        player_id: playerId,
+        status: 'pending',
+      })),
+    )
+
+    const { error: attendanceError } = await client.from('attendance').insert(attendanceRecords)
+
+    if (attendanceError) {
+      throw new Error(attendanceError.message)
+    }
   }
 
-  const { error: attendanceError } = await client.from('attendance').insert(
-    playerIds.map((playerId) => ({
-      event_id: eventRow.id,
-      player_id: playerId,
-      status: 'pending',
-    })),
-  )
+  return { count: eventRows.length }
+}
 
-  if (attendanceError) {
-    throw new Error(attendanceError.message)
+export async function deleteEvent(eventId: string): Promise<void> {
+  const client = requireSupabase()
+  const { error } = await client.from('events').delete().eq('id', eventId)
+  if (error) {
+    throw new Error(error.message)
   }
 }

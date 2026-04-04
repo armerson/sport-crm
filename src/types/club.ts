@@ -31,6 +31,13 @@ export type EventType = 'training' | 'match'
 
 export type AttendanceStatus = 'yes' | 'no' | 'pending'
 
+export type RecurrencePattern = 'weekly' | 'fortnightly'
+
+export interface RecurrenceOptions {
+  pattern: RecurrencePattern
+  weeks: number
+}
+
 export interface EventRecord {
   id: string
   teamId: string
@@ -38,6 +45,7 @@ export interface EventRecord {
   type: EventType
   dateTime: string
   location: string
+  recurrenceGroupId: string | null
 }
 
 export interface AttendanceRecord {
