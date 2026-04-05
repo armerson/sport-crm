@@ -1,6 +1,6 @@
 import type { UserProfile } from '../types/auth.ts'
-import type { EventRecord, PlayerFormInput, PlayerRecord, TeamFormInput, TeamRecord } from '../types/club.ts'
-import { mapEventRow, mapPlayerRow, mapProfileRow, mapTeamRow, requireSupabase, subscribeToTables } from './supabaseHelpers.ts'
+import type { EventRecord, GroupFormInput, GroupRecord, PlayerFormInput, PlayerRecord, TeamFormInput, TeamRecord } from '../types/club.ts'
+import { mapEventRow, mapGroupRow, mapPlayerRow, mapProfileRow, mapTeamRow, requireSupabase, subscribeToTables } from './supabaseHelpers.ts'
 
 export function subscribeToTeams(
   onData: (teams: TeamRecord[]) => void,
@@ -157,4 +157,81 @@ export async function addPlayerToTeam(input: PlayerFormInput) {
   if (relationError) {
     throw new Error(relationError.message)
   }
+}
+
+// ──────────────────────────────────────────────────────────────
+// Group management
+// ──────────────────────────────────────────────────────────────
+
+export function subscribeToGroups(
+  onData: (groups: GroupRecord[]) => void,
+  onError: (message: string) => void,
+): () => void {
+  const client = requireSupabase()
+
+  return subscribeToTables('groups-feed', ['groups', 'group_teams'], async () => {
+    const { data, error } = await client
+      .from('groups')
+      .select('id, name, parent_id, group_teams(team_id)')
+      .order('name', { ascending: true })
+
+    if (error) {
+      onError('Unable to load groups.')
+      return
+    }
+
+    onData((data ?? []).map((row) => mapGroupRow(row as Record<string, unknown>)))
+  })
+}
+
+export async function createGroup(input: GroupFormInput, teamIds: string[] = []) {
+  const client = requireSupabase()
+
+  const { data: groupRow, error: groupError } = await client
+    .from('groups')
+    .insert({ name: input.name, parent_id: input.parentId ?? null })
+    .select('id')
+    .single()
+
+  if (groupError || !groupRow) {
+    throw new Error(groupError?.message ?? 'Unable to create group.')
+  }
+
+  if (teamIds.length > 0) {
+    const { error: teamError } = await client
+      .from('group_teams')
+      .insert(teamIds.map((teamId) => ({ group_id: groupRow.id, team_id: teamId })))
+
+    if (teamError) {
+      throw new Error(teamError.message)
+    }
+  }
+
+  return groupRow.id as string
+}
+
+export async function updateGroup(groupId: string, input: GroupFormInput, teamIds: string[]) {
+  const client = requireSupabase()
+
+  const [{ error: nameError }, { error: deleteError }] = await Promise.all([
+    client.from('groups').update({ name: input.name, parent_id: input.parentId ?? null }).eq('id', groupId),
+    client.from('group_teams').delete().eq('group_id', groupId),
+  ])
+
+  if (nameError) throw new Error(nameError.message)
+  if (deleteError) throw new Error(deleteError.message)
+
+  if (teamIds.length > 0) {
+    const { error: insertError } = await client
+      .from('group_teams')
+      .insert(teamIds.map((teamId) => ({ group_id: groupId, team_id: teamId })))
+
+    if (insertError) throw new Error(insertError.message)
+  }
+}
+
+export async function deleteGroup(groupId: string) {
+  const client = requireSupabase()
+  const { error } = await client.from('groups').delete().eq('id', groupId)
+  if (error) throw new Error(error.message)
 }

@@ -5,13 +5,17 @@ import { provisionClubUser } from '../services/provisioning.ts'
 import {
   subscribeToParents,
   subscribeToCoaches,
+  subscribeToGroups,
   subscribeToTeams,
   subscribeToAllEvents,
   addPlayerToTeam,
+  createGroup,
   createTeam,
+  deleteGroup,
+  updateGroup,
 } from '../services/adminClub.ts'
 import type { UserProfile } from '../types/auth.ts'
-import type { EventRecord, PlayerFormInput, TeamFormInput, TeamRecord } from '../types/club.ts'
+import type { EventRecord, GroupFormInput, GroupRecord, PlayerFormInput, TeamFormInput, TeamRecord } from '../types/club.ts'
 import type { ProvisionableRole } from '../services/provisioning.ts'
 
 function getAdminErrorMessage(error: unknown, fallback: string): string {
@@ -23,6 +27,7 @@ export function useAdminClubData() {
   const [coaches, setCoaches] = useState<UserProfile[]>([])
   const [parents, setParents] = useState<UserProfile[]>([])
   const [events, setEvents] = useState<EventRecord[]>([])
+  const [groups, setGroups] = useState<GroupRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -36,7 +41,7 @@ export function useAdminClubData() {
 
     setError(null)
 
-    let pendingSubscriptions = 4
+    let pendingSubscriptions = 5
 
     const markLoaded = () => {
       pendingSubscriptions -= 1
@@ -90,11 +95,23 @@ export function useAdminClubData() {
       },
     )
 
+    const groupsSubscription = subscribeToGroups(
+      (nextGroups) => {
+        setGroups(nextGroups)
+        markLoaded()
+      },
+      (message) => {
+        setError(message)
+        markLoaded()
+      },
+    )
+
     return () => {
       teamsSubscription()
       coachesSubscription()
       parentsSubscription()
       eventsSubscription()
+      groupsSubscription()
     }
   }, [])
 
@@ -103,6 +120,7 @@ export function useAdminClubData() {
     coaches,
     parents,
     events,
+    groups,
     loading,
     error,
     isConfigured: isSupabaseConfigured,
@@ -231,6 +249,45 @@ export function useAdminClubData() {
         return await provisionClubUser({ name, email, roles })
       } catch (submitError) {
         setError(getAdminErrorMessage(submitError, 'Unable to provision account.'))
+        throw submitError
+      } finally {
+        setIsSubmitting(false)
+      }
+    },
+    createGroup: async (input: GroupFormInput, teamIds: string[] = []) => {
+      if (!isSupabaseConfigured) { setError(supabaseConfigError); return undefined }
+      setIsSubmitting(true)
+      setError(null)
+      try {
+        return await createGroup(input, teamIds)
+      } catch (submitError) {
+        setError(getAdminErrorMessage(submitError, 'Unable to create group.'))
+        throw submitError
+      } finally {
+        setIsSubmitting(false)
+      }
+    },
+    updateGroup: async (groupId: string, input: GroupFormInput, teamIds: string[]) => {
+      if (!isSupabaseConfigured) { setError(supabaseConfigError); return }
+      setIsSubmitting(true)
+      setError(null)
+      try {
+        await updateGroup(groupId, input, teamIds)
+      } catch (submitError) {
+        setError(getAdminErrorMessage(submitError, 'Unable to update group.'))
+        throw submitError
+      } finally {
+        setIsSubmitting(false)
+      }
+    },
+    deleteGroup: async (groupId: string) => {
+      if (!isSupabaseConfigured) { setError(supabaseConfigError); return }
+      setIsSubmitting(true)
+      setError(null)
+      try {
+        await deleteGroup(groupId)
+      } catch (submitError) {
+        setError(getAdminErrorMessage(submitError, 'Unable to delete group.'))
         throw submitError
       } finally {
         setIsSubmitting(false)

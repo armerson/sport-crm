@@ -63,16 +63,35 @@ export interface EventFormInput {
   location: string
 }
 
+// Groups (hierarchical club sections, e.g. Academy → Boys / Girls)
+export interface GroupRecord {
+  id: string
+  name: string
+  parentId: string | null
+  /** Team IDs directly assigned to this group (not recursive). */
+  teamIds: string[]
+}
+
+export interface GroupFormInput {
+  name: string
+  parentId: string | null
+}
+
 export interface MessageRecord {
   id: string
-  teamId: string
+  /** Null for group or club-wide messages. */
+  teamId: string | null
+  /** Set when this message is a group broadcast. */
+  groupId: string | null
   senderId: string
   content: string
   timestamp: string
 }
 
 export interface MessageFormInput {
-  teamId: string
+  /** Exactly one of teamId / groupId should be set, or both null for club-wide. */
+  teamId: string | null
+  groupId: string | null
   senderId: string
   content: string
 }

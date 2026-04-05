@@ -1,7 +1,9 @@
 import { Suspense, lazy, useMemo, useState } from 'react'
 import { Button } from '../ui/Button.tsx'
 import { BulkImportPanel } from './BulkImportPanel.tsx'
+import { ClubTreeView } from './ClubTreeView.tsx'
 import { ConfirmInline } from '../ui/ConfirmInline.tsx'
+import { GroupsManageSection } from './GroupsManageSection.tsx'
 import { SelectField } from '../ui/SelectField.tsx'
 import { SuccessMessage } from '../ui/SuccessMessage.tsx'
 import { TabNav } from '../ui/TabNav.tsx'
@@ -19,7 +21,7 @@ const TeamMessagesPanel = lazy(async () => {
 })
 
 export type AdminTab = 'overview' | 'manage' | 'activity' | 'messages'
-type ManageSection = 'import' | 'team' | 'player' | 'coach' | 'parent' | 'staff'
+type ManageSection = 'import' | 'team' | 'player' | 'coach' | 'parent' | 'staff' | 'groups'
 
 const ADMIN_TABS = [
   { label: 'Overview', value: 'overview' as AdminTab },
@@ -35,6 +37,7 @@ const MANAGE_SECTIONS = [
   { label: 'Assign coach', value: 'coach' as ManageSection },
   { label: 'Link parent', value: 'parent' as ManageSection },
   { label: 'Staff account', value: 'staff' as ManageSection },
+  { label: 'Groups', value: 'groups' as ManageSection },
 ] as const
 
 function SectionFallback() {
@@ -53,8 +56,11 @@ interface AdminClubPanelProps {
 export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) {
   const setActiveTab = onTabChange
   const { profile } = useAuth()
-  const { addPlayer, assignCoach, coaches, error, events, isConfigured, isSubmitting, loading, movePlayer, removePlayer, parents, teams, createTeam, linkParent, provisionUser, unlinkParent } =
-    useAdminClubData()
+  const {
+    addPlayer, assignCoach, coaches, createGroup, createTeam, deleteGroup, error, events,
+    groups, isConfigured, isSubmitting, loading, linkParent, movePlayer, parents, provisionUser,
+    removePlayer, teams, unlinkParent, updateGroup,
+  } = useAdminClubData()
   const { logs: auditLogs, loading: loadingAuditLogs, error: auditLogError } = useAuditLogs()
   const [manageSection, setManageSection] = useState<ManageSection>('import')
   const [showAllPlayers, setShowAllPlayers] = useState(false)
@@ -415,6 +421,11 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
             </div>
           )}
 
+          {/* Club structure tree */}
+          {(groups.length > 0 || teams.length > 0) ? (
+            <ClubTreeView groups={groups} teams={teams} />
+          ) : null}
+
           {/* Upcoming events across all teams */}
           {teams.length > 0 ? (() => {
             const now = new Date()
@@ -510,6 +521,32 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
           <article className="rounded-[1.75rem] border border-white/70 bg-white/85 p-6 shadow-lg shadow-slate-900/5 backdrop-blur-sm">
             {manageSection === 'import' ? (
               <BulkImportPanel />
+            ) : null}
+
+            {manageSection === 'groups' ? (
+              <GroupsManageSection
+                groups={groups}
+                teams={teams}
+                isSubmitting={isSubmitting}
+                onCreate={async (input, teamIds) => {
+                  try {
+                    await createGroup(input, teamIds)
+                    showSuccess('Group created.')
+                  } catch { /* hook exposes error */ }
+                }}
+                onUpdate={async (id, input, teamIds) => {
+                  try {
+                    await updateGroup(id, input, teamIds)
+                    showSuccess('Group updated.')
+                  } catch { /* hook exposes error */ }
+                }}
+                onDelete={async (id) => {
+                  try {
+                    await deleteGroup(id)
+                    showSuccess('Group deleted.')
+                  } catch { /* hook exposes error */ }
+                }}
+              />
             ) : null}
 
             {manageSection === 'team' ? (

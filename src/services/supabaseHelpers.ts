@@ -1,6 +1,6 @@
 import { supabase, supabaseConfigError } from '../lib/supabase.ts'
 import type { UserProfile, UserRole } from '../types/auth.ts'
-import type { AttendanceRecord, AuditLogRecord, EventRecord, MessageRecord, PlayerRecord, TeamRecord } from '../types/club.ts'
+import type { AttendanceRecord, AuditLogRecord, EventRecord, GroupRecord, MessageRecord, PlayerRecord, TeamRecord } from '../types/club.ts'
 
 export function requireSupabase() {
   if (!supabase) {
@@ -99,10 +99,21 @@ export function mapAttendanceRow(row: Record<string, unknown>): AttendanceRecord
 export function mapMessageRow(row: Record<string, unknown>): MessageRecord {
   return {
     id: typeof row.id === 'string' ? row.id : '',
-    teamId: typeof row.team_id === 'string' ? row.team_id : '',
+    teamId: typeof row.team_id === 'string' ? row.team_id : null,
+    groupId: typeof row.group_id === 'string' ? row.group_id : null,
     senderId: typeof row.sender_id === 'string' ? row.sender_id : '',
     content: typeof row.content === 'string' ? row.content : '',
     timestamp: typeof row.created_at === 'string' ? row.created_at : '',
+  }
+}
+
+export function mapGroupRow(row: Record<string, unknown>): GroupRecord {
+  const teamIds = normalizeRelationIds<string>(row.group_teams, 'team_id')
+  return {
+    id: typeof row.id === 'string' ? row.id : '',
+    name: typeof row.name === 'string' ? row.name : 'Untitled group',
+    parentId: typeof row.parent_id === 'string' ? row.parent_id : null,
+    teamIds,
   }
 }
 
