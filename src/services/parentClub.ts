@@ -1,5 +1,5 @@
-import type { AttendanceRecord, EventRecord, PlayerRecord, TeamRecord, AttendanceStatus } from '../types/club.ts'
-import { mapAttendanceRow, mapEventRow, mapPlayerRow, mapTeamRow, requireSupabase, subscribeToTables } from './supabaseHelpers.ts'
+import type { AttendanceRecord, AttendanceStatus, EventRecord, PlayerRecord, ResultRecord, TeamRecord } from '../types/club.ts'
+import { mapAttendanceRow, mapEventRow, mapPlayerRow, mapResultRow, mapTeamRow, requireSupabase, subscribeToTables } from './supabaseHelpers.ts'
 
 export function subscribeToParentPlayers(
   playerIds: string[],
@@ -120,6 +120,25 @@ export function subscribeToAttendanceForPlayers(
     }
 
     onData((data ?? []).map((row) => mapAttendanceRow(row as Record<string, unknown>)))
+  })
+}
+
+export function subscribeToResultsForTeams(
+  teamIds: string[],
+  onData: (results: ResultRecord[]) => void,
+  onError: (message: string) => void,
+): () => void {
+  const client = requireSupabase()
+  const channelName = teamIds.length > 0 ? `results-for-teams-${teamIds.join('-')}` : 'results-for-teams-empty'
+
+  return subscribeToTables(channelName, ['results', 'events'], async () => {
+    if (teamIds.length === 0) { onData([]); return }
+    const { data, error } = await client
+      .from('results')
+      .select('id, event_id, home_score, away_score, notes, events!inner(team_id)')
+      .in('events.team_id', teamIds)
+    if (error) { onError('Unable to load match results.'); return }
+    onData((data ?? []).map((row) => mapResultRow(row as Record<string, unknown>)))
   })
 }
 

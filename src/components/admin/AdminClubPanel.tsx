@@ -1,6 +1,7 @@
 import { Suspense, lazy, useMemo, useState } from 'react'
 import { AdminBillingPanel } from './AdminBillingPanel.tsx'
 import type { BillingTab } from './AdminBillingPanel.tsx'
+import { PlayerProfileCard } from '../players/PlayerProfileCard.tsx'
 import { Button } from '../ui/Button.tsx'
 import { BulkImportPanel } from './BulkImportPanel.tsx'
 import { ClubTreeView } from './ClubTreeView.tsx'
@@ -59,6 +60,7 @@ interface AdminClubPanelProps {
 export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) {
   const setActiveTab = onTabChange
   const [billingTab, setBillingTab] = useState<BillingTab>('products')
+  const [viewingPlayerId, setViewingPlayerId] = useState<string | null>(null)
   const { profile } = useAuth()
   const {
     addPlayer, assignCoach, coaches, createGroup, createTeam, deleteGroup, error, events,
@@ -301,6 +303,13 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
                               <p className="text-sm text-slate-500">{formatDate(player.dob)}</p>
                             </div>
                             <div className="flex shrink-0 items-center gap-3">
+                              <button
+                                className="text-xs font-semibold text-[#123524] hover:underline"
+                                onClick={() => setViewingPlayerId(player.id)}
+                                type="button"
+                              >
+                                Profile
+                              </button>
                               {movingPlayerId === player.id ? null : (
                                 <button
                                   className="text-xs font-medium text-slate-500 hover:text-[#123524]"
@@ -822,6 +831,41 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
         <Suspense fallback={<SectionFallback />}>
           <TeamMessagesPanel profile={profile} />
         </Suspense>
+      ) : null}
+
+      {/* PLAYER PROFILE DRAWER */}
+      {viewingPlayerId && profile ? (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
+          onClick={(e) => { if (e.target === e.currentTarget) setViewingPlayerId(null) }}
+        >
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" />
+
+          {/* Drawer panel */}
+          <div className="relative z-10 flex w-full max-w-2xl flex-col rounded-t-[2rem] bg-slate-50 shadow-2xl sm:max-h-[90vh] sm:rounded-[2rem]">
+            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+              <h2 className="text-lg font-semibold text-slate-900">Player profile</h2>
+              <button
+                type="button"
+                onClick={() => setViewingPlayerId(null)}
+                className="rounded-full p-1.5 text-slate-400 transition hover:bg-slate-200 hover:text-slate-700"
+                aria-label="Close"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 6 6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="overflow-y-auto p-6">
+              <PlayerProfileCard
+                playerId={viewingPlayerId}
+                role="admin"
+                currentUserId={profile.id}
+              />
+            </div>
+          </div>
+        </div>
       ) : null}
     </section>
   )

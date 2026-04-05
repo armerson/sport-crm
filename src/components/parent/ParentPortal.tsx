@@ -1,6 +1,7 @@
 import { Suspense, lazy, useMemo, useState } from 'react'
 import { useParentClubData } from '../../hooks/useParentClubData.ts'
 import { FamilyBillingCard } from './FamilyBillingCard.tsx'
+import { PlayerProfileCard } from '../players/PlayerProfileCard.tsx'
 import type { UserProfile } from '../../types/auth.ts'
 import type { AttendanceStatus } from '../../types/club.ts'
 import { formatDateTime } from '../../utils/date.ts'
@@ -19,10 +20,11 @@ interface ParentPortalProps {
   onTabChange: (tab: ParentTab) => void
 }
 
-export type ParentTab = 'schedule' | 'messages' | 'billing'
+export type ParentTab = 'schedule' | 'messages' | 'billing' | 'children'
 
 const PARENT_TABS = [
   { label: 'Schedule', value: 'schedule' as ParentTab },
+  { label: 'My children', value: 'children' as ParentTab },
   { label: 'Billing', value: 'billing' as ParentTab },
   { label: 'Messages', value: 'messages' as ParentTab },
 ] as const
@@ -42,6 +44,7 @@ function EventList({
   attendanceByEvent,
   isSubmitting,
   onAttendanceResponse,
+  resultByEventId = new Map(),
 }: {
   eventsToShow: import('../../types/club.ts').EventRecord[]
   emptyLabel: string
@@ -49,6 +52,7 @@ function EventList({
   attendanceByEvent: Map<string, import('../../types/club.ts').AttendanceRecord>
   isSubmitting: boolean
   onAttendanceResponse: (attendanceId: string, status: AttendanceStatus) => void
+  resultByEventId?: Map<string, import('../../types/club.ts').ResultRecord>
 }) {
   if (eventsToShow.length === 0) {
     return (
@@ -63,6 +67,8 @@ function EventList({
       {eventsToShow.map((event) => {
         const team = teamById.get(event.teamId)
         const attendanceRecord = attendanceByEvent.get(event.id)
+        const isPast = new Date(event.dateTime) < new Date()
+        const result = isPast && event.type === 'match' ? resultByEventId.get(event.id) : undefined
 
         return (
           <article key={event.id} className="rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-5">
@@ -73,6 +79,11 @@ function EventList({
                   <span className="rounded-full bg-white px-3 py-0.5 text-xs font-semibold uppercase tracking-[0.14em] text-slate-600">
                     {event.type}
                   </span>
+                  {result ? (
+                    <span className="rounded-full bg-[#123524] px-3 py-0.5 text-xs font-bold tabular-nums text-white">
+                      {result.homeScore} — {result.awayScore}
+                    </span>
+                  ) : null}
                 </div>
                 {team ? (
                   <p className="text-sm text-slate-500">{team.name}{team.ageGroup ? ` · ${team.ageGroup}` : ''}</p>
@@ -112,7 +123,7 @@ function EventList({
 export function ParentPortal({ profile, activeTab, onTabChange }: ParentPortalProps) {
   const setActiveTab = onTabChange
   const [selectedChildId, setSelectedChildId] = useState('')
-  const { attendance, error, events, isConfigured, isSubmitting, loadingAttendance, loadingEvents, loadingPlayers, players, teams, updateAttendance } =
+  const { attendance, error, events, isConfigured, isSubmitting, loadingAttendance, loadingEvents, loadingPlayers, players, resultByEventId, teams, updateAttendance } =
     useParentClubData(profile.children)
 
   const activeChildId = selectedChildId || (players.length === 1 ? (players[0]?.id ?? '') : '')
@@ -278,6 +289,7 @@ export function ParentPortal({ profile, activeTab, onTabChange }: ParentPortalPr
                     attendanceByEvent={attendanceByEvent}
                     isSubmitting={isSubmitting}
                     onAttendanceResponse={handleAttendanceResponse}
+                    resultByEventId={resultByEventId}
                   />
                 </div>
 
@@ -291,12 +303,42 @@ export function ParentPortal({ profile, activeTab, onTabChange }: ParentPortalPr
                       attendanceByEvent={attendanceByEvent}
                       isSubmitting={isSubmitting}
                       onAttendanceResponse={handleAttendanceResponse}
+                      resultByEventId={resultByEventId}
                     />
                   </div>
                 ) : null}
               </div>
             )}
           </section>
+        </section>
+      ) : null}
+
+      {/* CHILDREN PROFILES TAB */}
+      {activeTab === 'children' ? (
+        <section className="space-y-6">
+          <div>
+            <h2 className="text-2xl font-semibold tracking-tight text-slate-950">My children</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              View and manage your {players.length === 1 ? "child's" : "children's"} profiles, emergency contacts, and identity documents.
+            </p>
+          </div>
+
+          {loadingPlayers ? (
+            <div className="text-sm text-slate-400">Loading…</div>
+          ) : players.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-500">
+              No children linked to your account yet. Contact the club admin.
+            </div>
+          ) : (
+            players.map((child) => (
+              <PlayerProfileCard
+                key={child.id}
+                playerId={child.id}
+                role="parent"
+                currentUserId={profile.id}
+              />
+            ))
+          )}
         </section>
       ) : null}
 

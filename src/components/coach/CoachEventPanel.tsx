@@ -1,6 +1,8 @@
-import { Suspense, lazy, useMemo, useState } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
+import { useAttendanceStats } from '../../hooks/useAttendanceStats.ts'
 import { useCoachClubData } from '../../hooks/useCoachClubData.ts'
 import { useTeamPlayers } from '../../hooks/useTeamPlayers.ts'
+import { PlayerProfileCard } from '../players/PlayerProfileCard.tsx'
 import { formatDate, formatDateTime } from '../../utils/date.ts'
 import { Button } from '../ui/Button.tsx'
 import { ConfirmInline } from '../ui/ConfirmInline.tsx'
@@ -32,11 +34,12 @@ interface EventFormState {
   recurrenceWeeks: number
 }
 
-export type CoachTab = 'schedule' | 'create' | 'stats' | 'messages'
+export type CoachTab = 'schedule' | 'create' | 'stats' | 'squad' | 'messages'
 
 const COACH_TABS = [
   { label: 'Schedule', value: 'schedule' as CoachTab },
   { label: 'Create event', value: 'create' as CoachTab },
+  { label: 'Squad', value: 'squad' as CoachTab },
   { label: 'Stats', value: 'stats' as CoachTab },
   { label: 'Messages', value: 'messages' as CoachTab },
 ] as const
@@ -73,6 +76,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
   const setActiveTab = onTabChange
   const [selectedTeamId, setSelectedTeamId] = useState('')
   const [selectedEventId, setSelectedEventId] = useState('')
+  const [squadViewPlayerId, setSquadViewPlayerId] = useState<string | null>(null)
   const [localError, setLocalError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [editingEventId, setEditingEventId] = useState<string | null>(null)
@@ -91,6 +95,8 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
     recurrencePattern: 'weekly',
     recurrenceWeeks: 6,
   })
+  const [resultValues, setResultValues] = useState({ homeScore: '', awayScore: '', notes: '' })
+  const [showResultForm, setShowResultForm] = useState(false)
 
   const {
     activeEventId,
@@ -107,11 +113,17 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
     loadingAttendance,
     loadingEvents,
     loadingTeams,
+    resultByEventId,
+    saveResult,
     teams,
   } = useCoachClubData(coachId, selectedTeamId, selectedEventId)
 
   const { players, loading: loadingPlayers } = useTeamPlayers(activeTeamId)
+  const { stats, loading: loadingStats } = useAttendanceStats(activeTeamId)
   const selectedTeam = teams.find((team) => team.id === activeTeamId) ?? null
+  const activeEvent = events.find((e) => e.id === activeEventId) ?? null
+  const isPastMatch = activeEvent?.type === 'match' && new Date(activeEvent.dateTime) < new Date()
+  const existingResult = isPastMatch ? resultByEventId.get(activeEventId) : undefined
   const isSingleTeamCoach = teams.length === 1
 
   const attendanceCounts = useMemo(
@@ -207,6 +219,33 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
     try {
       await deleteEventSeries(recurrenceGroupId, fromDateTime)
       if (selectedEventId === eventId) setSelectedEventId('')
+    } catch {
+      // Hook exposes a user-facing error.
+    }
+  }
+
+  useEffect(() => {
+    setShowResultForm(false)
+    setResultValues({ homeScore: '', awayScore: '', notes: '' })
+  }, [activeEventId])
+
+  async function handleSaveResult(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setLocalError(null)
+    const home = parseInt(resultValues.homeScore, 10)
+    const away = parseInt(resultValues.awayScore, 10)
+    if (isNaN(home) || isNaN(away) || home < 0 || away < 0) {
+      setLocalError('Please enter valid scores (numbers ≥ 0).')
+      return
+    }
+    try {
+      await saveResult(activeEventId, {
+        homeScore: home,
+        awayScore: away,
+        notes: resultValues.notes.trim(),
+      })
+      setShowResultForm(false)
+      setSuccessMessage('Result saved.')
     } catch {
       // Hook exposes a user-facing error.
     }
@@ -450,6 +489,85 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                   Select an event on the left to see attendance responses.
                 </div>
               )}
+
+              {/* Match Result — past match events only */}
+              {activeEventId && isPastMatch ? (
+                <div className="mt-5 border-t border-slate-100 pt-5">
+                  <div className="mb-3 flex items-center justify-between">
+                    <h3 className="font-semibold text-slate-900">Match Result</h3>
+                    {!showResultForm ? (
+                      <button
+                        className="text-xs font-semibold text-[#123524] hover:underline"
+                        onClick={() => {
+                          if (existingResult) {
+                            setResultValues({
+                              homeScore: String(existingResult.homeScore),
+                              awayScore: String(existingResult.awayScore),
+                              notes: existingResult.notes ?? '',
+                            })
+                          }
+                          setShowResultForm(true)
+                        }}
+                        type="button"
+                      >
+                        {existingResult ? 'Edit result' : 'Record result'}
+                      </button>
+                    ) : null}
+                  </div>
+                  {showResultForm ? (
+                    <form className="space-y-3" onSubmit={handleSaveResult}>
+                      <div className="grid grid-cols-2 gap-3">
+                        <TextField
+                          label="Home score"
+                          min="0"
+                          onChange={(e) => setResultValues((c) => ({ ...c, homeScore: e.target.value }))}
+                          type="number"
+                          value={resultValues.homeScore}
+                        />
+                        <TextField
+                          label="Away score"
+                          min="0"
+                          onChange={(e) => setResultValues((c) => ({ ...c, awayScore: e.target.value }))}
+                          type="number"
+                          value={resultValues.awayScore}
+                        />
+                      </div>
+                      <TextField
+                        label="Notes (optional)"
+                        onChange={(e) => setResultValues((c) => ({ ...c, notes: e.target.value }))}
+                        value={resultValues.notes}
+                      />
+                      <div className="flex gap-2">
+                        <Button className="flex-1" loading={isSubmitting} type="submit">
+                          Save result
+                        </Button>
+                        <Button
+                          className="flex-1"
+                          onClick={() => setShowResultForm(false)}
+                          type="button"
+                          variant="secondary"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </form>
+                  ) : existingResult ? (
+                    <div className="rounded-2xl bg-slate-50 px-4 py-4 text-center">
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Home — Away</p>
+                      <p className="mt-1 text-3xl font-bold tabular-nums text-slate-950">
+                        {existingResult.homeScore} — {existingResult.awayScore}
+                      </p>
+                      {existingResult.notes ? (
+                        <p className="mt-2 text-sm text-slate-600">{existingResult.notes}</p>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-400">
+                      No result recorded yet.
+                    </div>
+                  )}
+                </div>
+              ) : null}
                 </>
               )}
             </article>
@@ -579,6 +697,137 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
             </Button>
           </form>
         </article>
+      ) : null}
+
+      {/* STATS TAB */}
+      {activeTab === 'stats' ? (
+        <article className="rounded-[1.75rem] border border-white/70 bg-white/85 p-6 shadow-lg shadow-slate-900/5 backdrop-blur-sm">
+          <h2 className="text-xl font-semibold text-slate-950">Attendance Stats</h2>
+          <p className="mt-1 text-sm text-slate-500">Per-player attendance rate across all past events.</p>
+
+          {!isSingleTeamCoach && !activeTeamId ? (
+            <div className="mt-6 rounded-2xl border border-dashed border-slate-300 px-4 py-10 text-center text-sm text-slate-500">
+              Select a team in the Schedule tab to view stats.
+            </div>
+          ) : loadingStats ? (
+            <p className="mt-6 text-sm text-slate-500">Calculating stats...</p>
+          ) : stats.length === 0 ? (
+            <div className="mt-6 rounded-2xl border border-dashed border-slate-300 px-4 py-10 text-center text-sm text-slate-500">
+              No players or past events yet.
+            </div>
+          ) : (
+            <div className="mt-6 space-y-3">
+              {stats.map((stat) => {
+                const pct = stat.rate ?? 0
+                const barColour =
+                  pct >= 75 ? 'bg-emerald-500' : pct >= 50 ? 'bg-amber-400' : 'bg-rose-400'
+                return (
+                  <div key={stat.playerId} className="rounded-2xl bg-slate-50 px-4 py-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="font-medium text-slate-950">{stat.playerName}</p>
+                      <p className="shrink-0 text-sm text-slate-700">
+                        {stat.rate !== null ? (
+                          <>
+                            <span className="font-semibold">{stat.rate}%</span>
+                            <span className="ml-1.5 text-slate-400">({stat.attended}/{stat.total})</span>
+                          </>
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
+                      </p>
+                    </div>
+                    {stat.rate !== null ? (
+                      <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-200">
+                        <div
+                          className={`h-2 rounded-full transition-all duration-500 ${barColour}`}
+                          style={{ width: `${stat.rate}%` }}
+                        />
+                      </div>
+                    ) : (
+                      <p className="mt-1 text-xs text-slate-400">No past events recorded</p>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </article>
+      ) : null}
+
+      {/* SQUAD TAB */}
+      {activeTab === 'squad' ? (
+        <section className="space-y-5">
+          <div>
+            <h2 className="text-2xl font-semibold tracking-tight text-slate-950">Squad</h2>
+            <p className="mt-1 text-sm text-slate-500">Player profiles, emergency contacts, and identity documents for your team.</p>
+          </div>
+
+          {!isSingleTeamCoach ? (
+            <div className="max-w-sm">
+              <SelectField
+                label="Team"
+                onChange={(event) => { setSelectedTeamId(event.target.value); setSquadViewPlayerId(null) }}
+                options={[
+                  { label: loadingTeams ? 'Loading teams...' : teams.length > 0 ? 'Choose a team' : 'No teams assigned', value: '' },
+                  ...teams.map((team) => ({ label: `${team.name} (${team.ageGroup})`, value: team.id })),
+                ]}
+                value={selectedTeamId}
+              />
+            </div>
+          ) : null}
+
+          {!activeTeamId ? (
+            <div className="rounded-2xl border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-500">
+              Select a team to view the squad.
+            </div>
+          ) : loadingPlayers ? (
+            <div className="text-sm text-slate-400">Loading players…</div>
+          ) : players.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-500">
+              No players in this team yet.
+            </div>
+          ) : squadViewPlayerId ? (
+            <div className="space-y-4">
+              <button
+                type="button"
+                onClick={() => setSquadViewPlayerId(null)}
+                className="flex items-center gap-1.5 text-sm font-semibold text-[#123524] hover:underline"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M19 12H5M12 5l-7 7 7 7" />
+                </svg>
+                Back to squad
+              </button>
+              <PlayerProfileCard
+                playerId={squadViewPlayerId}
+                role="coach"
+                currentUserId={profile.id}
+              />
+            </div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {players.map((player) => (
+                <button
+                  key={player.id}
+                  type="button"
+                  onClick={() => setSquadViewPlayerId(player.id)}
+                  className="rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-[#123524]/30 hover:shadow-md"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#123524]/10 text-lg font-bold text-[#123524]">
+                      {player.name.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-slate-900">{player.name}</p>
+                      <p className="text-xs text-slate-500">{formatDate(player.dob)}</p>
+                    </div>
+                  </div>
+                  <p className="mt-2 text-right text-xs font-semibold text-[#123524]">View profile →</p>
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
       ) : null}
 
       {/* MESSAGES TAB */}

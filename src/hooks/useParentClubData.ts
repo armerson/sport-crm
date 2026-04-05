@@ -4,10 +4,11 @@ import {
   subscribeToAttendanceForPlayers,
   subscribeToEventsForTeams,
   subscribeToParentPlayers,
+  subscribeToResultsForTeams,
   subscribeToTeamsByIds,
   updateAttendanceResponse,
 } from '../services/parentClub.ts'
-import type { AttendanceRecord, AttendanceStatus, EventRecord, PlayerRecord, TeamRecord } from '../types/club.ts'
+import type { AttendanceRecord, AttendanceStatus, EventRecord, PlayerRecord, ResultRecord, TeamRecord } from '../types/club.ts'
 
 function getParentErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback
@@ -18,6 +19,7 @@ export function useParentClubData(childIds: string[]) {
   const [teams, setTeams] = useState<TeamRecord[]>([])
   const [events, setEvents] = useState<EventRecord[]>([])
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([])
+  const [results, setResults] = useState<ResultRecord[]>([])
   const [loadingPlayers, setLoadingPlayers] = useState(true)
   const [loadingTeams, setLoadingTeams] = useState(true)
   const [loadingEvents, setLoadingEvents] = useState(true)
@@ -114,6 +116,16 @@ export function useParentClubData(childIds: string[]) {
     return unsubscribe
   }, [childIds])
 
+  // Results subscription — non-critical, silently ignores errors
+  useEffect(() => {
+    if (!isSupabaseConfigured || teamIds.length === 0) { setResults([]); return undefined }
+    return subscribeToResultsForTeams(
+      teamIds,
+      (next) => setResults(next),
+      () => undefined,
+    )
+  }, [teamIds])
+
   const configError = !isSupabaseConfigured ? (childIds.length > 0 ? supabaseConfigError : null) : null
 
   return {
@@ -125,6 +137,7 @@ export function useParentClubData(childIds: string[]) {
     loadingTeams: teamIds.length > 0 ? loadingTeams : false,
     loadingEvents: teamIds.length > 0 ? loadingEvents : false,
     loadingAttendance: childIds.length > 0 ? loadingAttendance : false,
+    resultByEventId: new Map(results.map((r) => [r.eventId, r])),
     error: configError ?? error,
     isConfigured: isSupabaseConfigured,
     isSubmitting,

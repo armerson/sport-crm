@@ -95,11 +95,13 @@ export const ADMIN_BOTTOM_NAV: readonly BottomNavItem[] = [
 export const COACH_BOTTOM_NAV: readonly BottomNavItem[] = [
   { value: 'schedule', label: 'Schedule', icon: (a) => <CalendarIcon active={a} /> },
   { value: 'create', label: 'Create', icon: (a) => <PlusIcon active={a} /> },
+  { value: 'squad', label: 'Squad', icon: (a) => <ClipboardIcon active={a} /> },
   { value: 'messages', label: 'Messages', icon: (a) => <ChatIcon active={a} /> },
 ]
 
 export const PARENT_BOTTOM_NAV: readonly BottomNavItem[] = [
   { value: 'schedule', label: 'Schedule', icon: (a) => <CalendarIcon active={a} /> },
+  { value: 'children', label: 'My children', icon: (a) => <ClipboardIcon active={a} /> },
   { value: 'billing', label: 'Billing', icon: (a) => <CreditCardIcon active={a} /> },
   { value: 'messages', label: 'Messages', icon: (a) => <ChatIcon active={a} /> },
 ]

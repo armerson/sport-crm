@@ -8,12 +8,66 @@ export interface TeamRecord {
   coachCount: number
 }
 
+export type PlayerDocumentType = 'birth_certificate' | 'passport' | 'other'
+
+export interface PlayerDocument {
+  id: string
+  playerId: string
+  type: PlayerDocumentType
+  label: string | null
+  storagePath: string
+  uploadedBy: string | null
+  uploadedAt: string
+  verified: boolean
+  verifiedBy: string | null
+  verifiedAt: string | null
+}
+
+export interface EmergencyContact {
+  id: string
+  playerId: string
+  name: string
+  relationship: string
+  phone: string
+  email: string | null
+  isPrimary: boolean
+  createdAt: string
+}
+
+export type DominantFoot = 'left' | 'right' | 'both'
+
 export interface PlayerRecord {
   id: string
   name: string
   dob: string
   parentIds: string[]
   teams: string[]
+  // Profile fields (nullable — may not be filled in yet)
+  position: string | null
+  photoUrl: string | null
+  nationality: string | null
+  dominantFoot: DominantFoot | null
+  jerseyNumber: number | null
+  bio: string | null
+  medicalNotes: string | null
+  updatedAt: string | null
+}
+
+export interface PlayerProfileInput {
+  position: string
+  nationality: string
+  dominantFoot: DominantFoot | ''
+  jerseyNumber: string
+  bio: string
+  medicalNotes: string
+}
+
+export interface EmergencyContactInput {
+  name: string
+  relationship: string
+  phone: string
+  email: string
+  isPrimary: boolean
 }
 
 export interface TeamFormInput {
