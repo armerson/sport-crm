@@ -1,5 +1,6 @@
 import { Suspense, lazy, useMemo, useState } from 'react'
 import { Button } from '../ui/Button.tsx'
+import { BulkImportPanel } from './BulkImportPanel.tsx'
 import { ConfirmInline } from '../ui/ConfirmInline.tsx'
 import { SelectField } from '../ui/SelectField.tsx'
 import { SuccessMessage } from '../ui/SuccessMessage.tsx'
@@ -18,7 +19,7 @@ const TeamMessagesPanel = lazy(async () => {
 })
 
 export type AdminTab = 'overview' | 'manage' | 'activity' | 'messages'
-type ManageSection = 'team' | 'player' | 'coach' | 'parent' | 'staff'
+type ManageSection = 'import' | 'team' | 'player' | 'coach' | 'parent' | 'staff'
 
 const ADMIN_TABS = [
   { label: 'Overview', value: 'overview' as AdminTab },
@@ -28,6 +29,7 @@ const ADMIN_TABS = [
 ] as const
 
 const MANAGE_SECTIONS = [
+  { label: 'Bulk import', value: 'import' as ManageSection },
   { label: 'Create team', value: 'team' as ManageSection },
   { label: 'Add player', value: 'player' as ManageSection },
   { label: 'Assign coach', value: 'coach' as ManageSection },
@@ -54,7 +56,7 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
   const { addPlayer, assignCoach, coaches, error, events, isConfigured, isSubmitting, loading, parents, teams, createTeam, linkParent, provisionUser, unlinkParent } =
     useAdminClubData()
   const { logs: auditLogs, loading: loadingAuditLogs, error: auditLogError } = useAuditLogs()
-  const [manageSection, setManageSection] = useState<ManageSection>('team')
+  const [manageSection, setManageSection] = useState<ManageSection>('import')
   const [showAllPlayers, setShowAllPlayers] = useState(false)
 
   const [teamValues, setTeamValues] = useState({ name: '', ageGroup: '' })
@@ -445,6 +447,10 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
           </div>
 
           <article className="rounded-[1.75rem] border border-white/70 bg-white/85 p-6 shadow-lg shadow-slate-900/5 backdrop-blur-sm">
+            {manageSection === 'import' ? (
+              <BulkImportPanel />
+            ) : null}
+
             {manageSection === 'team' ? (
               <>
                 <h2 className="text-xl font-semibold text-slate-950">Create team</h2>
