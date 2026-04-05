@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { isSupabaseConfigured, supabaseConfigError } from '../lib/supabase.ts'
-import { assignCoachToTeam, linkParentToPlayer, unlinkParentFromPlayer } from '../services/adminActions.ts'
+import { assignCoachToTeam, linkParentToPlayer, movePlayerToTeam, removePlayerFromClub, unlinkParentFromPlayer } from '../services/adminActions.ts'
 import { provisionClubUser } from '../services/provisioning.ts'
 import {
   subscribeToParents,
@@ -192,6 +192,32 @@ export function useAdminClubData() {
         await unlinkParentFromPlayer(playerId, parentId)
       } catch (submitError) {
         setError(getAdminErrorMessage(submitError, 'Unable to unlink parent from player.'))
+        throw submitError
+      } finally {
+        setIsSubmitting(false)
+      }
+    },
+    movePlayer: async (playerId: string, fromTeamId: string, toTeamId: string) => {
+      if (!isSupabaseConfigured) { setError(supabaseConfigError); return }
+      setIsSubmitting(true)
+      setError(null)
+      try {
+        await movePlayerToTeam(playerId, fromTeamId, toTeamId)
+      } catch (submitError) {
+        setError(getAdminErrorMessage(submitError, 'Unable to move player.'))
+        throw submitError
+      } finally {
+        setIsSubmitting(false)
+      }
+    },
+    removePlayer: async (playerId: string) => {
+      if (!isSupabaseConfigured) { setError(supabaseConfigError); return }
+      setIsSubmitting(true)
+      setError(null)
+      try {
+        await removePlayerFromClub(playerId)
+      } catch (submitError) {
+        setError(getAdminErrorMessage(submitError, 'Unable to remove player.'))
         throw submitError
       } finally {
         setIsSubmitting(false)

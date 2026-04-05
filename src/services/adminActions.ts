@@ -56,6 +56,60 @@ export async function linkParentToPlayer(playerId: string, parentId: string) {
   })
 }
 
+export async function movePlayerToTeam(playerId: string, fromTeamId: string, toTeamId: string) {
+  const client = requireSupabase()
+  const [{ data: playerRow, error: playerError }, { data: toTeamRow, error: toTeamError }] = await Promise.all([
+    client.from('players').select('id, name').eq('id', playerId).single(),
+    client.from('teams').select('id, name').eq('id', toTeamId).single(),
+  ])
+
+  if (playerError || !playerRow) throw new Error(playerError?.message ?? 'Player not found.')
+  if (toTeamError || !toTeamRow) throw new Error(toTeamError?.message ?? 'Destination team not found.')
+
+  // Delete old team link then insert new one
+  const { error: deleteError } = await client
+    .from('player_teams')
+    .delete()
+    .eq('player_id', playerId)
+    .eq('team_id', fromTeamId)
+
+  if (deleteError) throw new Error(deleteError.message)
+
+  const { error: insertError } = await client
+    .from('player_teams')
+    .upsert({ player_id: playerId, team_id: toTeamId }, { onConflict: 'player_id,team_id', ignoreDuplicates: true })
+
+  if (insertError) throw new Error(insertError.message)
+
+  await writeAuditLog({
+    action: 'move_player',
+    targetType: 'player',
+    targetId: playerId,
+    summary: `Moved ${playerRow.name} to ${toTeamRow.name}.`,
+  })
+}
+
+export async function removePlayerFromClub(playerId: string) {
+  const client = requireSupabase()
+  const { data: playerRow, error: playerError } = await client
+    .from('players')
+    .select('id, name')
+    .eq('id', playerId)
+    .single()
+
+  if (playerError || !playerRow) throw new Error(playerError?.message ?? 'Player not found.')
+
+  const { error: deleteError } = await client.from('players').delete().eq('id', playerId)
+  if (deleteError) throw new Error(deleteError.message)
+
+  await writeAuditLog({
+    action: 'remove_player',
+    targetType: 'player',
+    targetId: playerId,
+    summary: `Removed ${playerRow.name} from the club.`,
+  })
+}
+
 export async function unlinkParentFromPlayer(playerId: string, parentId: string) {
   const client = requireSupabase()
   const [{ data: playerRow, error: playerError }, { data: parentRow, error: parentError }, { error: relationError }] = await Promise.all([

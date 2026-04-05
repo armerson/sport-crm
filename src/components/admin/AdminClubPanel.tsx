@@ -53,7 +53,7 @@ interface AdminClubPanelProps {
 export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) {
   const setActiveTab = onTabChange
   const { profile } = useAuth()
-  const { addPlayer, assignCoach, coaches, error, events, isConfigured, isSubmitting, loading, parents, teams, createTeam, linkParent, provisionUser, unlinkParent } =
+  const { addPlayer, assignCoach, coaches, error, events, isConfigured, isSubmitting, loading, movePlayer, removePlayer, parents, teams, createTeam, linkParent, provisionUser, unlinkParent } =
     useAdminClubData()
   const { logs: auditLogs, loading: loadingAuditLogs, error: auditLogError } = useAuditLogs()
   const [manageSection, setManageSection] = useState<ManageSection>('import')
@@ -68,6 +68,8 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
 
   const [parentSearch, setParentSearch] = useState('')
   const [activeTeamId, setActiveTeamId] = useState('')
+  const [movingPlayerId, setMovingPlayerId] = useState<string | null>(null)
+  const [moveDestination, setMoveDestination] = useState('')
   const [localError, setLocalError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
@@ -288,7 +290,66 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
                               <p className="font-medium text-slate-950">{player.name}</p>
                               <p className="text-sm text-slate-500">{formatDate(player.dob)}</p>
                             </div>
+                            <div className="flex shrink-0 items-center gap-3">
+                              {movingPlayerId === player.id ? null : (
+                                <button
+                                  className="text-xs font-medium text-slate-500 hover:text-[#123524]"
+                                  onClick={() => { setMovingPlayerId(player.id); setMoveDestination('') }}
+                                  type="button"
+                                >
+                                  Move
+                                </button>
+                              )}
+                              <ConfirmInline
+                                confirmLabel="Yes, remove"
+                                label="Remove"
+                                onConfirm={() => void (async () => {
+                                  try { await removePlayer(player.id) } catch { /* hook exposes error */ }
+                                })()}
+                              />
+                            </div>
                           </div>
+
+                          {/* Inline move form */}
+                          {movingPlayerId === player.id ? (
+                            <div className="mt-3 flex items-center gap-2">
+                              <select
+                                className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-800 outline-none focus:border-[#f18a3f] focus:ring-2 focus:ring-[#f18a3f]/15"
+                                onChange={(e) => setMoveDestination(e.target.value)}
+                                value={moveDestination}
+                              >
+                                <option value="">Move to team…</option>
+                                {teams
+                                  .filter((t) => t.id !== resolvedActiveTeamId)
+                                  .map((t) => (
+                                    <option key={t.id} value={t.id}>{t.name}</option>
+                                  ))}
+                              </select>
+                              <button
+                                className="rounded-xl bg-[#123524] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+                                disabled={!moveDestination || isSubmitting}
+                                onClick={() => void (async () => {
+                                  if (!moveDestination) return
+                                  try {
+                                    await movePlayer(player.id, resolvedActiveTeamId, moveDestination)
+                                    setMovingPlayerId(null)
+                                    setMoveDestination('')
+                                  } catch { /* hook exposes error */ }
+                                })()}
+                                type="button"
+                              >
+                                Confirm
+                              </button>
+                              <button
+                                className="text-xs font-medium text-slate-400 hover:text-slate-600"
+                                onClick={() => { setMovingPlayerId(null); setMoveDestination('') }}
+                                type="button"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ) : null}
+
                           <div className="mt-3 flex flex-wrap gap-2">
                             {player.parentIds.length > 0 ? (
                               player.parentIds.map((parentId) => (
