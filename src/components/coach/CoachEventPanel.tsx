@@ -2,6 +2,7 @@ import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
 import { useAttendanceStats } from '../../hooks/useAttendanceStats.ts'
 import { useCoachClubData } from '../../hooks/useCoachClubData.ts'
 import { useTeamPlayers } from '../../hooks/useTeamPlayers.ts'
+import { MotmVotingCard } from '../shared/MotmVotingCard.tsx'
 import { PlayerProfileCard } from '../players/PlayerProfileCard.tsx'
 import { formatDate, formatDateTime } from '../../utils/date.ts'
 import { Button } from '../ui/Button.tsx'
@@ -615,6 +616,17 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                     </div>
                   )}
                 </div>
+              ) : null}
+
+              {/* MOTM voting tally — coach sees read-only view */}
+              {activeEventId && isPastMatch ? (
+                <MotmVotingCard
+                  eventId={activeEventId}
+                  isPastMatch={isPastMatch}
+                  players={players}
+                  currentUserId={profile.id}
+                  readOnly
+                />
               ) : null}
 
               {/* Match Squad — shown for any match event when one is selected */}

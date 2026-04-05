@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { isSupabaseConfigured, supabaseConfigError } from '../lib/supabase.ts'
 import { fetchParentIdsForPlayers, fetchTeamParentIds, sendPushToUsers } from '../lib/pushNotifications.ts'
 import {
+  castMotmVote,
+  computeMotmTally,
   createEventWithAttendance,
   deleteEvent,
   deleteEventSeries,
@@ -10,12 +12,13 @@ import {
   subscribeToCoachTeams,
   subscribeToEventsForTeam,
   subscribeToLineupForEvent,
+  subscribeToMotmVotes,
   subscribeToResultsForTeam,
   updateEvent,
   upsertLineupPlayer,
   upsertResult,
 } from '../services/coachClub.ts'
-import type { AttendanceRecord, EventFormInput, EventRecord, LineupEntry, RecurrenceOptions, ResultFormInput, ResultRecord, TeamRecord } from '../types/club.ts'
+import type { AttendanceRecord, EventFormInput, EventRecord, LineupEntry, MotmTally, MotmVote, RecurrenceOptions, ResultFormInput, ResultRecord, TeamRecord } from '../types/club.ts'
 
 function getCoachErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback
@@ -27,6 +30,7 @@ export function useCoachClubData(coachId: string, selectedTeamId: string, select
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([])
   const [results, setResults] = useState<ResultRecord[]>([])
   const [lineup, setLineup] = useState<LineupEntry[]>([])
+  const [motmVotes, setMotmVotes] = useState<MotmVote[]>([])
   const [loadingTeams, setLoadingTeams] = useState(true)
   const [loadingEvents, setLoadingEvents] = useState(Boolean(selectedTeamId))
   const [loadingAttendance, setLoadingAttendance] = useState(Boolean(selectedEventId))
@@ -155,6 +159,23 @@ export function useCoachClubData(coachId: string, selectedTeamId: string, select
     )
   }, [activeEventId, activeEventType])
 
+  // MOTM votes — only for past match events
+  const activeEventIsPastMatch =
+    activeEventType === 'match' &&
+    !!events.find((e) => e.id === activeEventId && new Date(e.dateTime) < new Date())
+
+  useEffect(() => {
+    if (!activeEventId || !activeEventIsPastMatch || !isSupabaseConfigured) {
+      setMotmVotes([])
+      return undefined
+    }
+    return subscribeToMotmVotes(
+      activeEventId,
+      (next) => setMotmVotes(next),
+      () => undefined, // non-critical
+    )
+  }, [activeEventId, activeEventIsPastMatch])
+
   const resultByEventId = new Map(results.map((r) => [r.eventId, r]))
 
   return {
@@ -166,6 +187,7 @@ export function useCoachClubData(coachId: string, selectedTeamId: string, select
     results,
     resultByEventId,
     lineup,
+    motmVotes,
     loadingTeams,
     loadingEvents,
     loadingAttendance,
@@ -287,6 +309,20 @@ export function useCoachClubData(coachId: string, selectedTeamId: string, select
         }
       } catch (submitError) {
         setError(getCoachErrorMessage(submitError, 'Unable to update lineup.'))
+      }
+    },
+
+    /** Compute sorted Man of the Match tally from current votes + player names. */
+    motmTally: (playerNames: Map<string, string>): MotmTally[] =>
+      computeMotmTally(motmVotes, playerNames),
+
+    /** Cast or change the current user's MOTM vote for the active event. */
+    voteMotm: async (voterId: string, playerId: string) => {
+      if (!isSupabaseConfigured || !activeEventId) return
+      try {
+        await castMotmVote(activeEventId, voterId, playerId)
+      } catch (submitError) {
+        setError(getCoachErrorMessage(submitError, 'Unable to cast vote.'))
       }
     },
 

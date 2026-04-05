@@ -2,6 +2,7 @@ import { Suspense, lazy, useMemo, useState } from 'react'
 import { useParentClubData } from '../../hooks/useParentClubData.ts'
 import { FamilyBillingCard } from './FamilyBillingCard.tsx'
 import { PlayerProfileCard } from '../players/PlayerProfileCard.tsx'
+import { MotmVotingCard } from '../shared/MotmVotingCard.tsx'
 import type { UserProfile } from '../../types/auth.ts'
 import type { AttendanceStatus } from '../../types/club.ts'
 import { formatDateTime } from '../../utils/date.ts'
@@ -45,6 +46,7 @@ function EventList({
   isSubmitting,
   onAttendanceResponse,
   resultByEventId = new Map(),
+  currentUserId = '',
 }: {
   eventsToShow: import('../../types/club.ts').EventRecord[]
   emptyLabel: string
@@ -53,6 +55,7 @@ function EventList({
   isSubmitting: boolean
   onAttendanceResponse: (attendanceId: string, status: AttendanceStatus) => void
   resultByEventId?: Map<string, import('../../types/club.ts').ResultRecord>
+  currentUserId?: string
 }) {
   if (eventsToShow.length === 0) {
     return (
@@ -113,6 +116,16 @@ function EventList({
                 </div>
               </div>
             </div>
+
+            {/* MOTM voting — past matches only */}
+            {isPast && event.type === 'match' && currentUserId ? (
+              <MotmVotingCard
+                eventId={event.id}
+                isPastMatch={isPast}
+                teamId={event.teamId}
+                currentUserId={currentUserId}
+              />
+            ) : null}
           </article>
         )
       })}
@@ -290,6 +303,7 @@ export function ParentPortal({ profile, activeTab, onTabChange }: ParentPortalPr
                     isSubmitting={isSubmitting}
                     onAttendanceResponse={handleAttendanceResponse}
                     resultByEventId={resultByEventId}
+                    currentUserId={profile.id}
                   />
                 </div>
 
@@ -304,6 +318,7 @@ export function ParentPortal({ profile, activeTab, onTabChange }: ParentPortalPr
                       isSubmitting={isSubmitting}
                       onAttendanceResponse={handleAttendanceResponse}
                       resultByEventId={resultByEventId}
+                      currentUserId={profile.id}
                     />
                   </div>
                 ) : null}

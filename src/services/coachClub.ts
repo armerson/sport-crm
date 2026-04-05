@@ -1,5 +1,5 @@
-import type { AttendanceStat, AttendanceRecord, EventFormInput, EventRecord, LineupEntry, RecurrenceOptions, ResultFormInput, ResultRecord, TeamRecord } from '../types/club.ts'
-import { mapAttendanceRow, mapEventRow, mapLineupRow, mapResultRow, mapTeamRow, requireSupabase, subscribeToTables } from './supabaseHelpers.ts'
+import type { AttendanceStat, AttendanceRecord, EventFormInput, EventRecord, LineupEntry, MotmTally, MotmVote, RecurrenceOptions, ResultFormInput, ResultRecord, TeamRecord } from '../types/club.ts'
+import { mapAttendanceRow, mapEventRow, mapLineupRow, mapMotmVoteRow, mapResultRow, mapTeamRow, requireSupabase, subscribeToTables } from './supabaseHelpers.ts'
 
 export function subscribeToCoachTeams(
   coachId: string,
@@ -243,6 +243,57 @@ export async function removeLineupPlayer(eventId: string, playerId: string): Pro
     .eq('event_id', eventId)
     .eq('player_id', playerId)
   if (error) throw new Error(error.message)
+}
+
+// ──────────────────────────────────────────────────────────────
+// Man of the Match
+// ──────────────────────────────────────────────────────────────
+
+export function subscribeToMotmVotes(
+  eventId: string,
+  onData: (votes: MotmVote[]) => void,
+  onError: (message: string) => void,
+): () => void {
+  const client = requireSupabase()
+  return subscribeToTables(`motm-votes-${eventId}`, ['motm_votes'], async () => {
+    const { data, error } = await client
+      .from('motm_votes')
+      .select('id, event_id, voter_id, player_id')
+      .eq('event_id', eventId)
+    if (error) { onError('Unable to load votes.'); return }
+    onData((data ?? []).map((row) => mapMotmVoteRow(row as Record<string, unknown>)))
+  })
+}
+
+export async function castMotmVote(eventId: string, voterId: string, playerId: string): Promise<void> {
+  const client = requireSupabase()
+  const { error } = await client
+    .from('motm_votes')
+    .upsert(
+      { event_id: eventId, voter_id: voterId, player_id: playerId },
+      { onConflict: 'event_id,voter_id' },
+    )
+  if (error) throw new Error(error.message)
+}
+
+/**
+ * Compute a sorted tally from raw votes + a player name map.
+ */
+export function computeMotmTally(
+  votes: MotmVote[],
+  playerNames: Map<string, string>,
+): MotmTally[] {
+  const counts = new Map<string, number>()
+  for (const v of votes) {
+    counts.set(v.playerId, (counts.get(v.playerId) ?? 0) + 1)
+  }
+  return [...counts.entries()]
+    .map(([playerId, count]) => ({
+      playerId,
+      playerName: playerNames.get(playerId) ?? 'Unknown player',
+      votes: count,
+    }))
+    .sort((a, b) => b.votes - a.votes)
 }
 
 // ──────────────────────────────────────────────────────────────

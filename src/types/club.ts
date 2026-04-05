@@ -182,6 +182,20 @@ export interface LineupEntry {
   isStarting: boolean
 }
 
+export interface MotmVote {
+  id: string
+  eventId: string
+  voterId: string
+  playerId: string
+}
+
+/** Tally of votes per player for one event */
+export interface MotmTally {
+  playerId: string
+  playerName: string
+  votes: number
+}
+
 export interface AuditLogRecord {
   id: string
   actorId: string
