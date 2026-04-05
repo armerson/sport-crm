@@ -32,11 +32,12 @@ interface EventFormState {
   recurrenceWeeks: number
 }
 
-export type CoachTab = 'schedule' | 'create' | 'messages'
+export type CoachTab = 'schedule' | 'create' | 'stats' | 'messages'
 
 const COACH_TABS = [
   { label: 'Schedule', value: 'schedule' as CoachTab },
   { label: 'Create event', value: 'create' as CoachTab },
+  { label: 'Stats', value: 'stats' as CoachTab },
   { label: 'Messages', value: 'messages' as CoachTab },
 ] as const
 

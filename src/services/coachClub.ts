@@ -1,5 +1,5 @@
-import type { AttendanceRecord, EventFormInput, EventRecord, RecurrenceOptions, TeamRecord } from '../types/club.ts'
-import { mapAttendanceRow, mapEventRow, mapTeamRow, requireSupabase, subscribeToTables } from './supabaseHelpers.ts'
+import type { AttendanceStat, AttendanceRecord, EventFormInput, EventRecord, RecurrenceOptions, ResultFormInput, ResultRecord, TeamRecord } from '../types/club.ts'
+import { mapAttendanceRow, mapEventRow, mapResultRow, mapTeamRow, requireSupabase, subscribeToTables } from './supabaseHelpers.ts'
 
 export function subscribeToCoachTeams(
   coachId: string,
@@ -154,4 +154,89 @@ export async function deleteEventSeries(recurrenceGroupId: string, fromDateTime:
   if (error) {
     throw new Error(error.message)
   }
+}
+
+// ──────────────────────────────────────────────────────────────
+// Match results
+// ──────────────────────────────────────────────────────────────
+
+export function subscribeToResultsForTeam(
+  teamId: string,
+  onData: (results: ResultRecord[]) => void,
+  onError: (message: string) => void,
+): () => void {
+  const client = requireSupabase()
+
+  return subscribeToTables(`team-results-${teamId}`, ['results', 'events'], async () => {
+    const { data, error } = await client
+      .from('results')
+      .select('id, event_id, home_score, away_score, notes, events!inner(team_id)')
+      .eq('events.team_id', teamId)
+
+    if (error) {
+      onError('Unable to load match results.')
+      return
+    }
+
+    onData((data ?? []).map((row) => mapResultRow(row as Record<string, unknown>)))
+  })
+}
+
+export async function upsertResult(eventId: string, input: ResultFormInput): Promise<void> {
+  const client = requireSupabase()
+  const { error } = await client.from('results').upsert(
+    {
+      event_id: eventId,
+      home_score: input.homeScore,
+      away_score: input.awayScore,
+      notes: input.notes || null,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'event_id' },
+  )
+  if (error) throw new Error(error.message)
+}
+
+// ──────────────────────────────────────────────────────────────
+// Attendance stats
+// ──────────────────────────────────────────────────────────────
+
+export async function fetchAttendanceStats(teamId: string): Promise<AttendanceStat[]> {
+  const client = requireSupabase()
+
+  const [{ data: players }, { data: pastEvents }] = await Promise.all([
+    client
+      .from('players')
+      .select('id, name, player_teams!inner(team_id)')
+      .eq('player_teams.team_id', teamId)
+      .order('name', { ascending: true }),
+    client
+      .from('events')
+      .select('id')
+      .eq('team_id', teamId)
+      .lt('date_time', new Date().toISOString()),
+  ])
+
+  if (!players?.length) return []
+
+  if (!pastEvents?.length) {
+    return players.map((p) => ({ playerId: p.id, playerName: p.name, attended: 0, total: 0, rate: null }))
+  }
+
+  const eventIds = pastEvents.map((e) => e.id)
+  const playerIds = players.map((p) => p.id)
+
+  const { data: attendanceData } = await client
+    .from('attendance')
+    .select('player_id, status')
+    .in('player_id', playerIds)
+    .in('event_id', eventIds)
+
+  return players.map((player) => {
+    const records = (attendanceData ?? []).filter((a) => a.player_id === player.id)
+    const attended = records.filter((a) => a.status === 'yes').length
+    const total = records.length
+    const rate = total > 0 ? Math.round((attended / total) * 100) : null
+    return { playerId: player.id, playerName: player.name, attended, total, rate }
+  })
 }

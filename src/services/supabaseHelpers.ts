@@ -1,6 +1,6 @@
 import { supabase, supabaseConfigError } from '../lib/supabase.ts'
 import type { UserProfile, UserRole } from '../types/auth.ts'
-import type { AttendanceRecord, AuditLogRecord, EventRecord, GroupRecord, MessageRecord, PlayerRecord, TeamRecord } from '../types/club.ts'
+import type { AttendanceRecord, AuditLogRecord, EventRecord, GroupRecord, MessageRecord, PlayerRecord, ResultRecord, TeamRecord } from '../types/club.ts'
 
 export function requireSupabase() {
   if (!supabase) {
@@ -114,6 +114,16 @@ export function mapGroupRow(row: Record<string, unknown>): GroupRecord {
     name: typeof row.name === 'string' ? row.name : 'Untitled group',
     parentId: typeof row.parent_id === 'string' ? row.parent_id : null,
     teamIds,
+  }
+}
+
+export function mapResultRow(row: Record<string, unknown>): ResultRecord {
+  return {
+    id: typeof row.id === 'string' ? row.id : '',
+    eventId: typeof row.event_id === 'string' ? row.event_id : '',
+    homeScore: typeof row.home_score === 'number' ? row.home_score : 0,
+    awayScore: typeof row.away_score === 'number' ? row.away_score : 0,
+    notes: typeof row.notes === 'string' ? row.notes : '',
   }
 }
 

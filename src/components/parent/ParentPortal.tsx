@@ -1,5 +1,6 @@
 import { Suspense, lazy, useMemo, useState } from 'react'
 import { useParentClubData } from '../../hooks/useParentClubData.ts'
+import { FamilyBillingCard } from './FamilyBillingCard.tsx'
 import type { UserProfile } from '../../types/auth.ts'
 import type { AttendanceStatus } from '../../types/club.ts'
 import { formatDateTime } from '../../utils/date.ts'
@@ -18,10 +19,11 @@ interface ParentPortalProps {
   onTabChange: (tab: ParentTab) => void
 }
 
-export type ParentTab = 'schedule' | 'messages'
+export type ParentTab = 'schedule' | 'messages' | 'billing'
 
 const PARENT_TABS = [
   { label: 'Schedule', value: 'schedule' as ParentTab },
+  { label: 'Billing', value: 'billing' as ParentTab },
   { label: 'Messages', value: 'messages' as ParentTab },
 ] as const
 
@@ -296,6 +298,11 @@ export function ParentPortal({ profile, activeTab, onTabChange }: ParentPortalPr
             )}
           </section>
         </section>
+      ) : null}
+
+      {/* BILLING TAB */}
+      {activeTab === 'billing' ? (
+        <FamilyBillingCard profile={profile} players={players} />
       ) : null}
 
       {/* MESSAGES TAB */}

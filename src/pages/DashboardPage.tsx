@@ -78,6 +78,7 @@ export function DashboardPage() {
   const [adminTab, setAdminTab] = useState<AdminTab>('overview')
   const [coachTab, setCoachTab] = useState<CoachTab>('schedule')
   const [parentTab, setParentTab] = useState<ParentTab>('schedule')
+  
 
   // Active role view — initialised to the user's highest-privilege role.
   const [activeRole, setActiveRole] = useState<UserRole>(() =>

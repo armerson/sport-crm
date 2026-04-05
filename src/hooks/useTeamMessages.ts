@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { isSupabaseConfigured, supabaseConfigError } from '../lib/supabase.ts'
-import { fetchTeamParentIds, sendPushToUsers } from '../lib/pushNotifications.ts'
+import { fetchTeamParentIds, fetchGroupRecipientIds, fetchAllClubRecipientIds, sendPushToUsers } from '../lib/pushNotifications.ts'
 import { subscribeToGroups, subscribeToTeams } from '../services/adminClub.ts'
 import { subscribeToCoachTeams } from '../services/coachClub.ts'
 import {
@@ -182,18 +182,25 @@ export function useTeamMessages(profile: UserProfile, selectedTarget: string) {
           content,
         })
 
-        // Push notifications: fire-and-forget for team messages only
+        // Push notifications: fire-and-forget
+        const snippet = `${profile.name}: ${content.slice(0, 80)}${content.length > 80 ? '…' : ''}`
         if (tp.kind === 'team') {
           void fetchTeamParentIds(tp.id).then((parentIds) => {
             const recipients = parentIds.filter((id) => id !== profile.id)
             if (!recipients.length) return
             const teamName = teams.find((t) => t.id === tp.id)?.name ?? 'your team'
-            void sendPushToUsers(
-              recipients,
-              `New message in ${teamName}`,
-              `${profile.name}: ${content.slice(0, 80)}${content.length > 80 ? '…' : ''}`,
-              '/',
-            )
+            void sendPushToUsers(recipients, `New message in ${teamName}`, snippet, '/')
+          })
+        } else if (tp.kind === 'group') {
+          void fetchGroupRecipientIds(tp.id, profile.id).then((recipients) => {
+            if (!recipients.length) return
+            const groupName = groups.find((g) => g.id === tp.id)?.name ?? 'your group'
+            void sendPushToUsers(recipients, `Message to ${groupName}`, snippet, '/')
+          })
+        } else if (tp.kind === 'club') {
+          void fetchAllClubRecipientIds(profile.id).then((recipients) => {
+            if (!recipients.length) return
+            void sendPushToUsers(recipients, 'Club announcement', snippet, '/')
           })
         }
       } catch (submitError) {

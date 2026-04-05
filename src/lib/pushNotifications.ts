@@ -71,6 +71,47 @@ export async function fetchTeamParentIds(teamId: string): Promise<string[]> {
   return [...new Set(data.map((row) => row.parent_id as string))]
 }
 
+/**
+ * Fetch all team IDs reachable from a group (uses the recursive DB function).
+ */
+export async function fetchTeamsInGroup(groupId: string): Promise<string[]> {
+  const client = requireSupabase()
+  const { data } = await client.rpc('teams_in_group', { root_group_id: groupId })
+  if (!data) return []
+  return (data as Array<{ team_id: string }>).map((row) => row.team_id)
+}
+
+/**
+ * All coach + parent IDs for every team in a group's subtree.
+ * Excludes the sender. Used for push notifications on group broadcasts.
+ */
+export async function fetchGroupRecipientIds(groupId: string, senderId: string): Promise<string[]> {
+  const teamIds = await fetchTeamsInGroup(groupId)
+  if (!teamIds.length) return []
+
+  const client = requireSupabase()
+  const [parentArrays, { data: coachRows }] = await Promise.all([
+    Promise.all(teamIds.map(fetchTeamParentIds)),
+    client.from('team_coaches').select('coach_id').in('team_id', teamIds),
+  ])
+
+  const all = [
+    ...parentArrays.flat(),
+    ...((coachRows ?? []).map((r) => r.coach_id as string)),
+  ]
+  return [...new Set(all)].filter((id) => id !== senderId)
+}
+
+/**
+ * All user IDs with an active push subscription — for club-wide broadcasts.
+ * Excludes the sender.
+ */
+export async function fetchAllClubRecipientIds(senderId: string): Promise<string[]> {
+  const client = requireSupabase()
+  const { data } = await client.from('push_subscriptions').select('user_id')
+  return [...new Set((data ?? []).map((r) => r.user_id as string))].filter((id) => id !== senderId)
+}
+
 export async function sendPushToUsers(userIds: string[], title: string, body: string, url = '/'): Promise<void> {
   if (!userIds.length) return
 

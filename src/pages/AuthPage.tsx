@@ -26,7 +26,7 @@ export function AuthPage() {
         ? 'Sign in to manage squads, attendance, and match-day communication.'
         : mode === 'sign-up'
           ? 'Parents can create their own accounts. Admin and coach accounts should be provisioned by the club.'
-          : 'Enter your email and we'll send a password reset link.',
+          : "Enter your email and we'll send a password reset link.",
     [mode],
   )
 

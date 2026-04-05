@@ -65,6 +65,17 @@ function PlusIcon({ active }: { active: boolean }) {
   )
 }
 
+function CreditCardIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.7} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="1" y="4" width="22" height="16" rx="2" fill={active ? 'currentColor' : 'none'} stroke="currentColor" opacity={active ? 0.15 : 1} />
+      <rect x="1" y="4" width="22" height="16" rx="2" />
+      <line x1="1" y1="10" x2="23" y2="10" />
+      <line x1="6" y1="15" x2="10" y2="15" strokeWidth={active ? 2.5 : 2} />
+    </svg>
+  )
+}
+
 function ChatIcon({ active }: { active: boolean }) {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.7} strokeLinecap="round" strokeLinejoin="round">
@@ -76,6 +87,7 @@ function ChatIcon({ active }: { active: boolean }) {
 export const ADMIN_BOTTOM_NAV: readonly BottomNavItem[] = [
   { value: 'overview', label: 'Overview', icon: (a) => <HomeIcon active={a} /> },
   { value: 'manage', label: 'Manage', icon: (a) => <SlidersIcon active={a} /> },
+  { value: 'billing', label: 'Billing', icon: (a) => <CreditCardIcon active={a} /> },
   { value: 'activity', label: 'Activity', icon: (a) => <ClipboardIcon active={a} /> },
   { value: 'messages', label: 'Messages', icon: (a) => <ChatIcon active={a} /> },
 ]
@@ -88,6 +100,7 @@ export const COACH_BOTTOM_NAV: readonly BottomNavItem[] = [
 
 export const PARENT_BOTTOM_NAV: readonly BottomNavItem[] = [
   { value: 'schedule', label: 'Schedule', icon: (a) => <CalendarIcon active={a} /> },
+  { value: 'billing', label: 'Billing', icon: (a) => <CreditCardIcon active={a} /> },
   { value: 'messages', label: 'Messages', icon: (a) => <ChatIcon active={a} /> },
 ]
 

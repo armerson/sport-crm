@@ -96,6 +96,31 @@ export interface MessageFormInput {
   content: string
 }
 
+export interface ResultRecord {
+  id: string
+  eventId: string
+  homeScore: number
+  awayScore: number
+  notes: string
+}
+
+export interface ResultFormInput {
+  homeScore: number
+  awayScore: number
+  notes: string
+}
+
+export interface AttendanceStat {
+  playerId: string
+  playerName: string
+  /** Events attended (status = 'yes') */
+  attended: number
+  /** Past events with an attendance record */
+  total: number
+  /** Percentage 0-100, null if no past events */
+  rate: number | null
+}
+
 export interface AuditLogRecord {
   id: string
   actorId: string

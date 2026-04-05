@@ -1,4 +1,6 @@
 import { Suspense, lazy, useMemo, useState } from 'react'
+import { AdminBillingPanel } from './AdminBillingPanel.tsx'
+import type { BillingTab } from './AdminBillingPanel.tsx'
 import { Button } from '../ui/Button.tsx'
 import { BulkImportPanel } from './BulkImportPanel.tsx'
 import { ClubTreeView } from './ClubTreeView.tsx'
@@ -20,12 +22,13 @@ const TeamMessagesPanel = lazy(async () => {
   return { default: module.TeamMessagesPanel }
 })
 
-export type AdminTab = 'overview' | 'manage' | 'activity' | 'messages'
+export type AdminTab = 'overview' | 'manage' | 'activity' | 'messages' | 'billing'
 type ManageSection = 'import' | 'team' | 'player' | 'coach' | 'parent' | 'staff' | 'groups'
 
 const ADMIN_TABS = [
   { label: 'Overview', value: 'overview' as AdminTab },
   { label: 'Manage', value: 'manage' as AdminTab },
+  { label: 'Billing', value: 'billing' as AdminTab },
   { label: 'Activity', value: 'activity' as AdminTab },
   { label: 'Messages', value: 'messages' as AdminTab },
 ] as const
@@ -55,6 +58,7 @@ interface AdminClubPanelProps {
 
 export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) {
   const setActiveTab = onTabChange
+  const [billingTab, setBillingTab] = useState<BillingTab>('products')
   const { profile } = useAuth()
   const {
     addPlayer, assignCoach, coaches, createGroup, createTeam, deleteGroup, error, events,
@@ -803,6 +807,14 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
             </div>
           )}
         </section>
+      ) : null}
+
+      {/* BILLING TAB */}
+      {activeTab === 'billing' ? (
+        <AdminBillingPanel
+          activeTab={billingTab}
+          onTabChange={setBillingTab}
+        />
       ) : null}
 
       {/* MESSAGES TAB */}

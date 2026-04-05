@@ -9,8 +9,10 @@ import {
   subscribeToAttendanceForEvent,
   subscribeToCoachTeams,
   subscribeToEventsForTeam,
+  subscribeToResultsForTeam,
+  upsertResult,
 } from '../services/coachClub.ts'
-import type { AttendanceRecord, EventFormInput, EventRecord, RecurrenceOptions, TeamRecord } from '../types/club.ts'
+import type { AttendanceRecord, EventFormInput, EventRecord, RecurrenceOptions, ResultFormInput, ResultRecord, TeamRecord } from '../types/club.ts'
 
 function getCoachErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback
@@ -20,6 +22,7 @@ export function useCoachClubData(coachId: string, selectedTeamId: string, select
   const [teams, setTeams] = useState<TeamRecord[]>([])
   const [events, setEvents] = useState<EventRecord[]>([])
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([])
+  const [results, setResults] = useState<ResultRecord[]>([])
   const [loadingTeams, setLoadingTeams] = useState(true)
   const [loadingEvents, setLoadingEvents] = useState(Boolean(selectedTeamId))
   const [loadingAttendance, setLoadingAttendance] = useState(Boolean(selectedEventId))
@@ -83,6 +86,16 @@ export function useCoachClubData(coachId: string, selectedTeamId: string, select
     return unsubscribe
   }, [activeTeamId])
 
+  // Results subscription — lives alongside the events subscription
+  useEffect(() => {
+    if (!activeTeamId || !isSupabaseConfigured) { setResults([]); return undefined }
+    return subscribeToResultsForTeam(
+      activeTeamId,
+      (next) => setResults(next),
+      () => undefined, // non-critical, silently ignore errors
+    )
+  }, [activeTeamId])
+
   useEffect(() => {
     if (!activeEventId) {
       setAttendance([])
@@ -114,12 +127,16 @@ export function useCoachClubData(coachId: string, selectedTeamId: string, select
     return unsubscribe
   }, [activeEventId])
 
+  const resultByEventId = new Map(results.map((r) => [r.eventId, r]))
+
   return {
     activeEventId,
     activeTeamId,
     teams,
     events,
     attendance,
+    results,
+    resultByEventId,
     loadingTeams,
     loadingEvents,
     loadingAttendance,
@@ -207,6 +224,19 @@ export function useCoachClubData(coachId: string, selectedTeamId: string, select
         await deleteEventSeries(recurrenceGroupId, fromDateTime)
       } catch (submitError) {
         setError(getCoachErrorMessage(submitError, 'Unable to cancel series.'))
+        throw submitError
+      } finally {
+        setIsSubmitting(false)
+      }
+    },
+    saveResult: async (eventId: string, input: ResultFormInput) => {
+      if (!isSupabaseConfigured) { setError(supabaseConfigError); return }
+      setIsSubmitting(true)
+      setError(null)
+      try {
+        await upsertResult(eventId, input)
+      } catch (submitError) {
+        setError(getCoachErrorMessage(submitError, 'Unable to save result.'))
         throw submitError
       } finally {
         setIsSubmitting(false)
