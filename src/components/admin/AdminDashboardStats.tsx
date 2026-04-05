@@ -48,7 +48,6 @@ export function AdminDashboardStats({ teams, events, coaches, parents }: AdminDa
     const d = new Date(e.dateTime)
     return d >= now && d <= weekLater
   }).length
-  const upcomingMatches = events.filter((e) => e.type === 'match' && new Date(e.dateTime) >= now).length
 
   const rateVariant: StatCardProps['variant'] =
     attendanceRate === null ? 'dark' : attendanceRate >= 75 ? 'green' : attendanceRate >= 50 ? 'orange' : 'dark'
