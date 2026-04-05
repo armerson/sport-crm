@@ -1,6 +1,6 @@
 import { supabase, supabaseConfigError } from '../lib/supabase.ts'
 import type { UserProfile, UserRole } from '../types/auth.ts'
-import type { AttendanceRecord, AuditLogRecord, EventRecord, GroupRecord, MessageRecord, PlayerRecord, ResultRecord, TeamRecord } from '../types/club.ts'
+import type { AttendanceRecord, AuditLogRecord, EventRecord, GroupRecord, LineupEntry, MessageRecord, PlayerRecord, ResultRecord, TeamRecord } from '../types/club.ts'
 
 export function requireSupabase() {
   if (!supabase) {
@@ -72,6 +72,14 @@ export function mapPlayerRow(row: Record<string, unknown>): PlayerRecord {
     dob: typeof row.dob === 'string' ? row.dob : '',
     parentIds,
     teams,
+    position: typeof row.position === 'string' ? row.position : null,
+    photoUrl: typeof row.photo_url === 'string' ? row.photo_url : null,
+    nationality: typeof row.nationality === 'string' ? row.nationality : null,
+    dominantFoot: (row.dominant_foot as import('../types/club.ts').PlayerRecord['dominantFoot']) ?? null,
+    jerseyNumber: typeof row.jersey_number === 'number' ? row.jersey_number : null,
+    bio: typeof row.bio === 'string' ? row.bio : null,
+    medicalNotes: typeof row.medical_notes === 'string' ? row.medical_notes : null,
+    updatedAt: typeof row.updated_at === 'string' ? row.updated_at : null,
   }
 }
 
@@ -124,6 +132,15 @@ export function mapResultRow(row: Record<string, unknown>): ResultRecord {
     homeScore: typeof row.home_score === 'number' ? row.home_score : 0,
     awayScore: typeof row.away_score === 'number' ? row.away_score : 0,
     notes: typeof row.notes === 'string' ? row.notes : '',
+  }
+}
+
+export function mapLineupRow(row: Record<string, unknown>): LineupEntry {
+  return {
+    id: typeof row.id === 'string' ? row.id : '',
+    eventId: typeof row.event_id === 'string' ? row.event_id : '',
+    playerId: typeof row.player_id === 'string' ? row.player_id : '',
+    isStarting: typeof row.is_starting === 'boolean' ? row.is_starting : true,
   }
 }
 

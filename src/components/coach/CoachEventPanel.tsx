@@ -97,6 +97,8 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
   })
   const [resultValues, setResultValues] = useState({ homeScore: '', awayScore: '', notes: '' })
   const [showResultForm, setShowResultForm] = useState(false)
+  const [sendingReminder, setSendingReminder] = useState(false)
+  const [reminderMsg, setReminderMsg] = useState<string | null>(null)
 
   const {
     activeEventId,
@@ -110,12 +112,16 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
     events,
     isConfigured,
     isSubmitting,
+    lineup,
     loadingAttendance,
     loadingEvents,
+    loadingLineup,
     loadingTeams,
     resultByEventId,
     saveResult,
+    sendAttendanceReminder,
     teams,
+    toggleLineup,
   } = useCoachClubData(coachId, selectedTeamId, selectedEventId)
 
   const { players, loading: loadingPlayers } = useTeamPlayers(activeTeamId)
@@ -136,6 +142,21 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
   )
 
   const playersById = useMemo(() => new Map(players.map((player) => [player.id, player])), [players])
+
+  const lineupByPlayerId = useMemo(() => new Map(lineup.map((e) => [e.playerId, e])), [lineup])
+  const playersInLineup = useMemo(
+    () =>
+      players
+        .filter((p) => lineupByPlayerId.has(p.id))
+        .map((p) => ({ player: p, entry: lineupByPlayerId.get(p.id)! }))
+        .sort((a, b) => (b.entry.isStarting ? 1 : 0) - (a.entry.isStarting ? 1 : 0)),
+    [players, lineupByPlayerId],
+  )
+  const playersNotInLineup = useMemo(
+    () => players.filter((p) => !lineupByPlayerId.has(p.id)),
+    [players, lineupByPlayerId],
+  )
+
   const activeError = localError ?? error
 
   async function handleCreateEvent(event: React.FormEvent<HTMLFormElement>) {
@@ -451,6 +472,33 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                     </div>
                   </div>
 
+                  {/* Attendance reminder */}
+                  {attendanceCounts.pending > 0 && activeEvent && (
+                    <div className="mt-3 flex items-center gap-3">
+                      <button
+                        type="button"
+                        disabled={sendingReminder}
+                        onClick={() => {
+                          setSendingReminder(true)
+                          setReminderMsg(null)
+                          void sendAttendanceReminder(activeEventId, activeEvent.title).then((count) => {
+                            setReminderMsg(
+                              count > 0
+                                ? `Reminder sent to ${count} parent${count === 1 ? '' : 's'}.`
+                                : 'No parents with push notifications enabled.'
+                            )
+                          }).finally(() => setSendingReminder(false))
+                        }}
+                        className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800 transition hover:bg-amber-100 disabled:opacity-60"
+                      >
+                        {sendingReminder ? 'Sending…' : `Remind ${attendanceCounts.pending} pending`}
+                      </button>
+                      {reminderMsg && (
+                        <p className="text-xs font-medium text-slate-500">{reminderMsg}</p>
+                      )}
+                    </div>
+                  )}
+
                   <div className="mt-4 space-y-2">
                     {loadingAttendance ? (
                       <p className="text-sm text-slate-500">Loading responses...</p>
@@ -564,6 +612,83 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                   ) : (
                     <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-400">
                       No result recorded yet.
+                    </div>
+                  )}
+                </div>
+              ) : null}
+
+              {/* Match Squad — shown for any match event when one is selected */}
+              {activeEventId && activeEvent?.type === 'match' ? (
+                <div className="mt-5 border-t border-slate-100 pt-5">
+                  <div className="mb-3 flex items-center justify-between">
+                    <h3 className="font-semibold text-slate-900">Match Squad</h3>
+                    <p className="text-xs text-slate-400">
+                      {playersInLineup.filter((e) => e.entry.isStarting).length} starting ·{' '}
+                      {playersInLineup.filter((e) => !e.entry.isStarting).length} subs
+                    </p>
+                  </div>
+
+                  {loadingLineup ? (
+                    <p className="text-sm text-slate-500">Loading lineup...</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {playersInLineup.map(({ player, entry }) => (
+                        <div key={player.id} className="flex items-center gap-2 rounded-2xl bg-slate-50 px-3 py-2">
+                          <p className="flex-1 truncate text-sm font-medium text-slate-950">{player.name}</p>
+                          {/* Starter / Sub segmented toggle */}
+                          <div className="flex overflow-hidden rounded-xl border border-slate-200 text-xs font-semibold">
+                            <button
+                              className={`px-2.5 py-1 transition ${entry.isStarting ? 'bg-[#123524] text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
+                              onClick={() => void toggleLineup(player.id, true, true)}
+                              type="button"
+                            >
+                              Start
+                            </button>
+                            <button
+                              className={`px-2.5 py-1 transition ${!entry.isStarting ? 'bg-[#f18a3f] text-slate-900' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
+                              onClick={() => void toggleLineup(player.id, true, false)}
+                              type="button"
+                            >
+                              Sub
+                            </button>
+                          </div>
+                          {/* Remove */}
+                          <button
+                            aria-label="Remove from squad"
+                            className="text-lg leading-none text-slate-300 transition hover:text-rose-400"
+                            onClick={() => void toggleLineup(player.id, false, false)}
+                            type="button"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+
+                      {playersNotInLineup.length > 0 ? (
+                        <>
+                          {playersInLineup.length > 0 ? (
+                            <p className="mb-1 mt-3 text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                              Not selected
+                            </p>
+                          ) : null}
+                          {playersNotInLineup.map((player) => (
+                            <div key={player.id} className="flex items-center gap-2 rounded-2xl bg-slate-50/60 px-3 py-2">
+                              <p className="flex-1 truncate text-sm text-slate-600">{player.name}</p>
+                              <button
+                                className="text-xs font-semibold text-[#123524] hover:underline"
+                                onClick={() => void toggleLineup(player.id, true, true)}
+                                type="button"
+                              >
+                                + Add
+                              </button>
+                            </div>
+                          ))}
+                        </>
+                      ) : null}
+
+                      {players.length === 0 ? (
+                        <p className="text-sm text-slate-400">No players in this team yet.</p>
+                      ) : null}
                     </div>
                   )}
                 </div>
@@ -701,6 +826,109 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
 
       {/* STATS TAB */}
       {activeTab === 'stats' ? (
+        <section className="space-y-5">
+        {/* Season record */}
+        {(() => {
+          const now = new Date()
+          const pastMatches = events.filter((e) => e.type === 'match' && new Date(e.dateTime) < now)
+          const matchesWithResults = pastMatches.filter((e) => resultByEventId.has(e.id))
+
+          let w = 0, d = 0, l = 0, gf = 0, ga = 0
+          for (const match of matchesWithResults) {
+            const r = resultByEventId.get(match.id)!
+            gf += r.homeScore
+            ga += r.awayScore
+            if (r.homeScore > r.awayScore) w++
+            else if (r.homeScore === r.awayScore) d++
+            else l++
+          }
+          const played = matchesWithResults.length
+          const pts = w * 3 + d
+
+          // Last 5 results newest-first
+          const recentFive = [...matchesWithResults]
+            .sort((a, b) => b.dateTime.localeCompare(a.dateTime))
+            .slice(0, 5)
+            .reverse()
+
+          if (pastMatches.length === 0) return null
+
+          return (
+            <article className="rounded-[1.75rem] border border-white/70 bg-white/85 p-6 shadow-lg shadow-slate-900/5 backdrop-blur-sm">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <h2 className="text-xl font-semibold text-slate-950">Season record</h2>
+                  <p className="mt-0.5 text-sm text-slate-500">
+                    {selectedTeam?.name ?? 'Team'} · {played} of {pastMatches.length} match{pastMatches.length === 1 ? '' : 'es'} with results
+                  </p>
+                </div>
+                <span className="rounded-full bg-[#123524]/10 px-3 py-1 text-sm font-bold text-[#123524]">
+                  {pts} pts
+                </span>
+              </div>
+
+              <div className="mt-5 grid grid-cols-5 divide-x divide-slate-100 rounded-2xl border border-slate-200 bg-slate-50 text-center">
+                {[
+                  { label: 'P', value: played },
+                  { label: 'W', value: w },
+                  { label: 'D', value: d },
+                  { label: 'L', value: l },
+                  { label: 'GD', value: gf - ga > 0 ? `+${gf - ga}` : gf - ga },
+                ].map(({ label, value }) => (
+                  <div key={label} className="py-3">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">{label}</p>
+                    <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900">{value}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-4 flex items-center gap-2">
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mr-1">Form</p>
+                {recentFive.length === 0 ? (
+                  <p className="text-xs text-slate-400">No results yet</p>
+                ) : (
+                  recentFive.map((match) => {
+                    const r = resultByEventId.get(match.id)!
+                    const outcome = r.homeScore > r.awayScore ? 'W' : r.homeScore === r.awayScore ? 'D' : 'L'
+                    const colour = outcome === 'W' ? 'bg-emerald-500 text-white' : outcome === 'D' ? 'bg-amber-400 text-slate-900' : 'bg-rose-500 text-white'
+                    return (
+                      <span key={match.id} title={`${match.title} — ${r.homeScore}–${r.awayScore}`} className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${colour}`}>
+                        {outcome}
+                      </span>
+                    )
+                  })
+                )}
+              </div>
+
+              {/* Results list */}
+              {matchesWithResults.length > 0 && (
+                <div className="mt-5 space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Match history</p>
+                  {[...matchesWithResults]
+                    .sort((a, b) => b.dateTime.localeCompare(a.dateTime))
+                    .map((match) => {
+                      const r = resultByEventId.get(match.id)!
+                      const outcome = r.homeScore > r.awayScore ? 'W' : r.homeScore === r.awayScore ? 'D' : 'L'
+                      const colour = outcome === 'W' ? 'text-emerald-600' : outcome === 'D' ? 'text-amber-600' : 'text-rose-600'
+                      return (
+                        <div key={match.id} className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
+                          <div>
+                            <p className="text-sm font-semibold text-slate-900">{match.title}</p>
+                            <p className="text-xs text-slate-500">{new Date(match.dateTime).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-lg font-bold tabular-nums text-slate-900">{r.homeScore}–{r.awayScore}</span>
+                            <span className={`text-sm font-bold ${colour}`}>{outcome}</span>
+                          </div>
+                        </div>
+                      )
+                    })}
+                </div>
+              )}
+            </article>
+          )
+        })()}
+
         <article className="rounded-[1.75rem] border border-white/70 bg-white/85 p-6 shadow-lg shadow-slate-900/5 backdrop-blur-sm">
           <h2 className="text-xl font-semibold text-slate-950">Attendance Stats</h2>
           <p className="mt-1 text-sm text-slate-500">Per-player attendance rate across all past events.</p>
@@ -752,6 +980,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
             </div>
           )}
         </article>
+        </section>
       ) : null}
 
       {/* SQUAD TAB */}

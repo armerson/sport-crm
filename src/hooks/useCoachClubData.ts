@@ -1,18 +1,21 @@
 import { useEffect, useState } from 'react'
 import { isSupabaseConfigured, supabaseConfigError } from '../lib/supabase.ts'
-import { fetchTeamParentIds, sendPushToUsers } from '../lib/pushNotifications.ts'
+import { fetchParentIdsForPlayers, fetchTeamParentIds, sendPushToUsers } from '../lib/pushNotifications.ts'
 import {
   createEventWithAttendance,
   deleteEvent,
   deleteEventSeries,
-  updateEvent,
+  removeLineupPlayer,
   subscribeToAttendanceForEvent,
   subscribeToCoachTeams,
   subscribeToEventsForTeam,
+  subscribeToLineupForEvent,
   subscribeToResultsForTeam,
+  updateEvent,
+  upsertLineupPlayer,
   upsertResult,
 } from '../services/coachClub.ts'
-import type { AttendanceRecord, EventFormInput, EventRecord, RecurrenceOptions, ResultFormInput, ResultRecord, TeamRecord } from '../types/club.ts'
+import type { AttendanceRecord, EventFormInput, EventRecord, LineupEntry, RecurrenceOptions, ResultFormInput, ResultRecord, TeamRecord } from '../types/club.ts'
 
 function getCoachErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback
@@ -23,13 +26,16 @@ export function useCoachClubData(coachId: string, selectedTeamId: string, select
   const [events, setEvents] = useState<EventRecord[]>([])
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([])
   const [results, setResults] = useState<ResultRecord[]>([])
+  const [lineup, setLineup] = useState<LineupEntry[]>([])
   const [loadingTeams, setLoadingTeams] = useState(true)
   const [loadingEvents, setLoadingEvents] = useState(Boolean(selectedTeamId))
   const [loadingAttendance, setLoadingAttendance] = useState(Boolean(selectedEventId))
+  const [loadingLineup, setLoadingLineup] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const activeTeamId = selectedTeamId || (teams.length === 1 ? teams[0]?.id ?? '' : '')
   const activeEventId = events.some((event) => event.id === selectedEventId) ? selectedEventId : (events[0]?.id ?? '')
+  const activeEventType = events.find((e) => e.id === activeEventId)?.type
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
@@ -127,6 +133,28 @@ export function useCoachClubData(coachId: string, selectedTeamId: string, select
     return unsubscribe
   }, [activeEventId])
 
+  // Lineup subscription — only for match events
+  useEffect(() => {
+    if (!activeEventId || activeEventType !== 'match' || !isSupabaseConfigured) {
+      setLineup([])
+      setLoadingLineup(false)
+      return undefined
+    }
+
+    setLoadingLineup(true)
+
+    return subscribeToLineupForEvent(
+      activeEventId,
+      (nextLineup) => {
+        setLineup(nextLineup)
+        setLoadingLineup(false)
+      },
+      () => {
+        setLoadingLineup(false) // non-critical
+      },
+    )
+  }, [activeEventId, activeEventType])
+
   const resultByEventId = new Map(results.map((r) => [r.eventId, r]))
 
   return {
@@ -137,9 +165,11 @@ export function useCoachClubData(coachId: string, selectedTeamId: string, select
     attendance,
     results,
     resultByEventId,
+    lineup,
     loadingTeams,
     loadingEvents,
     loadingAttendance,
+    loadingLineup,
     error,
     isSubmitting,
     isConfigured: isSupabaseConfigured,
@@ -241,6 +271,47 @@ export function useCoachClubData(coachId: string, selectedTeamId: string, select
       } finally {
         setIsSubmitting(false)
       }
+    },
+    /**
+     * Add/update/remove a player from the lineup for the active event.
+     * @param inSquad  true = add/update, false = remove
+     * @param isStarting  true = starter, false = substitute (ignored when inSquad is false)
+     */
+    toggleLineup: async (playerId: string, inSquad: boolean, isStarting: boolean) => {
+      if (!isSupabaseConfigured || !activeEventId) return
+      try {
+        if (inSquad) {
+          await upsertLineupPlayer(activeEventId, playerId, isStarting)
+        } else {
+          await removeLineupPlayer(activeEventId, playerId)
+        }
+      } catch (submitError) {
+        setError(getCoachErrorMessage(submitError, 'Unable to update lineup.'))
+      }
+    },
+
+    /**
+     * Send a push notification to parents of players who have not yet responded
+     * to the given event. Returns the count of parents notified.
+     */
+    sendAttendanceReminder: async (eventId: string, eventTitle: string): Promise<number> => {
+      const pendingPlayerIds = attendance
+        .filter((a) => a.eventId === eventId && a.status === 'pending')
+        .map((a) => a.playerId)
+
+      if (!pendingPlayerIds.length) return 0
+
+      const parentIds = await fetchParentIdsForPlayers(pendingPlayerIds)
+      if (!parentIds.length) return 0
+
+      await sendPushToUsers(
+        parentIds,
+        'Attendance reminder',
+        `Please confirm your child's attendance for: ${eventTitle}`,
+        '/',
+      )
+
+      return parentIds.length
     },
   }
 }

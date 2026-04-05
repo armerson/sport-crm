@@ -4,6 +4,7 @@ import type { BillingTab } from './AdminBillingPanel.tsx'
 import { PlayerProfileCard } from '../players/PlayerProfileCard.tsx'
 import { Button } from '../ui/Button.tsx'
 import { BulkImportPanel } from './BulkImportPanel.tsx'
+import { AdminDashboardStats } from './AdminDashboardStats.tsx'
 import { ClubTreeView } from './ClubTreeView.tsx'
 import { ConfirmInline } from '../ui/ConfirmInline.tsx'
 import { GroupsManageSection } from './GroupsManageSection.tsx'
@@ -247,11 +248,10 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
           <div className="flex items-center justify-between gap-3">
             <div>
               <h2 className="text-2xl font-semibold tracking-tight text-slate-950">{isSingleTeamClub ? 'Squad overview' : 'Club overview'}</h2>
-              <p className="mt-1 text-sm text-slate-500">
-                {loading ? 'Loading...' : `${teams.length} ${teams.length === 1 ? 'team' : 'teams'} · ${coaches.length} coaches · ${parents.length} parents`}
-              </p>
             </div>
           </div>
+
+          <AdminDashboardStats teams={teams} events={events} coaches={coaches} parents={parents} />
 
           {teams.length === 0 ? (
             <div className="rounded-[2rem] border border-dashed border-slate-300 px-4 py-12 text-center">

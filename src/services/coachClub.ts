@@ -1,5 +1,5 @@
-import type { AttendanceStat, AttendanceRecord, EventFormInput, EventRecord, RecurrenceOptions, ResultFormInput, ResultRecord, TeamRecord } from '../types/club.ts'
-import { mapAttendanceRow, mapEventRow, mapResultRow, mapTeamRow, requireSupabase, subscribeToTables } from './supabaseHelpers.ts'
+import type { AttendanceStat, AttendanceRecord, EventFormInput, EventRecord, LineupEntry, RecurrenceOptions, ResultFormInput, ResultRecord, TeamRecord } from '../types/club.ts'
+import { mapAttendanceRow, mapEventRow, mapLineupRow, mapResultRow, mapTeamRow, requireSupabase, subscribeToTables } from './supabaseHelpers.ts'
 
 export function subscribeToCoachTeams(
   coachId: string,
@@ -194,6 +194,54 @@ export async function upsertResult(eventId: string, input: ResultFormInput): Pro
     },
     { onConflict: 'event_id' },
   )
+  if (error) throw new Error(error.message)
+}
+
+// ──────────────────────────────────────────────────────────────
+// Match lineups
+// ──────────────────────────────────────────────────────────────
+
+export function subscribeToLineupForEvent(
+  eventId: string,
+  onData: (lineup: LineupEntry[]) => void,
+  onError: (message: string) => void,
+): () => void {
+  const client = requireSupabase()
+
+  return subscribeToTables(`event-lineup-${eventId}`, ['match_lineups'], async () => {
+    const { data, error } = await client
+      .from('match_lineups')
+      .select('id, event_id, player_id, is_starting')
+      .eq('event_id', eventId)
+      .order('is_starting', { ascending: false }) // starters first
+
+    if (error) {
+      onError('Unable to load lineup.')
+      return
+    }
+
+    onData((data ?? []).map((row) => mapLineupRow(row as Record<string, unknown>)))
+  })
+}
+
+export async function upsertLineupPlayer(eventId: string, playerId: string, isStarting: boolean): Promise<void> {
+  const client = requireSupabase()
+  const { error } = await client
+    .from('match_lineups')
+    .upsert(
+      { event_id: eventId, player_id: playerId, is_starting: isStarting },
+      { onConflict: 'event_id,player_id' },
+    )
+  if (error) throw new Error(error.message)
+}
+
+export async function removeLineupPlayer(eventId: string, playerId: string): Promise<void> {
+  const client = requireSupabase()
+  const { error } = await client
+    .from('match_lineups')
+    .delete()
+    .eq('event_id', eventId)
+    .eq('player_id', playerId)
   if (error) throw new Error(error.message)
 }
 

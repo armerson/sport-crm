@@ -175,6 +175,13 @@ export interface AttendanceStat {
   rate: number | null
 }
 
+export interface LineupEntry {
+  id: string
+  eventId: string
+  playerId: string
+  isStarting: boolean
+}
+
 export interface AuditLogRecord {
   id: string
   actorId: string

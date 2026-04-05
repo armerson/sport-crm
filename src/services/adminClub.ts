@@ -235,3 +235,21 @@ export async function deleteGroup(groupId: string) {
   const { error } = await client.from('groups').delete().eq('id', groupId)
   if (error) throw new Error(error.message)
 }
+
+// ──────────────────────────────────────────────────────────────
+// Club stats
+// ──────────────────────────────────────────────────────────────
+
+export async function fetchClubAttendanceRate(daysBack = 60): Promise<{ attended: number; total: number; rate: number | null }> {
+  const client = requireSupabase()
+  const { data } = await client.rpc('club_attendance_rate', { days_back: daysBack })
+  if (!data?.[0]) return { attended: 0, total: 0, rate: null }
+  const row = data[0] as { attended: string | number; total: string | number }
+  const attended = Number(row.attended)
+  const total = Number(row.total)
+  return {
+    attended,
+    total,
+    rate: total > 0 ? Math.round((attended / total) * 100) : null,
+  }
+}
