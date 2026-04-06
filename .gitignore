@@ -23,3 +23,20 @@ functions/lib
 *.njsproj
 *.sln
 *.sw?
+.vercel
+dev-dist
+
+# Supabase temp files
+supabase/.temp
+
+# Debug / scratch SQL files (root level)
+check_*.sql
+debug_*.sql
+disable_*.sql
+enable_*.sql
+fix_*.sql
+force_*.sql
+temp_*.sql
+
+# Claude agent tooling
+.claude
