@@ -20,7 +20,7 @@ export function subscribeToTeams(
   return subscribeToTables('teams-feed', ['teams', 'team_coaches', 'player_teams'], async () => {
     const { data, error } = await client
       .from('teams')
-      .select('id, name, age_group, is_senior, team_coaches(coach_id), player_teams(player_id)')
+      .select('id, name, age_group, is_senior, photo_url, team_coaches(coach_id), player_teams(player_id)')
       .order('age_group', { ascending: true })
       .order('name', { ascending: true })
 
@@ -225,6 +225,29 @@ export async function updateTeam(teamId: string, input: TeamFormInput) {
   if (error) {
     throw new Error(error.message)
   }
+}
+
+export async function uploadTeamPhoto(teamId: string, file: File): Promise<string> {
+  const client = requireSupabase()
+  const ext = file.name.split('.').pop() ?? 'jpg'
+  const path = `${teamId}.${ext}`
+
+  const { error: uploadError } = await client.storage
+    .from('team-photos')
+    .upload(path, file, { upsert: true, contentType: file.type })
+
+  if (uploadError) throw new Error(uploadError.message)
+
+  const { data } = client.storage.from('team-photos').getPublicUrl(path)
+  const url = `${data.publicUrl}?t=${Date.now()}`
+
+  const { error: updateError } = await client
+    .from('teams')
+    .update({ photo_url: url })
+    .eq('id', teamId)
+
+  if (updateError) throw new Error(updateError.message)
+  return url
 }
 
 export async function deleteTeam(teamId: string) {

@@ -11,7 +11,7 @@ export function subscribeToCoachTeams(
   return subscribeToTables(`coach-teams-${coachId}`, ['teams', 'team_coaches', 'player_teams'], async () => {
     const { data, error } = await client
       .from('teams')
-      .select('id, name, age_group, team_coaches!inner(coach_id), player_teams(player_id)')
+      .select('id, name, age_group, photo_url, team_coaches!inner(coach_id), player_teams(player_id)')
       .eq('team_coaches.coach_id', coachId)
       .order('age_group', { ascending: true })
       .order('name', { ascending: true })

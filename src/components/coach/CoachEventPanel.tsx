@@ -79,13 +79,17 @@ function RecurringBadge() {
 }
 
 export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: CoachEventPanelProps) {
-  const setActiveTab = onTabChange
+  const setActiveTab = (tab: CoachTab) => {
+    if (tab !== 'create') setCreateTeamId('')
+    onTabChange(tab)
+  }
   const [selectedTeamId, setSelectedTeamId] = useState('')
   const [selectedEventId, setSelectedEventId] = useState('')
   const [squadViewPlayerId, setSquadViewPlayerId] = useState<string | null>(null)
   const [localError, setLocalError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [editingEventId, setEditingEventId] = useState<string | null>(null)
+  const [createTeamId, setCreateTeamId] = useState('')
   const [editValues, setEditValues] = useState<Pick<EventFormState, 'title' | 'type' | 'dateTime' | 'location'>>({
     title: '',
     type: 'training',
@@ -326,22 +330,49 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
 
           <div className="grid min-w-0 gap-4 xl:grid-cols-[1.05fr_0.95fr]">
             {/* On mobile: event list is hidden when an event is selected (replaced by attendance panel) */}
-            <article className={`min-w-0 rounded-[1.75rem] border border-white/70 bg-white/85 p-5 shadow-lg shadow-slate-900/5 backdrop-blur-sm ${activeEventId ? 'hidden xl:block' : ''}`}>
+            <article className={`min-w-0 overflow-hidden rounded-[1.75rem] border border-white/70 bg-white/85 shadow-lg shadow-slate-900/5 backdrop-blur-sm ${activeEventId ? 'hidden xl:block' : ''}`}>
+              {/* Team photo header */}
+              {(() => {
+                const displayTeam = selectedTeam ?? (isSingleTeamCoach ? teams[0] : null)
+                if (!displayTeam?.photoUrl) return null
+                return (
+                  <div className="relative h-32 w-full overflow-hidden sm:h-40">
+                    <img src={displayTeam.photoUrl} alt={displayTeam.name} className="h-full w-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+                    <div className="absolute bottom-3 left-4 right-4 flex items-end justify-between gap-2">
+                      <div>
+                        <p className="text-base font-bold text-white drop-shadow">{displayTeam.name}</p>
+                        <p className="text-xs text-white/75">{displayTeam.ageGroup} · {displayTeam.playerCount} players</p>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })()}
+
+              <div className="p-5">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-xl font-semibold text-slate-950">
-                    {selectedTeam ? selectedTeam.name : isSingleTeamCoach ? (teams[0]?.name ?? 'Your team') : 'Events'}
-                  </h2>
-                  {selectedTeam ? (
-                    <p className="mt-1 text-sm text-slate-500">{selectedTeam.ageGroup} · {selectedTeam.playerCount} players</p>
-                  ) : null}
+                  {(() => {
+                    const displayTeam = selectedTeam ?? (isSingleTeamCoach ? teams[0] : null)
+                    if (displayTeam?.photoUrl) return null
+                    return (
+                      <>
+                        <h2 className="text-xl font-semibold text-slate-950">
+                          {displayTeam?.name ?? 'Events'}
+                        </h2>
+                        {displayTeam ? (
+                          <p className="mt-1 text-sm text-slate-500">{displayTeam.ageGroup} · {displayTeam.playerCount} players</p>
+                        ) : null}
+                      </>
+                    )
+                  })()}
                 </div>
                 <div className="flex items-center gap-3">
                   <p className="text-sm text-slate-500">{loadingEvents ? 'Loading...' : `${events.length} events`}</p>
                   {(activeTeamId || isSingleTeamCoach) ? (
                     <button
                       type="button"
-                      onClick={() => setActiveTab('create')}
+                      onClick={() => { setCreateTeamId(activeTeamId || teams[0]?.id || ''); setActiveTab('create') }}
                       title="Create event"
                       className="flex h-8 w-8 items-center justify-center rounded-full bg-[#123524] text-white shadow-sm transition hover:bg-[#1a4a33] active:scale-95"
                     >
@@ -433,6 +464,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                   </div>
                 )}
               </div>
+              </div>{/* end p-5 */}
             </article>
 
             <article className="min-w-0 overflow-hidden rounded-[1.75rem] border border-white/70 bg-white/85 p-5 shadow-lg shadow-slate-900/5 backdrop-blur-sm">
@@ -814,28 +846,62 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
 
       {/* CREATE EVENT TAB */}
       {activeTab === 'create' ? (
+        /* ── Multi-team: show photo picker first ── */
+        !isSingleTeamCoach && !createTeamId ? (
+          <section className="space-y-4">
+            <div>
+              <h2 className="text-xl font-semibold text-slate-950">Which team?</h2>
+              <p className="mt-1 text-sm text-slate-500">Select the team you want to create an event for.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {teams.map((team) => (
+                <button
+                  key={team.id}
+                  type="button"
+                  onClick={() => { setCreateTeamId(team.id); setSelectedTeamId(team.id) }}
+                  className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:border-[#123524]/40 hover:shadow-md active:scale-[0.97]"
+                >
+                  {team.photoUrl ? (
+                    <img src={team.photoUrl} alt={team.name} className="h-28 w-full object-cover transition group-hover:opacity-90 sm:h-32" />
+                  ) : (
+                    <div className="flex h-28 w-full items-center justify-center bg-gradient-to-br from-[#123524]/10 to-[#123524]/5 sm:h-32">
+                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#123524" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-30">
+                        <circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/>
+                      </svg>
+                    </div>
+                  )}
+                  <div className="p-3 text-left">
+                    <p className="truncate text-sm font-bold text-slate-900">{team.name}</p>
+                    <p className="truncate text-xs text-slate-500">{team.ageGroup}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </section>
+        ) : (
         <article className="rounded-[1.75rem] border border-white/70 bg-white/85 p-6 shadow-lg shadow-slate-900/5 backdrop-blur-sm">
+          {!isSingleTeamCoach && (
+            <div className="mb-4 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setCreateTeamId('')}
+                className="flex items-center gap-1.5 text-sm font-medium text-[#123524] hover:opacity-70"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+                Teams
+              </button>
+              <span className="text-sm text-slate-400">·</span>
+              <span className="text-sm font-semibold text-slate-700">{teams.find(t => t.id === createTeamId)?.name}</span>
+            </div>
+          )}
           <h2 className="text-xl font-semibold text-slate-950">
-            {isSingleTeamCoach ? 'Create an event for your squad' : 'Create event'}
+            {isSingleTeamCoach ? 'Create an event for your squad' : 'New event'}
           </h2>
           <p className="mt-1 text-sm text-slate-500">
-            {activeTeamId || isSingleTeamCoach
-              ? `${loadingPlayers ? 'Loading' : players.length} players will receive a pending attendance record.`
-              : 'Select a team in the Schedule tab first, then come back to create an event.'}
+            {`${loadingPlayers ? 'Loading' : players.length} players will receive a pending attendance record.`}
           </p>
 
           <form className="mt-5 space-y-4" onSubmit={handleCreateEvent}>
-            {!isSingleTeamCoach ? (
-              <SelectField
-                label="Team"
-                onChange={(event) => setSelectedTeamId(event.target.value)}
-                options={[
-                  { label: teams.length > 0 ? 'Choose a team' : 'No teams assigned', value: '' },
-                  ...teams.map((team) => ({ label: `${team.name} (${team.ageGroup})`, value: team.id })),
-                ]}
-                value={selectedTeamId}
-              />
-            ) : null}
             <TextField
               label="Event title"
               onChange={(event) => setEventValues((current) => ({ ...current, title: event.target.value }))}
@@ -939,6 +1005,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
             </Button>
           </form>
         </article>
+        )
       ) : null}
 
       {/* STATS TAB */}

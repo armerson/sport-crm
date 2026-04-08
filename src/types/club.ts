@@ -8,6 +8,7 @@ export interface TeamRecord {
   players: string[]
   playerCount: number
   coachCount: number
+  photoUrl: string | null
 }
 
 export type PlayerDocumentType = 'birth_certificate' | 'passport' | 'other'
