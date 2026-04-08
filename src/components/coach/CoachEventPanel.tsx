@@ -362,7 +362,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                       className={`rounded-2xl border px-4 py-3 transition ${
                         activeEventId === clubEvent.id
                           ? 'border-[#123524] bg-[#123524] text-white'
-                          : 'border-transparent bg-slate-50 text-slate-800 hover:border-slate-200 hover:bg-white'
+                          : 'border-slate-200 bg-slate-100 text-slate-800 hover:border-slate-300 hover:bg-slate-50'
                       }`}
                     >
                       {/* Clickable selection area */}
@@ -378,7 +378,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                           </div>
                           <span
                             className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ${
-                              activeEventId === clubEvent.id ? 'bg-white/15 text-white' : 'bg-white text-slate-600'
+                              activeEventId === clubEvent.id ? 'bg-white/15 text-white' : 'bg-white text-slate-600 shadow-sm'
                             }`}
                           >
                             {clubEvent.type}
