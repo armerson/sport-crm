@@ -39,7 +39,7 @@ export function useCoachClubData(coachId: string, selectedTeamId: string, select
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const activeTeamId = selectedTeamId || (teams.length === 1 ? teams[0]?.id ?? '' : '')
-  const activeEventId = events.some((event) => event.id === selectedEventId) ? selectedEventId : (events[0]?.id ?? '')
+  const activeEventId = events.some((event) => event.id === selectedEventId) ? selectedEventId : ''
   const activeEventType = events.find((e) => e.id === activeEventId)?.type
 
   useEffect(() => {
