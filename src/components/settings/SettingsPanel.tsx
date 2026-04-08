@@ -138,9 +138,10 @@ function SectionNotifications({ onBack }: { onBack: () => void }) {
   async function handleEnable() {
     if (!profile) return
     setSubscribing(true)
-    const ok = await requestPermissionAndSubscribe(profile.id)
-    setPermission(getNotificationPermission())
-    if (ok) setDone(true)
+    await requestPermissionAndSubscribe(profile.id)
+    const current = getNotificationPermission()
+    setPermission(current)
+    if (current === 'granted') setDone(true)
     setSubscribing(false)
   }
 

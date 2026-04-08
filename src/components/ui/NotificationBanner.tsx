@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { getNotificationPermission, isPushSupported, requestPermissionAndSubscribe } from '../../lib/pushNotifications.ts'
 
+const VAPID_CONFIGURED = Boolean(import.meta.env.VITE_VAPID_PUBLIC_KEY)
+
 interface NotificationBannerProps {
   userId: string
 }
@@ -38,14 +40,16 @@ export function NotificationBanner({ userId }: NotificationBannerProps) {
     setPermission(getNotificationPermission())
   }, [])
 
-  if (!isPushSupported() || permission === 'denied' || permission === 'granted' || dismissed) {
+  if (!isPushSupported() || !VAPID_CONFIGURED || permission === 'denied' || permission === 'granted' || dismissed) {
     return null
   }
 
   async function handleEnable() {
     setLoading(true)
-    const granted = await requestPermissionAndSubscribe(userId)
-    setPermission(granted ? 'granted' : 'denied')
+    await requestPermissionAndSubscribe(userId)
+    // Always read the real browser permission afterwards — prevents the banner
+    // from reappearing on next load when the subscribe call returned early.
+    setPermission(getNotificationPermission())
     setLoading(false)
   }
 
