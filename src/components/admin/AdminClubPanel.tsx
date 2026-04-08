@@ -52,17 +52,23 @@ const ClubTreeView = lazy(async () => {
   return { default: module.ClubTreeView }
 })
 
+const AdminMembersPanel = lazy(async () => {
+  const module = await import('./AdminMembersPanel.tsx')
+  return { default: module.AdminMembersPanel }
+})
+
 const GroupsManageSection = lazy(async () => {
   const module = await import('./GroupsManageSection.tsx')
   return { default: module.GroupsManageSection }
 })
 
-export type AdminTab = 'overview' | 'manage' | 'activity' | 'messages' | 'billing' | 'forms' | 'posts'
+export type AdminTab = 'overview' | 'manage' | 'members' | 'activity' | 'messages' | 'billing' | 'forms' | 'posts'
 type ManageSection = 'import' | 'team' | 'player' | 'coach' | 'parent' | 'staff' | 'groups'
 
 const ADMIN_TABS = [
   { label: 'Overview', value: 'overview' as AdminTab },
   { label: 'Manage', value: 'manage' as AdminTab },
+  { label: 'Members', value: 'members' as AdminTab },
   { label: 'Posts', value: 'posts' as AdminTab },
   { label: 'Forms', value: 'forms' as AdminTab },
   { label: 'Billing', value: 'billing' as AdminTab },
@@ -1157,6 +1163,13 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
             activeTab={billingTab}
             onTabChange={setBillingTab}
           />
+        </Suspense>
+      ) : null}
+
+      {/* MEMBERS TAB */}
+      {activeTab === 'members' ? (
+        <Suspense fallback={<SectionFallback />}>
+          <AdminMembersPanel teams={teams} />
         </Suspense>
       ) : null}
 
