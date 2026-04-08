@@ -144,9 +144,9 @@ export function LocationPicker({ value, onChange, placeholder = 'Search for a lo
       </div>
 
       {showMap && (
-        <div className="overflow-hidden rounded-2xl border border-slate-200 shadow-sm">
-          <div className="flex items-center justify-between bg-slate-50 px-3 py-2">
-            <span className="mr-2 truncate text-xs font-medium text-slate-500">{value}</span>
+        <div className="w-full min-w-0 overflow-hidden rounded-2xl border border-slate-200 shadow-sm">
+          <div className="flex min-w-0 items-center justify-between gap-2 bg-slate-50 px-3 py-2">
+            <span className="min-w-0 truncate text-xs font-medium text-slate-500">{value}</span>
             <a
               href={`https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=15/${lat}/${lng}`}
               target="_blank"
@@ -156,14 +156,14 @@ export function LocationPicker({ value, onChange, placeholder = 'Search for a lo
               Open in Maps ↗
             </a>
           </div>
-          <iframe
-            title="Event location map"
-            src={osmEmbedUrl(lat!, lng!)}
-            width="100%"
-            height="200"
-            className="border-0"
-            loading="lazy"
-          />
+          <div className="relative w-full" style={{ height: 200 }}>
+            <iframe
+              title="Event location map"
+              src={osmEmbedUrl(lat!, lng!)}
+              className="absolute inset-0 h-full w-full border-0"
+              loading="lazy"
+            />
+          </div>
         </div>
       )}
     </div>
@@ -186,13 +186,13 @@ export function LocationMapCard({
   if (!location) return null
   const hasCoords = lat != null && lng != null
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 shadow-sm">
-      <div className="flex items-center justify-between bg-slate-50 px-3 py-2">
-        <span className="flex items-center gap-1.5 mr-2 truncate text-xs font-medium text-slate-600">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <div className="w-full min-w-0 overflow-hidden rounded-2xl border border-slate-200 shadow-sm">
+      <div className="flex min-w-0 items-center justify-between gap-2 bg-slate-50 px-3 py-2">
+        <span className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-slate-600">
+          <svg className="shrink-0" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" />
           </svg>
-          {location}
+          <span className="truncate">{location}</span>
         </span>
         <a
           href={
@@ -208,14 +208,14 @@ export function LocationMapCard({
         </a>
       </div>
       {hasCoords && (
-        <iframe
-          title="Event location"
-          src={osmEmbedUrl(lat!, lng!)}
-          width="100%"
-          height="180"
-          className="border-0"
-          loading="lazy"
-        />
+        <div className="relative w-full" style={{ height: 180 }}>
+          <iframe
+            title="Event location"
+            src={osmEmbedUrl(lat!, lng!)}
+            className="absolute inset-0 h-full w-full border-0"
+            loading="lazy"
+          />
+        </div>
       )}
     </div>
   )
