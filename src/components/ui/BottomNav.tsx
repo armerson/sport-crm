@@ -85,6 +85,14 @@ function ChatIcon({ active }: { active: boolean }) {
   )
 }
 
+function StarNavIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={active ? 0 : 1.7} strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+    </svg>
+  )
+}
+
 function NewspaperIcon({ active }: { active: boolean }) {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.7} strokeLinecap="round" strokeLinejoin="round">
@@ -116,9 +124,9 @@ export const COACH_BOTTOM_NAV: readonly BottomNavItem[] = [
 
 export const PARENT_BOTTOM_NAV: readonly BottomNavItem[] = [
   { value: 'schedule', label: 'Schedule', icon: (a) => <CalendarIcon active={a} /> },
+  { value: 'development', label: 'Development', icon: (a) => <StarNavIcon active={a} /> },
   { value: 'children', label: 'My children', icon: (a) => <ClipboardIcon active={a} /> },
   { value: 'feed', label: 'Feed', icon: (a) => <NewspaperIcon active={a} /> },
-  { value: 'billing', label: 'Billing', icon: (a) => <CreditCardIcon active={a} /> },
   { value: 'messages', label: 'Messages', icon: (a) => <ChatIcon active={a} /> },
 ]
 

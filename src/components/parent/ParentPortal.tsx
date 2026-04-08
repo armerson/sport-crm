@@ -1,11 +1,13 @@
-import { Suspense, lazy, useMemo, useState } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
 import { useParentClubData } from '../../hooks/useParentClubData.ts'
 import { FamilyBillingCard } from './FamilyBillingCard.tsx'
 import { PostFeed } from '../posts/PostFeed.tsx'
 import { PlayerProfileCard } from '../players/PlayerProfileCard.tsx'
+import { ReviewCard } from '../reviews/ReviewCard.tsx'
 import { LocationMapCard } from '../ui/LocationPicker.tsx'
 import { MotmVotingCard } from '../shared/MotmVotingCard.tsx'
 import { EventComments } from '../events/EventComments.tsx'
+import { fetchPublishedReviewsForPlayer, type PlayerReview } from '../../services/playerReviews.ts'
 import type { UserProfile } from '../../types/auth.ts'
 import type { AttendanceStatus } from '../../types/club.ts'
 import { formatDateTime } from '../../utils/date.ts'
@@ -23,10 +25,11 @@ interface ParentPortalProps {
   onTabChange: (tab: ParentTab) => void
 }
 
-export type ParentTab = 'schedule' | 'messages' | 'billing' | 'children' | 'feed'
+export type ParentTab = 'schedule' | 'messages' | 'billing' | 'children' | 'feed' | 'development'
 
 const PARENT_TABS = [
   { label: 'Schedule', value: 'schedule' as ParentTab },
+  { label: 'Development', value: 'development' as ParentTab },
   { label: 'My children', value: 'children' as ParentTab },
   { label: 'Feed', value: 'feed' as ParentTab },
   { label: 'Billing', value: 'billing' as ParentTab },
@@ -161,6 +164,61 @@ export function EventList({
         )
       })}
     </div>
+  )
+}
+
+function DevelopmentTab({ players, loadingPlayers }: { players: import('../../types/club.ts').PlayerRecord[]; loadingPlayers: boolean }) {
+  const [reviewsByPlayer, setReviewsByPlayer] = useState<Record<string, PlayerReview[]>>({})
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!players.length) { setLoading(false); return }
+    Promise.all(
+      players.map((p) => fetchPublishedReviewsForPlayer(p.id).then((r) => [p.id, r] as const)),
+    ).then((entries) => {
+      setReviewsByPlayer(Object.fromEntries(entries))
+      setLoading(false)
+    }).catch(() => setLoading(false))
+  }, [players])
+
+  const hasAnyReview = Object.values(reviewsByPlayer).some((r) => r.length > 0)
+
+  return (
+    <section className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-semibold tracking-tight text-slate-950">Development</h2>
+        <p className="mt-1 text-sm text-slate-500">
+          Review reports written by your child's coach — published at mid-season and end of season.
+        </p>
+      </div>
+
+      {loadingPlayers || loading ? (
+        <p className="text-sm text-slate-400">Loading…</p>
+      ) : !hasAnyReview ? (
+        <div className="rounded-2xl border border-dashed border-slate-300 px-4 py-10 text-center">
+          <svg className="mx-auto mb-3 text-slate-300" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+          </svg>
+          <p className="text-sm font-medium text-slate-500">No reports yet</p>
+          <p className="mt-1 text-xs text-slate-400">Your coach will publish a review after mid-season or end of season.</p>
+        </div>
+      ) : (
+        players.map((child) => {
+          const reviews = reviewsByPlayer[child.id] ?? []
+          if (!reviews.length) return null
+          return (
+            <div key={child.id} className="space-y-3">
+              {players.length > 1 && (
+                <h3 className="text-base font-bold text-slate-800">{child.name}</h3>
+              )}
+              {reviews.map((review) => (
+                <ReviewCard key={review.id} review={review} mode="parent" />
+              ))}
+            </div>
+          )
+        })
+      )}
+    </section>
   )
 }
 
@@ -386,6 +444,11 @@ export function ParentPortal({ profile, activeTab, onTabChange }: ParentPortalPr
             ))
           )}
         </section>
+      ) : null}
+
+      {/* DEVELOPMENT TAB */}
+      {activeTab === 'development' ? (
+        <DevelopmentTab players={players} loadingPlayers={loadingPlayers} />
       ) : null}
 
       {/* BILLING TAB */}

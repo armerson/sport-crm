@@ -5,6 +5,7 @@ import { useTeamPlayers } from '../../hooks/useTeamPlayers.ts'
 import { MotmVotingCard } from '../shared/MotmVotingCard.tsx'
 import { EventComments } from '../events/EventComments.tsx'
 import { PlayerProfileCard } from '../players/PlayerProfileCard.tsx'
+import { PlayerReviewsPanel } from '../reviews/PlayerReviewsPanel.tsx'
 import { LocationPicker, LocationMapCard } from '../ui/LocationPicker.tsx'
 import { formatDate, formatDateTime } from '../../utils/date.ts'
 import { Button } from '../ui/Button.tsx'
@@ -1215,6 +1216,12 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                 playerId={squadViewPlayerId}
                 role="coach"
                 currentUserId={profile.id}
+              />
+              <PlayerReviewsPanel
+                playerId={squadViewPlayerId}
+                playerName={players.find((p) => p.id === squadViewPlayerId)?.name ?? ''}
+                teamId={activeTeamId}
+                coachId={profile.id}
               />
             </div>
           ) : (
