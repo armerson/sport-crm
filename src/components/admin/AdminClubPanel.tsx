@@ -14,6 +14,7 @@ import { useAuth } from '../../hooks/useAuth.ts'
 import { formatDate, formatDateTime } from '../../utils/date.ts'
 import type { ProvisionableRole } from '../../services/provisioning.ts'
 import { uploadTeamPhoto } from '../../services/adminClub.ts'
+import { InviteButton } from '../shared/InviteButton.tsx'
 
 // Heavy tab panels — only loaded when their tab is first opened
 const TeamMessagesPanel = lazy(async () => {
@@ -736,6 +737,10 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
                               <span className="text-sm text-slate-400">No coaches assigned</span>
                             )}
                           </div>
+                        </div>
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          <InviteButton teamId={team.id} teamName={team.name} role="parent" />
+                          <InviteButton teamId={team.id} teamName={team.name} role="coach" />
                         </div>
                       </>
                     )}

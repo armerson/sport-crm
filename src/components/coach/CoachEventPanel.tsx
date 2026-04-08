@@ -6,6 +6,7 @@ import { MotmVotingCard } from '../shared/MotmVotingCard.tsx'
 import { EventComments } from '../events/EventComments.tsx'
 import { PlayerProfileCard } from '../players/PlayerProfileCard.tsx'
 import { PlayerReviewsPanel } from '../reviews/PlayerReviewsPanel.tsx'
+import { InviteButton } from '../shared/InviteButton.tsx'
 import { LocationPicker, LocationMapCard } from '../ui/LocationPicker.tsx'
 import { formatDate, formatDateTime } from '../../utils/date.ts'
 import { Button } from '../ui/Button.tsx'
@@ -1190,6 +1191,10 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
             </div>
           ) : null}
 
+          {activeTeamId ? (
+            <InviteButton teamId={activeTeamId} teamName={selectedTeam?.name ?? ''} role="parent" />
+          ) : null}
+
           {!activeTeamId ? (
             <div className="rounded-2xl border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-500">
               Select a team to view the squad.
@@ -1198,7 +1203,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
             <div className="text-sm text-slate-400">Loading players…</div>
           ) : players.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-500">
-              No players in this team yet.
+              No players in this team yet. Use the invite link above to bring parents on board.
             </div>
           ) : squadViewPlayerId ? (
             <div className="space-y-4">
