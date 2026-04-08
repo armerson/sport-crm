@@ -110,6 +110,8 @@ export interface EventRecord {
   lat: number | null
   lng: number | null
   recurrenceGroupId: string | null
+  /** Opponent name for match events (null for training, other types). */
+  opponent: string | null
 }
 
 export interface AttendanceRecord {
@@ -128,6 +130,7 @@ export interface EventFormInput {
   placeId?: string
   lat?: number
   lng?: number
+  opponent?: string
 }
 
 // Groups (hierarchical club sections, e.g. Academy → Boys / Girls)

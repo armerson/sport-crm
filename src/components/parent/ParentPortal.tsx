@@ -90,8 +90,11 @@ export function EventList({
                   </span>
                   {result ? (
                     <span className="rounded-full bg-[#123524] px-3 py-0.5 text-xs font-bold tabular-nums text-white">
-                      {result.homeScore} — {result.awayScore}
+                      {result.homeScore}–{result.awayScore}
                     </span>
+                  ) : null}
+                  {event.type === 'match' && event.opponent ? (
+                    <span className="text-xs text-slate-500">vs {event.opponent}</span>
                   ) : null}
                 </div>
                 {team ? (

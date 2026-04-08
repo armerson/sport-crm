@@ -36,6 +36,7 @@ interface EventFormState {
   type: EventType
   dateTime: string
   location: string
+  opponent: string
   recurring: boolean
   recurrencePattern: RecurrencePattern
   recurrenceWeeks: number
@@ -92,17 +93,19 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [editingEventId, setEditingEventId] = useState<string | null>(null)
   const [createTeamId, setCreateTeamId] = useState('')
-  const [editValues, setEditValues] = useState<Pick<EventFormState, 'title' | 'type' | 'dateTime' | 'location'>>({
+  const [editValues, setEditValues] = useState<Pick<EventFormState, 'title' | 'type' | 'dateTime' | 'location' | 'opponent'>>({
     title: '',
     type: 'training',
     dateTime: '',
     location: '',
+    opponent: '',
   })
   const [eventValues, setEventValues] = useState<EventFormState>({
     title: '',
     type: 'training',
     dateTime: '',
     location: '',
+    opponent: '',
     recurring: false,
     recurrencePattern: 'weekly',
     recurrenceWeeks: 6,
@@ -110,6 +113,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
   const [eventLocationMeta, setEventLocationMeta] = useState<{ placeId?: string; lat?: number; lng?: number }>({})
   const [editLocationMeta, setEditLocationMeta] = useState<{ placeId?: string; lat?: number; lng?: number }>({})
   const [resultValues, setResultValues] = useState({ homeScore: '', awayScore: '', notes: '' })
+  const [resultError, setResultError] = useState<string | null>(null)
   const [showResultForm, setShowResultForm] = useState(false)
   const [sendingReminder, setSendingReminder] = useState(false)
   const [reminderMsg, setReminderMsg] = useState<string | null>(null)
@@ -199,6 +203,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
           placeId: eventLocationMeta.placeId,
           lat: eventLocationMeta.lat,
           lng: eventLocationMeta.lng,
+          opponent: eventValues.opponent,
         },
         players.map((player) => player.id),
         recurrence,
@@ -219,7 +224,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
     if (!event) return
     // Convert stored ISO datetime to datetime-local format (no seconds, no Z)
     const localDt = event.dateTime ? event.dateTime.slice(0, 16) : ''
-    setEditValues({ title: event.title, type: event.type, dateTime: localDt, location: event.location })
+    setEditValues({ title: event.title, type: event.type, dateTime: localDt, location: event.location, opponent: event.opponent ?? '' })
     setEditingEventId(eventId)
     setSelectedEventId(eventId)
   }
@@ -241,6 +246,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
         placeId: editLocationMeta.placeId,
         lat: editLocationMeta.lat,
         lng: editLocationMeta.lng,
+        opponent: editValues.opponent,
       })
       setSuccessMessage('Event updated.')
       setEditingEventId(null)
@@ -271,15 +277,16 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
   useEffect(() => {
     setShowResultForm(false)
     setResultValues({ homeScore: '', awayScore: '', notes: '' })
+    setResultError(null)
   }, [activeEventId])
 
   async function handleSaveResult(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    setLocalError(null)
+    setResultError(null)
     const home = parseInt(resultValues.homeScore, 10)
     const away = parseInt(resultValues.awayScore, 10)
     if (isNaN(home) || isNaN(away) || home < 0 || away < 0) {
-      setLocalError('Please enter valid scores (numbers ≥ 0).')
+      setResultError('Please enter valid scores (numbers ≥ 0).')
       return
     }
     try {
@@ -289,9 +296,10 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
         notes: resultValues.notes.trim(),
       })
       setShowResultForm(false)
+      setResultError(null)
       setSuccessMessage('Result saved.')
-    } catch {
-      // Hook exposes a user-facing error.
+    } catch (err) {
+      setResultError(err instanceof Error ? err.message : 'Unable to save result. Please try again.')
     }
   }
 
@@ -511,6 +519,14 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                       ]}
                       value={editValues.type}
                     />
+                    {editValues.type === 'match' && (
+                      <TextField
+                        label="Opponent"
+                        onChange={(e) => setEditValues((c) => ({ ...c, opponent: e.target.value }))}
+                        placeholder="e.g. Riverside FC"
+                        value={editValues.opponent}
+                      />
+                    )}
                     <TextField
                       label="Date and time"
                       onChange={(e) => setEditValues((c) => ({ ...c, dateTime: e.target.value }))}
@@ -693,17 +709,17 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                     ) : null}
                   </div>
                   {showResultForm ? (
-                    <form className="space-y-3" onSubmit={handleSaveResult}>
+                    <form className="space-y-3" onSubmit={(e) => void handleSaveResult(e)}>
                       <div className="grid grid-cols-2 gap-3">
                         <TextField
-                          label="Home score"
+                          label={selectedTeam?.name ?? 'Us'}
                           min="0"
                           onChange={(e) => setResultValues((c) => ({ ...c, homeScore: e.target.value }))}
                           type="number"
                           value={resultValues.homeScore}
                         />
                         <TextField
-                          label="Away score"
+                          label={activeEvent?.opponent ?? 'Opponent'}
                           min="0"
                           onChange={(e) => setResultValues((c) => ({ ...c, awayScore: e.target.value }))}
                           type="number"
@@ -715,13 +731,16 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                         onChange={(e) => setResultValues((c) => ({ ...c, notes: e.target.value }))}
                         value={resultValues.notes}
                       />
+                      {resultError && (
+                        <p className="rounded-xl bg-red-50 px-3 py-2 text-xs text-red-600">{resultError}</p>
+                      )}
                       <div className="flex gap-2">
                         <Button className="flex-1" loading={isSubmitting} type="submit">
                           Save result
                         </Button>
                         <Button
                           className="flex-1"
-                          onClick={() => setShowResultForm(false)}
+                          onClick={() => { setShowResultForm(false); setResultError(null) }}
                           type="button"
                           variant="secondary"
                         >
@@ -731,10 +750,13 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                     </form>
                   ) : existingResult ? (
                     <div className="rounded-2xl bg-slate-50 px-4 py-4 text-center">
-                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Home — Away</p>
-                      <p className="mt-1 text-3xl font-bold tabular-nums text-slate-950">
-                        {existingResult.homeScore} — {existingResult.awayScore}
-                      </p>
+                      <div className="flex items-center justify-center gap-3">
+                        <span className="text-xs font-semibold text-slate-500">{selectedTeam?.name ?? 'Us'}</span>
+                        <p className="text-3xl font-bold tabular-nums text-slate-950">
+                          {existingResult.homeScore}–{existingResult.awayScore}
+                        </p>
+                        <span className="text-xs font-semibold text-slate-500">{activeEvent?.opponent ?? 'Opponent'}</span>
+                      </div>
                       {existingResult.notes ? (
                         <p className="mt-2 text-sm text-slate-600">{existingResult.notes}</p>
                       ) : null}
@@ -925,6 +947,14 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
               ]}
               value={eventValues.type}
             />
+            {eventValues.type === 'match' && (
+              <TextField
+                label="Opponent"
+                onChange={(e) => setEventValues((c) => ({ ...c, opponent: e.target.value }))}
+                placeholder="e.g. Riverside FC"
+                value={eventValues.opponent}
+              />
+            )}
             <TextField
               label={eventValues.type === 'training' && eventValues.recurring ? 'First session date and time' : 'Date and time'}
               onChange={(event) => setEventValues((current) => ({ ...current, dateTime: event.target.value }))}

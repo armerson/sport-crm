@@ -105,6 +105,7 @@ export function mapEventRow(row: Record<string, unknown>): EventRecord {
     lat: typeof row.lat === 'number' ? row.lat : null,
     lng: typeof row.lng === 'number' ? row.lng : null,
     recurrenceGroupId: typeof row.recurrence_group_id === 'string' ? row.recurrence_group_id : null,
+    opponent: typeof row.opponent === 'string' && row.opponent.trim() ? row.opponent.trim() : null,
   }
 }
 
