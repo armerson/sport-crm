@@ -1,5 +1,14 @@
 import type { UserProfile } from '../types/auth.ts'
 import type { EventRecord, GroupFormInput, GroupRecord, PlayerFormInput, PlayerRecord, TeamFormInput, TeamRecord } from '../types/club.ts'
+
+export interface PendingRegistration {
+  playerId: string
+  name: string
+  dob: string | null
+  parentIds: string[]
+  /** Who registered — parent name(s) or self (senior) */
+  registeredByLabel: string
+}
 import { mapEventRow, mapGroupRow, mapPlayerRow, mapProfileRow, mapTeamRow, requireSupabase, subscribeToTables } from './supabaseHelpers.ts'
 
 export function subscribeToTeams(
@@ -11,7 +20,7 @@ export function subscribeToTeams(
   return subscribeToTables('teams-feed', ['teams', 'team_coaches', 'player_teams'], async () => {
     const { data, error } = await client
       .from('teams')
-      .select('id, name, age_group, team_coaches(coach_id), player_teams(player_id)')
+      .select('id, name, age_group, is_senior, team_coaches(coach_id), player_teams(player_id)')
       .order('age_group', { ascending: true })
       .order('name', { ascending: true })
 
@@ -56,7 +65,7 @@ export function subscribeToCoaches(
   return subscribeToTables('coach-profiles', ['profiles', 'team_coaches'], async () => {
     const { data, error } = await client
       .from('profiles')
-      .select('id, name, email, roles, team_coaches(team_id)')
+      .select('id, name, email, roles, linked_player_id, team_coaches(team_id)')
       .contains('roles', ['coach'])
       .order('name', { ascending: true })
 
@@ -83,7 +92,7 @@ export function subscribeToParents(
   return subscribeToTables('parent-profiles', ['profiles', 'player_parents'], async () => {
     const { data, error } = await client
       .from('profiles')
-      .select('id, name, email, roles, player_parents(player_id)')
+      .select('id, name, email, roles, linked_player_id, player_parents(player_id)')
       .contains('roles', ['parent'])
       .order('name', { ascending: true })
 
@@ -122,12 +131,105 @@ export function subscribeToAllEvents(
   })
 }
 
+export function subscribeToPendingPlayers(
+  onData: (rows: PendingRegistration[]) => void,
+  onError: (message: string) => void,
+): () => void {
+  const client = requireSupabase()
+
+  return subscribeToTables('pending-registrations', ['players', 'player_parents', 'profiles'], async () => {
+    const { data, error } = await client
+      .from('players')
+      .select('id, name, dob, status, player_parents(parent_id)')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      onError('Unable to load pending registrations.')
+      return
+    }
+
+    const rows = data ?? []
+    const playerIds = rows.map((r) => r.id as string)
+    const allParentIds = [
+      ...new Set(
+        rows.flatMap((r) => {
+          const pp = r.player_parents as Array<{ parent_id: string }> | null
+          return Array.isArray(pp) ? pp.map((x) => x.parent_id) : []
+        }),
+      ),
+    ]
+
+    const [{ data: parentProfiles }, { data: selfProfiles }] = await Promise.all([
+      allParentIds.length
+        ? client.from('profiles').select('id, name').in('id', allParentIds)
+        : Promise.resolve({ data: [] as Array<{ id: string; name: string }> }),
+      playerIds.length
+        ? client.from('profiles').select('id, name, email, linked_player_id').in('linked_player_id', playerIds)
+        : Promise.resolve({ data: [] as Array<{ id: string; name: string; email: string; linked_player_id: string }> }),
+    ])
+
+    const parentNameById = new Map((parentProfiles ?? []).map((p) => [p.id, p.name]))
+    const selfByPlayerId = new Map(
+      (selfProfiles ?? []).map((p) => [p.linked_player_id, p.name || p.email]),
+    )
+
+    const mapped: PendingRegistration[] = rows.map((r) => {
+      const pp = r.player_parents as Array<{ parent_id: string }> | null
+      const parentIds = Array.isArray(pp) ? pp.map((x) => x.parent_id) : []
+      let registeredByLabel = 'Unknown'
+      if (parentIds.length > 0) {
+        registeredByLabel = parentIds
+          .map((id) => parentNameById.get(id) ?? 'Parent')
+          .join(', ')
+      } else {
+        registeredByLabel = `Self (18+) — ${selfByPlayerId.get(r.id as string) ?? 'player'}`
+      }
+      return {
+        playerId: r.id as string,
+        name: r.name as string,
+        dob: typeof r.dob === 'string' ? r.dob : null,
+        parentIds,
+        registeredByLabel,
+      }
+    })
+
+    onData(mapped)
+  })
+}
+
 export async function createTeam(input: TeamFormInput) {
   const client = requireSupabase()
   const { error } = await client.from('teams').insert({
     name: input.name,
     age_group: input.ageGroup,
+    is_senior: input.isSenior === true,
   })
+
+  if (error) {
+    throw new Error(error.message)
+  }
+}
+
+export async function updateTeam(teamId: string, input: TeamFormInput) {
+  const client = requireSupabase()
+  const { error } = await client
+    .from('teams')
+    .update({
+      name: input.name,
+      age_group: input.ageGroup,
+      is_senior: input.isSenior === true,
+    })
+    .eq('id', teamId)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+}
+
+export async function deleteTeam(teamId: string) {
+  const client = requireSupabase()
+  const { error } = await client.from('teams').delete().eq('id', teamId)
 
   if (error) {
     throw new Error(error.message)
@@ -141,6 +243,7 @@ export async function addPlayerToTeam(input: PlayerFormInput) {
     .insert({
       name: input.name,
       dob: input.dob,
+      status: 'active',
     })
     .select('id')
     .single()

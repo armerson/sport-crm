@@ -4,6 +4,23 @@ import { TextField } from '../components/ui/TextField.tsx'
 import { useAuth } from '../hooks/useAuth.ts'
 
 type AuthMode = 'sign-in' | 'sign-up' | 'forgot-password'
+type SignUpStep = 'who' | 'form'
+type SignUpKind = 'parent' | 'player'
+
+function isAtLeastAge(dobYmd: string, minAge: number): boolean {
+  const parts = dobYmd.split('-').map(Number)
+  if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) return false
+  const [y, m, d] = parts
+  const birth = new Date(y, m - 1, d)
+  if (Number.isNaN(birth.getTime())) return false
+  const today = new Date()
+  let age = today.getFullYear() - birth.getFullYear()
+  const mDiff = today.getMonth() - birth.getMonth()
+  if (mDiff < 0 || (mDiff === 0 && today.getDate() < birth.getDate())) {
+    age -= 1
+  }
+  return age >= minAge
+}
 
 export function AuthPage() {
   const { clearError, error, isConfigured, signIn, signUp, resetPassword } = useAuth()
@@ -13,28 +30,55 @@ export function AuthPage() {
   const [resetSent, setResetSent] = useState(false)
   const [resetEmail, setResetEmail] = useState('')
   const [signInValues, setSignInValues] = useState({ email: '', password: '' })
+  const [signUpStep, setSignUpStep] = useState<SignUpStep>('who')
+  const [signUpKind, setSignUpKind] = useState<SignUpKind | null>(null)
   const [signUpValues, setSignUpValues] = useState({
     name: '',
     email: '',
     password: '',
   })
+  const [playerDob, setPlayerDob] = useState('')
+  const [children, setChildren] = useState<Array<{ name: string; dob: string }>>([{ name: '', dob: '' }])
 
-  const activeError = formError ?? error
-  const heroLabel = useMemo(
-    () =>
-      mode === 'sign-in'
-        ? 'Sign in to manage squads, attendance, and match-day communication.'
-        : mode === 'sign-up'
-          ? 'Parents can create their own accounts. Admin and coach accounts should be provisioned by the club.'
-          : "Enter your email and we'll send a password reset link.",
-    [mode],
-  )
+  // When Supabase env vars are missing, AuthContext sets `error` to the same guidance we show in the amber banner — avoid duplicating it in red.
+  const activeError = isConfigured ? (formError ?? error) : formError
+
+  const heroLabel = useMemo(() => {
+    if (mode === 'sign-in') {
+      return 'Sign in to manage squads, attendance, and match-day communication.'
+    }
+    if (mode === 'forgot-password') {
+      return "Enter your email and we'll send a password reset link."
+    }
+    if (signUpStep === 'who') {
+      return 'Tell us whether you are registering a parent account or as a player aged 18 or over.'
+    }
+    if (signUpKind === 'player') {
+      return 'Create your player account. The club will approve and assign you to a team.'
+    }
+    return 'Register as a parent and add your children during sign-up. The club will link them to teams after approval.'
+  }, [mode, signUpStep, signUpKind])
 
   function switchMode(next: AuthMode) {
     clearError()
     setFormError(null)
     setResetSent(false)
+    if (next === 'sign-up') {
+      setSignUpStep('who')
+      setSignUpKind(null)
+      setChildren([{ name: '', dob: '' }])
+      setPlayerDob('')
+    }
     setMode(next)
+  }
+
+  function selectSignUpKind(kind: SignUpKind) {
+    setSignUpKind(kind)
+    setSignUpStep('form')
+    setFormError(null)
+    if (kind === 'parent') {
+      setChildren([{ name: '', dob: '' }])
+    }
   }
 
   async function handleSignInSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -79,6 +123,11 @@ export function AuthPage() {
     clearError()
     setFormError(null)
 
+    if (!signUpKind) {
+      setFormError('Choose how you are registering.')
+      return
+    }
+
     if (signUpValues.name.trim().length < 2) {
       setFormError('Please enter a full name.')
       return
@@ -89,15 +138,54 @@ export function AuthPage() {
       return
     }
 
+    if (signUpKind === 'parent') {
+      const trimmed = children.map((c) => ({ name: c.name.trim(), dob: c.dob.trim() }))
+      if (trimmed.length === 0) {
+        setFormError('Add at least one child.')
+        return
+      }
+      for (let i = 0; i < trimmed.length; i += 1) {
+        const c = trimmed[i]
+        if (c.name.length < 2) {
+          setFormError(`Child ${i + 1}: enter a name (at least 2 characters).`)
+          return
+        }
+        if (!c.dob) {
+          setFormError(`Child ${i + 1}: enter a date of birth.`)
+          return
+        }
+      }
+    } else {
+      if (!playerDob) {
+        setFormError('Enter your date of birth.')
+        return
+      }
+      if (!isAtLeastAge(playerDob, 18)) {
+        setFormError('Player registration is for people aged 18 or over. Parents should register a parent account instead.')
+        return
+      }
+    }
+
     setIsSubmitting(true)
 
     try {
-      await signUp({
-        ...signUpValues,
-        name: signUpValues.name.trim(),
-        email: signUpValues.email.trim(),
-        roles: ['parent'],
-      })
+      if (signUpKind === 'parent') {
+        await signUp({
+          ...signUpValues,
+          name: signUpValues.name.trim(),
+          email: signUpValues.email.trim(),
+          roles: ['parent'],
+          signupChildren: children.map((c) => ({ name: c.name.trim(), dob: c.dob })),
+        })
+      } else {
+        await signUp({
+          ...signUpValues,
+          name: signUpValues.name.trim(),
+          email: signUpValues.email.trim(),
+          roles: ['player'],
+          playerDob,
+        })
+      }
     } catch {
       // Auth state is surfaced through context error state.
     } finally {
@@ -126,7 +214,7 @@ export function AuthPage() {
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="rounded-3xl border border-white/15 bg-white/10 p-4 backdrop-blur-sm">
                 <p className="text-sm text-white/70">Roles</p>
-                <p className="mt-2 text-xl font-semibold">Admin, Coach, Parent</p>
+                <p className="mt-2 text-xl font-semibold">Admin, Coach, Parent, Player</p>
               </div>
               <div className="rounded-3xl border border-white/15 bg-white/10 p-4 backdrop-blur-sm">
                 <p className="text-sm text-white/70">Modules</p>
@@ -164,12 +252,16 @@ export function AuthPage() {
 
           <div className="mt-8 space-y-2">
             <h2 className="text-2xl font-semibold tracking-tight text-slate-950">
-              {mode === 'sign-in' ? 'Welcome back' : 'Set up your account'}
+              {mode === 'sign-in' ? 'Welcome back' : mode === 'sign-up' ? (signUpStep === 'who' ? 'Who are you?' : 'Your details') : 'Reset password'}
             </h2>
             <p className="text-sm leading-6 text-slate-600">
               {mode === 'sign-in'
                 ? 'Use Supabase Auth to sign in securely.'
-                : 'Self-service signup is limited to parents. Admin and coach access should be assigned by the club.'}
+                : mode === 'sign-up'
+                  ? signUpStep === 'who'
+                    ? 'Parents register children for approval. Players 18+ can register their own account.'
+                    : 'Admin and coach accounts are still provisioned by the club.'
+                  : 'We will email you a link to choose a new password.'}
             </p>
           </div>
 
@@ -260,11 +352,42 @@ export function AuthPage() {
                 </form>
               )}
             </div>
+          ) : signUpStep === 'who' ? (
+            <div className="mt-6 space-y-4">
+              <button
+                type="button"
+                onClick={() => selectSignUpKind('parent')}
+                className="w-full rounded-2xl border-2 border-slate-200 bg-white p-5 text-left shadow-sm transition hover:border-[#123524]/40 hover:shadow-md"
+              >
+                <p className="text-lg font-semibold text-slate-950">I'm a parent or guardian</p>
+                <p className="mt-1 text-sm text-slate-600">Register and add your children. The club will approve and assign them to teams.</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => selectSignUpKind('player')}
+                className="w-full rounded-2xl border-2 border-slate-200 bg-white p-5 text-left shadow-sm transition hover:border-[#123524]/40 hover:shadow-md"
+              >
+                <p className="text-lg font-semibold text-slate-950">I'm a player (18+)</p>
+                <p className="mt-1 text-sm text-slate-600">Create your own account. You'll get access after the club approves your registration.</p>
+              </button>
+            </div>
           ) : (
             <form className="mt-6 space-y-4" onSubmit={handleSignUpSubmit}>
+              <button
+                type="button"
+                onClick={() => {
+                  setSignUpStep('who')
+                  setSignUpKind(null)
+                  setFormError(null)
+                }}
+                className="text-sm font-medium text-[#123524] underline underline-offset-2 hover:text-[#1a4a33]"
+              >
+                ← Back
+              </button>
+
               <TextField
                 autoComplete="name"
-                label="Full name"
+                label={signUpKind === 'player' ? 'Your full name' : 'Your full name (parent)'}
                 onChange={(event) => setSignUpValues((current) => ({ ...current, name: event.target.value }))}
                 placeholder="Alex Morgan"
                 required
@@ -289,9 +412,67 @@ export function AuthPage() {
                 type="password"
                 value={signUpValues.password}
               />
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                New self-service accounts are created as <span className="font-semibold text-slate-900">parents</span>.
-              </div>
+
+              {signUpKind === 'player' ? (
+                <TextField
+                  label="Your date of birth"
+                  hint="You must be 18 or over to register as a player."
+                  onChange={(event) => setPlayerDob(event.target.value)}
+                  required
+                  type="date"
+                  value={playerDob}
+                />
+              ) : (
+                <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                  <p className="text-sm font-semibold text-slate-900">Children</p>
+                  <p className="text-xs text-slate-600">Add each child registering with the club. You can add more than one.</p>
+                  {children.map((child, index) => (
+                    <div key={index} className="space-y-3 rounded-xl border border-slate-200 bg-white p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Child {index + 1}</span>
+                        {children.length > 1 ? (
+                          <button
+                            type="button"
+                            className="text-xs font-medium text-rose-600 hover:underline"
+                            onClick={() => setChildren((c) => c.filter((_, i) => i !== index))}
+                          >
+                            Remove
+                          </button>
+                        ) : null}
+                      </div>
+                      <TextField
+                        label="Child's name"
+                        onChange={(event) => {
+                          const v = event.target.value
+                          setChildren((c) => c.map((row, i) => (i === index ? { ...row, name: v } : row)))
+                        }}
+                        placeholder="Jamie Morgan"
+                        required
+                        value={child.name}
+                      />
+                      <TextField
+                        label="Date of birth"
+                        onChange={(event) => {
+                          const v = event.target.value
+                          setChildren((c) => c.map((row, i) => (i === index ? { ...row, dob: v } : row)))
+                        }}
+                        required
+                        type="date"
+                        value={child.dob}
+                      />
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="w-full"
+                    onClick={() => setChildren((c) => [...c, { name: '', dob: '' }])}
+                  >
+                    Add another child
+                  </Button>
+                </div>
+              )}
+
               <Button className="mt-2 w-full" loading={isSubmitting} type="submit">
                 Create account
               </Button>

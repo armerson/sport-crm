@@ -110,6 +110,66 @@ export async function removePlayerFromClub(playerId: string) {
   })
 }
 
+export async function approvePendingPlayerToTeam(playerId: string, teamId: string) {
+  const client = requireSupabase()
+  const { data: playerRow, error: playerError } = await client
+    .from('players')
+    .select('id, name, status')
+    .eq('id', playerId)
+    .single()
+
+  if (playerError || !playerRow) {
+    throw new Error(playerError?.message ?? 'Player not found.')
+  }
+  if (playerRow.status !== 'pending') {
+    throw new Error('This registration is not pending approval.')
+  }
+
+  const { error: updateError } = await client.from('players').update({ status: 'active' }).eq('id', playerId)
+  if (updateError) throw new Error(updateError.message)
+
+  const { error: insertError } = await client.from('player_teams').insert({ player_id: playerId, team_id: teamId })
+  if (insertError) {
+    await client.from('players').update({ status: 'pending' }).eq('id', playerId)
+    throw new Error(insertError.message)
+  }
+
+  const { data: teamRow } = await client.from('teams').select('name').eq('id', teamId).single()
+
+  await writeAuditLog({
+    action: 'approve_pending_player',
+    targetType: 'player',
+    targetId: playerId,
+    summary: `Approved ${playerRow.name} onto ${teamRow?.name ?? 'team'}.`,
+  })
+}
+
+export async function rejectPendingRegistration(playerId: string) {
+  const client = requireSupabase()
+  const { data: playerRow, error: playerError } = await client
+    .from('players')
+    .select('id, name, status')
+    .eq('id', playerId)
+    .single()
+
+  if (playerError || !playerRow) {
+    throw new Error(playerError?.message ?? 'Player not found.')
+  }
+  if (playerRow.status !== 'pending') {
+    throw new Error('Only pending registrations can be rejected.')
+  }
+
+  const { error: deleteError } = await client.from('players').delete().eq('id', playerId)
+  if (deleteError) throw new Error(deleteError.message)
+
+  await writeAuditLog({
+    action: 'reject_pending_registration',
+    targetType: 'player',
+    targetId: playerId,
+    summary: `Rejected registration for ${playerRow.name}.`,
+  })
+}
+
 export async function unlinkParentFromPlayer(playerId: string, parentId: string) {
   const client = requireSupabase()
   const [{ data: playerRow, error: playerError }, { data: parentRow, error: parentError }, { error: relationError }] = await Promise.all([

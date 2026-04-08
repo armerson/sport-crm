@@ -1,6 +1,14 @@
 import { useEffect, useState } from 'react'
 import { isSupabaseConfigured, supabaseConfigError } from '../lib/supabase.ts'
-import { assignCoachToTeam, linkParentToPlayer, movePlayerToTeam, removePlayerFromClub, unlinkParentFromPlayer } from '../services/adminActions.ts'
+import {
+  approvePendingPlayerToTeam,
+  assignCoachToTeam,
+  linkParentToPlayer,
+  movePlayerToTeam,
+  rejectPendingRegistration,
+  removePlayerFromClub,
+  unlinkParentFromPlayer,
+} from '../services/adminActions.ts'
 import { provisionClubUser } from '../services/provisioning.ts'
 import {
   subscribeToParents,
@@ -8,12 +16,16 @@ import {
   subscribeToGroups,
   subscribeToTeams,
   subscribeToAllEvents,
+  subscribeToPendingPlayers,
   addPlayerToTeam,
   createGroup,
   createTeam,
   deleteGroup,
+  deleteTeam,
   updateGroup,
+  updateTeam,
 } from '../services/adminClub.ts'
+import type { PendingRegistration } from '../services/adminClub.ts'
 import type { UserProfile } from '../types/auth.ts'
 import type { EventRecord, GroupFormInput, GroupRecord, PlayerFormInput, TeamFormInput, TeamRecord } from '../types/club.ts'
 import type { ProvisionableRole } from '../services/provisioning.ts'
@@ -28,10 +40,15 @@ export function useAdminClubData() {
   const [parents, setParents] = useState<UserProfile[]>([])
   const [events, setEvents] = useState<EventRecord[]>([])
   const [groups, setGroups] = useState<GroupRecord[]>([])
+  const [pendingRegistrations, setPendingRegistrations] = useState<PendingRegistration[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  // Coaches + parents are deferred: only fetched when the Manage tab is first opened.
+  // This removes them from the initial loading barrier so Overview appears faster.
+  const [loadContacts, setLoadContacts] = useState(false)
 
+  // Core data — always loaded, controls the loading spinner
   useEffect(() => {
     if (!isSupabaseConfigured) {
       setLoading(false)
@@ -41,79 +58,60 @@ export function useAdminClubData() {
 
     setError(null)
 
-    let pendingSubscriptions = 5
+    let pending = 4
 
     const markLoaded = () => {
-      pendingSubscriptions -= 1
-
-      if (pendingSubscriptions <= 0) {
-        setLoading(false)
-      }
+      pending -= 1
+      if (pending <= 0) setLoading(false)
     }
 
     const teamsSubscription = subscribeToTeams(
-      (nextTeams) => {
-        setTeams(nextTeams)
-        markLoaded()
-      },
-      (message) => {
-        setError(message)
-        markLoaded()
-      },
-    )
-
-    const coachesSubscription = subscribeToCoaches(
-      (nextCoaches) => {
-        setCoaches(nextCoaches)
-        markLoaded()
-      },
-      (message) => {
-        setError(message)
-        markLoaded()
-      },
-    )
-
-    const parentsSubscription = subscribeToParents(
-      (nextParents) => {
-        setParents(nextParents)
-        markLoaded()
-      },
-      (message) => {
-        setError(message)
-        markLoaded()
-      },
+      (nextTeams) => { setTeams(nextTeams); markLoaded() },
+      (message) => { setError(message); markLoaded() },
     )
 
     const eventsSubscription = subscribeToAllEvents(
-      (nextEvents) => {
-        setEvents(nextEvents)
-        markLoaded()
-      },
-      (message) => {
-        setError(message)
-        markLoaded()
-      },
+      (nextEvents) => { setEvents(nextEvents); markLoaded() },
+      (message) => { setError(message); markLoaded() },
     )
 
     const groupsSubscription = subscribeToGroups(
-      (nextGroups) => {
-        setGroups(nextGroups)
-        markLoaded()
-      },
-      (message) => {
-        setError(message)
-        markLoaded()
-      },
+      (nextGroups) => { setGroups(nextGroups); markLoaded() },
+      (message) => { setError(message); markLoaded() },
+    )
+
+    const pendingSubscription = subscribeToPendingPlayers(
+      (next) => { setPendingRegistrations(next); markLoaded() },
+      (message) => { setError(message); markLoaded() },
     )
 
     return () => {
       teamsSubscription()
-      coachesSubscription()
-      parentsSubscription()
       eventsSubscription()
       groupsSubscription()
+      pendingSubscription()
     }
   }, [])
+
+  // Contacts — deferred until Manage tab is opened for the first time
+  useEffect(() => {
+    if (!loadContacts || !isSupabaseConfigured) return undefined
+
+    const coachesSubscription = subscribeToCoaches(
+      (nextCoaches) => setCoaches(nextCoaches),
+      (message) => setError(message),
+    )
+
+    const parentsSubscription = subscribeToParents(
+      (nextParents) => setParents(nextParents),
+      (message) => setError(message),
+    )
+
+    return () => {
+      coachesSubscription()
+      parentsSubscription()
+    }
+  }, [loadContacts])
 
   return {
     teams,
@@ -121,10 +119,12 @@ export function useAdminClubData() {
     parents,
     events,
     groups,
+    pendingRegistrations,
     loading,
     error,
     isConfigured: isSupabaseConfigured,
     isSubmitting,
+    triggerLoadContacts: () => setLoadContacts(true),
     createTeam: async (input: TeamFormInput) => {
       if (!isSupabaseConfigured) {
         setError(supabaseConfigError)
@@ -138,6 +138,52 @@ export function useAdminClubData() {
         await createTeam(input)
       } catch (submitError) {
         setError(getAdminErrorMessage(submitError, 'Unable to create team.'))
+        throw submitError
+      } finally {
+        setIsSubmitting(false)
+      }
+    },
+    updateTeam: async (teamId: string, input: TeamFormInput) => {
+      if (!isSupabaseConfigured) {
+        setError(supabaseConfigError)
+        return
+      }
+
+      setIsSubmitting(true)
+      setError(null)
+
+      try {
+        await updateTeam(teamId, input)
+        // Optimistic update — realtime will confirm later
+        setTeams((prev) =>
+          prev.map((t) =>
+            t.id === teamId
+              ? { ...t, name: input.name, ageGroup: input.ageGroup, isSenior: input.isSenior === true }
+              : t,
+          ),
+        )
+      } catch (submitError) {
+        setError(getAdminErrorMessage(submitError, 'Unable to update team.'))
+        throw submitError
+      } finally {
+        setIsSubmitting(false)
+      }
+    },
+    deleteTeam: async (teamId: string) => {
+      if (!isSupabaseConfigured) {
+        setError(supabaseConfigError)
+        return
+      }
+
+      setIsSubmitting(true)
+      setError(null)
+
+      try {
+        await deleteTeam(teamId)
+        // Optimistic removal — realtime will confirm later
+        setTeams((prev) => prev.filter((t) => t.id !== teamId))
+      } catch (submitError) {
+        setError(getAdminErrorMessage(submitError, 'Unable to delete team.'))
         throw submitError
       } finally {
         setIsSubmitting(false)
@@ -246,7 +292,12 @@ export function useAdminClubData() {
       setError(null)
 
       try {
-        return await provisionClubUser({ name, email, roles })
+        return await provisionClubUser({
+          name,
+          email,
+          roles,
+          redirectOrigin: typeof window !== 'undefined' ? window.location.origin : undefined,
+        })
       } catch (submitError) {
         setError(getAdminErrorMessage(submitError, 'Unable to provision account.'))
         throw submitError
@@ -288,6 +339,32 @@ export function useAdminClubData() {
         await deleteGroup(groupId)
       } catch (submitError) {
         setError(getAdminErrorMessage(submitError, 'Unable to delete group.'))
+        throw submitError
+      } finally {
+        setIsSubmitting(false)
+      }
+    },
+    approvePendingPlayer: async (playerId: string, teamId: string) => {
+      if (!isSupabaseConfigured) { setError(supabaseConfigError); return }
+      setIsSubmitting(true)
+      setError(null)
+      try {
+        await approvePendingPlayerToTeam(playerId, teamId)
+      } catch (submitError) {
+        setError(getAdminErrorMessage(submitError, 'Unable to approve registration.'))
+        throw submitError
+      } finally {
+        setIsSubmitting(false)
+      }
+    },
+    rejectPendingRegistration: async (playerId: string) => {
+      if (!isSupabaseConfigured) { setError(supabaseConfigError); return }
+      setIsSubmitting(true)
+      setError(null)
+      try {
+        await rejectPendingRegistration(playerId)
+      } catch (submitError) {
+        setError(getAdminErrorMessage(submitError, 'Unable to reject registration.'))
         throw submitError
       } finally {
         setIsSubmitting(false)

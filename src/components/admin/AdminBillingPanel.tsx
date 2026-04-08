@@ -31,12 +31,17 @@ function StatusBadge({ active }: { active: boolean }) {
   )
 }
 
-function BillingTypeBadge({ type }: { type: BillingType }) {
+function BillingTypeBadge({ type, durationMonths }: { type: BillingType; durationMonths?: number | null }) {
+  const label = type === 'monthly'
+    ? (durationMonths ? `${durationMonths}mo subscription` : 'Monthly subscription')
+    : type === 'membership' ? 'Membership fee'
+    : 'One-off'
+  const colour = type === 'monthly' ? 'bg-blue-100 text-blue-700'
+    : type === 'membership' ? 'bg-violet-100 text-violet-700'
+    : 'bg-purple-100 text-purple-700'
   return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${
-      type === 'monthly' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'
-    }`}>
-      {type === 'monthly' ? 'Monthly' : 'One-off'}
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${colour}`}>
+      {label}
     </span>
   )
 }
@@ -51,7 +56,7 @@ function ProductsSection() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
 
-  const blankForm: ProductFormInput = { name: '', description: '', pricePence: 0, billingType: 'monthly', teamId: null }
+  const blankForm: ProductFormInput = { name: '', description: '', pricePence: 0, billingType: 'monthly', durationMonths: '', seasonLabel: '', teamId: null }
   const [form, setForm] = useState<ProductFormInput>(blankForm)
   const [priceInput, setPriceInput] = useState('')
 
@@ -64,6 +69,8 @@ function ProductsSection() {
       description: product.description ?? '',
       pricePence: product.pricePence,
       billingType: product.billingType,
+      durationMonths: product.durationMonths?.toString() ?? '',
+      seasonLabel: product.seasonLabel ?? '',
       teamId: product.teamId,
     })
     setPriceInput(penceToPounds(product.pricePence).toFixed(2))
@@ -146,9 +153,41 @@ function ProductsSection() {
                 className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#123524]/30"
               >
                 <option value="monthly">Monthly subscription</option>
-                <option value="one_off">One-off payment</option>
+                <option value="membership">Membership fee (one-off, seasonal)</option>
+                <option value="one_off">Ad-hoc one-off payment</option>
               </select>
             </div>
+
+            {/* Duration — monthly subscriptions only */}
+            {form.billingType === 'monthly' && (
+              <div className="space-y-1">
+                <label className="block text-sm font-medium text-slate-700">Duration (months)</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="24"
+                  value={form.durationMonths}
+                  onChange={(e) => setForm((f) => ({ ...f, durationMonths: e.target.value }))}
+                  placeholder="Leave blank for ongoing"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#123524]/30"
+                />
+                <p className="text-xs text-slate-400">e.g. 10 months for a Sept–June season. Leave blank for ongoing until cancelled.</p>
+              </div>
+            )}
+
+            {/* Season label — membership fee only */}
+            {form.billingType === 'membership' && (
+              <div className="space-y-1">
+                <label className="block text-sm font-medium text-slate-700">Season label (optional)</label>
+                <input
+                  type="text"
+                  value={form.seasonLabel}
+                  onChange={(e) => setForm((f) => ({ ...f, seasonLabel: e.target.value }))}
+                  placeholder="e.g. 2025/26 Season"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#123524]/30"
+                />
+              </div>
+            )}
             <div className="space-y-1">
               <label className="block text-sm font-medium text-slate-700">Description (optional)</label>
               <input
@@ -182,7 +221,7 @@ function ProductsSection() {
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <p className="truncate font-medium text-slate-900">{product.name}</p>
-                  <BillingTypeBadge type={product.billingType} />
+                  <BillingTypeBadge type={product.billingType} durationMonths={product.durationMonths} />
                   <StatusBadge active={product.active} />
                 </div>
                 {product.description && (
@@ -497,7 +536,7 @@ function AssignSection() {
                         <div>
                           <div className="flex items-center gap-2">
                             <p className="text-sm font-medium text-slate-900">{product.name}</p>
-                            <BillingTypeBadge type={product.billingType} />
+                            <BillingTypeBadge type={product.billingType} durationMonths={product.durationMonths} />
                           </div>
                           <p className="text-xs text-slate-500">{formatPence(product.pricePence)}{product.billingType === 'monthly' ? '/mo' : ''}</p>
                         </div>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { isSupabaseConfigured, supabaseConfigError } from '../lib/supabase.ts'
 import {
   subscribeToAttendanceForPlayers,
@@ -26,6 +26,8 @@ export function useParentClubData(childIds: string[]) {
   const [loadingAttendance, setLoadingAttendance] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  // Track whether players have resolved at least once so we know teamIds is real
+  const playersResolvedRef = useRef(false)
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
@@ -35,11 +37,13 @@ export function useParentClubData(childIds: string[]) {
     const unsubscribe = subscribeToParentPlayers(
       childIds,
       (nextPlayers) => {
+        playersResolvedRef.current = true
         setPlayers(nextPlayers)
         setLoadingPlayers(false)
         setError(null)
       },
       (message) => {
+        playersResolvedRef.current = true
         setError(message)
         setLoadingPlayers(false)
       },
@@ -53,47 +57,48 @@ export function useParentClubData(childIds: string[]) {
     [players],
   )
 
+  // Guard: only subscribe to team-dependent data after players have resolved.
+  // This prevents creating and immediately destroying "empty" Supabase channels
+  // on every mount while waiting for the first players response.
+  const teamIdsReady = playersResolvedRef.current
+
   useEffect(() => {
-    if (!isSupabaseConfigured) {
+    if (!isSupabaseConfigured || !teamIdsReady) {
+      return undefined
+    }
+    if (teamIds.length === 0) {
+      setTeams([])
+      setLoadingTeams(false)
       return undefined
     }
 
     const unsubscribe = subscribeToTeamsByIds(
       teamIds,
-      (nextTeams) => {
-        setTeams(nextTeams)
-        setLoadingTeams(false)
-        setError(null)
-      },
-      (message) => {
-        setError(message)
-        setLoadingTeams(false)
-      },
+      (nextTeams) => { setTeams(nextTeams); setLoadingTeams(false); setError(null) },
+      (message) => { setError(message); setLoadingTeams(false) },
     )
 
     return unsubscribe
-  }, [teamIds])
+  }, [teamIds, teamIdsReady])
 
   useEffect(() => {
-    if (!isSupabaseConfigured) {
+    if (!isSupabaseConfigured || !teamIdsReady) {
+      return undefined
+    }
+    if (teamIds.length === 0) {
+      setEvents([])
+      setLoadingEvents(false)
       return undefined
     }
 
     const unsubscribe = subscribeToEventsForTeams(
       teamIds,
-      (nextEvents) => {
-        setEvents(nextEvents)
-        setLoadingEvents(false)
-        setError(null)
-      },
-      (message) => {
-        setError(message)
-        setLoadingEvents(false)
-      },
+      (nextEvents) => { setEvents(nextEvents); setLoadingEvents(false); setError(null) },
+      (message) => { setError(message); setLoadingEvents(false) },
     )
 
     return unsubscribe
-  }, [teamIds])
+  }, [teamIds, teamIdsReady])
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
@@ -102,29 +107,25 @@ export function useParentClubData(childIds: string[]) {
 
     const unsubscribe = subscribeToAttendanceForPlayers(
       childIds,
-      (nextAttendance) => {
-        setAttendance(nextAttendance)
-        setLoadingAttendance(false)
-        setError(null)
-      },
-      (message) => {
-        setError(message)
-        setLoadingAttendance(false)
-      },
+      (nextAttendance) => { setAttendance(nextAttendance); setLoadingAttendance(false); setError(null) },
+      (message) => { setError(message); setLoadingAttendance(false) },
     )
 
     return unsubscribe
   }, [childIds])
 
-  // Results subscription — non-critical, silently ignores errors
+  // Results subscription — non-critical, only starts once we have real teamIds
   useEffect(() => {
-    if (!isSupabaseConfigured || teamIds.length === 0) { setResults([]); return undefined }
+    if (!isSupabaseConfigured || !teamIdsReady || teamIds.length === 0) {
+      setResults([])
+      return undefined
+    }
     return subscribeToResultsForTeams(
       teamIds,
       (next) => setResults(next),
       () => undefined,
     )
-  }, [teamIds])
+  }, [teamIds, teamIdsReady])
 
   const configError = !isSupabaseConfigured ? (childIds.length > 0 ? supabaseConfigError : null) : null
 
@@ -134,8 +135,8 @@ export function useParentClubData(childIds: string[]) {
     events: teamIds.length > 0 ? events : [],
     attendance: childIds.length > 0 ? attendance : [],
     loadingPlayers: childIds.length > 0 ? loadingPlayers : false,
-    loadingTeams: teamIds.length > 0 ? loadingTeams : false,
-    loadingEvents: teamIds.length > 0 ? loadingEvents : false,
+    loadingTeams: childIds.length > 0 ? loadingTeams : false,
+    loadingEvents: childIds.length > 0 ? loadingEvents : false,
     loadingAttendance: childIds.length > 0 ? loadingAttendance : false,
     resultByEventId: new Map(results.map((r) => [r.eventId, r])),
     error: configError ?? error,

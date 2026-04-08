@@ -18,7 +18,7 @@ export function subscribeToParentPlayers(
 
     const { data, error } = await client
       .from('players')
-      .select('id, name, dob, player_parents(parent_id), player_teams(team_id)')
+      .select('id, name, dob, status, player_parents(parent_id), player_teams(team_id)')
       .in('id', playerIds)
       .order('name', { ascending: true })
 
@@ -48,7 +48,7 @@ export function subscribeToTeamsByIds(
 
     const { data, error } = await client
       .from('teams')
-      .select('id, name, age_group, team_coaches(coach_id), player_teams(player_id)')
+      .select('id, name, age_group, is_senior, team_coaches(coach_id), player_teams(player_id)')
       .in('id', teamIds)
       .order('age_group', { ascending: true })
       .order('name', { ascending: true })

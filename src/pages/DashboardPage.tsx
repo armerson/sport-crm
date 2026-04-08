@@ -1,13 +1,15 @@
-import { Suspense, lazy, useState } from 'react'
+import { Suspense, lazy, useEffect, useState } from 'react'
 import { Button } from '../components/ui/Button.tsx'
-import { BottomNav, ADMIN_BOTTOM_NAV, COACH_BOTTOM_NAV, PARENT_BOTTOM_NAV } from '../components/ui/BottomNav.tsx'
+import { BottomNav, ADMIN_BOTTOM_NAV, COACH_BOTTOM_NAV, PARENT_BOTTOM_NAV, PLAYER_BOTTOM_NAV } from '../components/ui/BottomNav.tsx'
 import { InstallBanner } from '../components/ui/InstallBanner.tsx'
 import { NotificationBanner } from '../components/ui/NotificationBanner.tsx'
 import { useAuth } from '../hooks/useAuth.ts'
+import { markMessagesRead, useUnreadMessages } from '../hooks/useUnreadMessages.ts'
 import type { UserRole } from '../types/auth.ts'
 import type { AdminTab } from '../components/admin/AdminClubPanel.tsx'
 import type { CoachTab } from '../components/coach/CoachEventPanel.tsx'
 import type { ParentTab } from '../components/parent/ParentPortal.tsx'
+import type { PlayerTab } from '../components/player/PlayerPortal.tsx'
 
 const AdminClubPanel = lazy(async () => {
   const module = await import('../components/admin/AdminClubPanel.tsx')
@@ -24,11 +26,17 @@ const ParentPortal = lazy(async () => {
   return { default: module.ParentPortal }
 })
 
-const ROLE_ORDER: UserRole[] = ['admin', 'coach', 'parent']
+const PlayerPortal = lazy(async () => {
+  const module = await import('../components/player/PlayerPortal.tsx')
+  return { default: module.PlayerPortal }
+})
+
+const ROLE_ORDER: UserRole[] = ['admin', 'coach', 'player', 'parent']
 
 const ROLE_LABELS: Record<UserRole, string> = {
   admin: 'Admin',
   coach: 'Coach',
+  player: 'Player',
   parent: 'Parent',
 }
 
@@ -40,6 +48,10 @@ const roleContent: Record<UserRole, { title: string; summary: string }> = {
   coach: {
     title: 'Coach workspace',
     summary: 'Plan training, publish fixtures, and track availability before kickoff.',
+  },
+  player: {
+    title: 'Player portal',
+    summary: 'View your schedule, manage your profile, and keep on top of club fees.',
   },
   parent: {
     title: 'Parent portal',
@@ -65,7 +77,7 @@ function SignOutIcon() {
   )
 }
 
-/** Returns the user's highest-privilege role (admin > coach > parent). */
+/** Returns the user's highest-privilege role (admin > coach > player > parent). */
 function defaultRole(roles: UserRole[]): UserRole {
   for (const role of ROLE_ORDER) {
     if (roles.includes(role)) return role
@@ -73,12 +85,36 @@ function defaultRole(roles: UserRole[]): UserRole {
   return 'parent'
 }
 
+// Prefetch the role panels lazily once the page is idle.
+// This means the first tab switch after login is instant rather than waiting for a network fetch.
+function prefetchPanels() {
+  const prefetch = (fn: () => Promise<unknown>) => {
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(() => { void fn() }, { timeout: 4000 })
+    } else {
+      setTimeout(() => { void fn() }, 2000)
+    }
+  }
+  prefetch(() => import('../components/admin/AdminClubPanel.tsx'))
+  prefetch(() => import('../components/coach/CoachEventPanel.tsx'))
+  prefetch(() => import('../components/parent/ParentPortal.tsx'))
+  prefetch(() => import('../components/player/PlayerPortal.tsx'))
+}
+
 export function DashboardPage() {
   const { profile, signOutUser } = useAuth()
   const [adminTab, setAdminTab] = useState<AdminTab>('overview')
   const [coachTab, setCoachTab] = useState<CoachTab>('schedule')
   const [parentTab, setParentTab] = useState<ParentTab>('schedule')
-  
+  const [playerTab, setPlayerTab] = useState<PlayerTab>('schedule')
+
+  // Kick off prefetch once profile is available (after auth resolves)
+  useEffect(() => {
+    if (profile) prefetchPanels()
+  }, [profile])
+
+  // Unread messages badge — uses the profile's own team memberships
+  const hasUnreadMessages = useUnreadMessages(profile?.id ?? '', profile?.teams ?? [])
 
   // Active role view — initialised to the user's highest-privilege role.
   const [activeRole, setActiveRole] = useState<UserRole>(() =>
@@ -89,23 +125,34 @@ export function DashboardPage() {
     return null
   }
 
-  // Sorted roles to display in consistent order (admin → coach → parent).
+  // Sorted roles to display in consistent order (admin → coach → player → parent).
   const sortedRoles = ROLE_ORDER.filter((r) => profile.roles.includes(r))
   const hasMultipleRoles = sortedRoles.length > 1
 
   const isAdmin = activeRole === 'admin'
   const isCoach = activeRole === 'coach'
+  const isPlayer = activeRole === 'player'
 
   const activeContent = roleContent[activeRole]
 
-  const activeTab = isAdmin ? adminTab : isCoach ? coachTab : parentTab
-  const bottomNavItems = isAdmin ? ADMIN_BOTTOM_NAV : isCoach ? COACH_BOTTOM_NAV : PARENT_BOTTOM_NAV
+  const activeTab = isAdmin ? adminTab : isCoach ? coachTab : isPlayer ? playerTab : parentTab
+  const bottomNavItems = isAdmin
+    ? ADMIN_BOTTOM_NAV
+    : isCoach
+      ? COACH_BOTTOM_NAV
+      : isPlayer
+        ? PLAYER_BOTTOM_NAV
+        : PARENT_BOTTOM_NAV
 
   function handleTabChange(value: string) {
+    if (value === 'messages') markMessagesRead(profile?.id ?? '')
     if (isAdmin) setAdminTab(value as AdminTab)
     else if (isCoach) setCoachTab(value as CoachTab)
+    else if (isPlayer) setPlayerTab(value as PlayerTab)
     else setParentTab(value as ParentTab)
   }
+
+  const navBadges: Record<string, boolean> = { messages: hasUnreadMessages }
 
   const initials = profile.name
     .split(' ')
@@ -218,6 +265,8 @@ export function DashboardPage() {
               <AdminClubPanel activeTab={adminTab} onTabChange={(t) => setAdminTab(t)} />
             ) : isCoach ? (
               <CoachEventPanel coachId={profile.id} profile={profile} activeTab={coachTab} onTabChange={(t) => setCoachTab(t)} />
+            ) : isPlayer ? (
+              <PlayerPortal profile={profile} activeTab={playerTab} onTabChange={(t) => setPlayerTab(t)} />
             ) : (
               <ParentPortal profile={profile} activeTab={parentTab} onTabChange={(t) => setParentTab(t)} />
             )}
@@ -226,7 +275,7 @@ export function DashboardPage() {
       </div>
 
       {/* ── Mobile bottom navigation ── */}
-      <BottomNav items={bottomNavItems} active={activeTab} onChange={handleTabChange} />
+      <BottomNav items={bottomNavItems} active={activeTab} onChange={handleTabChange} badges={navBadges} />
     </main>
   )
 }

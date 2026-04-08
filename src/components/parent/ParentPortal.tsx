@@ -1,12 +1,13 @@
 import { Suspense, lazy, useMemo, useState } from 'react'
 import { useParentClubData } from '../../hooks/useParentClubData.ts'
 import { FamilyBillingCard } from './FamilyBillingCard.tsx'
+import { PostFeed } from '../posts/PostFeed.tsx'
 import { PlayerProfileCard } from '../players/PlayerProfileCard.tsx'
+import { LocationMapCard } from '../ui/LocationPicker.tsx'
 import { MotmVotingCard } from '../shared/MotmVotingCard.tsx'
 import type { UserProfile } from '../../types/auth.ts'
 import type { AttendanceStatus } from '../../types/club.ts'
 import { formatDateTime } from '../../utils/date.ts'
-import { Button } from '../ui/Button.tsx'
 import { SelectField } from '../ui/SelectField.tsx'
 import { TabNav } from '../ui/TabNav.tsx'
 
@@ -21,11 +22,12 @@ interface ParentPortalProps {
   onTabChange: (tab: ParentTab) => void
 }
 
-export type ParentTab = 'schedule' | 'messages' | 'billing' | 'children'
+export type ParentTab = 'schedule' | 'messages' | 'billing' | 'children' | 'feed'
 
 const PARENT_TABS = [
   { label: 'Schedule', value: 'schedule' as ParentTab },
   { label: 'My children', value: 'children' as ParentTab },
+  { label: 'Feed', value: 'feed' as ParentTab },
   { label: 'Billing', value: 'billing' as ParentTab },
   { label: 'Messages', value: 'messages' as ParentTab },
 ] as const
@@ -38,7 +40,7 @@ function SectionFallback() {
   )
 }
 
-function EventList({
+export function EventList({
   eventsToShow,
   emptyLabel,
   teamById,
@@ -93,28 +95,52 @@ function EventList({
                 ) : null}
                 <p className="text-sm text-slate-600">{formatDateTime(event.dateTime)}</p>
                 <p className="text-sm text-slate-600">{event.location}</p>
+                {event.location && (
+                  <div className="mt-2">
+                    <LocationMapCard location={event.location} placeId={event.placeId} lat={event.lat} lng={event.lng} />
+                  </div>
+                )}
               </div>
 
-              <div className="shrink-0 space-y-2 sm:min-w-56">
-                <div className="rounded-xl bg-white px-4 py-2.5 text-sm text-slate-700">
-                  Response:{' '}
-                  <span className="font-semibold capitalize text-slate-950">{attendanceRecord?.status ?? 'pending'}</span>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  {(['yes', 'pending', 'no'] as const).map((status) => (
-                    <Button
-                      key={status}
-                      className="px-2 capitalize"
-                      disabled={!attendanceRecord}
-                      loading={isSubmitting && attendanceRecord?.status !== status}
-                      onClick={() => attendanceRecord && onAttendanceResponse(attendanceRecord.id, status)}
-                      variant={attendanceRecord?.status === status ? 'primary' : 'secondary'}
+              {!isPast && attendanceRecord && (
+                <div className="shrink-0">
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      disabled={isSubmitting}
+                      onClick={() => onAttendanceResponse(attendanceRecord.id, attendanceRecord.status === 'yes' ? 'pending' : 'yes')}
+                      className={`flex flex-1 items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-bold transition active:scale-95 ${
+                        attendanceRecord.status === 'yes'
+                          ? 'bg-emerald-500 text-white shadow-md shadow-emerald-200'
+                          : 'border-2 border-slate-200 bg-white text-slate-600 hover:border-emerald-300 hover:text-emerald-600'
+                      } disabled:opacity-50`}
                     >
-                      {status === 'yes' ? 'Going' : status === 'no' ? 'No' : 'Maybe'}
-                    </Button>
-                  ))}
+                      <span>✓</span> Going
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isSubmitting}
+                      onClick={() => onAttendanceResponse(attendanceRecord.id, attendanceRecord.status === 'no' ? 'pending' : 'no')}
+                      className={`flex flex-1 items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-bold transition active:scale-95 ${
+                        attendanceRecord.status === 'no'
+                          ? 'bg-rose-500 text-white shadow-md shadow-rose-200'
+                          : 'border-2 border-slate-200 bg-white text-slate-600 hover:border-rose-300 hover:text-rose-500'
+                      } disabled:opacity-50`}
+                    >
+                      <span>✕</span> Can't go
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
+              {isPast && attendanceRecord && (
+                <div className={`shrink-0 self-start rounded-full px-3 py-1 text-xs font-bold ${
+                  attendanceRecord.status === 'yes' ? 'bg-emerald-100 text-emerald-700' :
+                  attendanceRecord.status === 'no' ? 'bg-rose-100 text-rose-700' :
+                  'bg-slate-100 text-slate-500'
+                }`}>
+                  {attendanceRecord.status === 'yes' ? 'Attended' : attendanceRecord.status === 'no' ? 'Missed' : 'No response'}
+                </div>
+              )}
             </div>
 
             {/* MOTM voting — past matches only */}
@@ -360,6 +386,11 @@ export function ParentPortal({ profile, activeTab, onTabChange }: ParentPortalPr
       {/* BILLING TAB */}
       {activeTab === 'billing' ? (
         <FamilyBillingCard profile={profile} players={players} />
+      ) : null}
+
+      {/* FEED TAB */}
+      {activeTab === 'feed' ? (
+        <PostFeed profile={profile} teamIds={teams.map((t) => t.id)} />
       ) : null}
 
       {/* MESSAGES TAB */}

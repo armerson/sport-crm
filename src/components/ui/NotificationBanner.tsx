@@ -26,10 +26,12 @@ function BellOffIcon() {
   )
 }
 
+const DISMISS_KEY = 'push_banner_dismissed'
+
 export function NotificationBanner({ userId }: NotificationBannerProps) {
   const [permission, setPermission] = useState<NotificationPermission>('default')
   const [loading, setLoading] = useState(false)
-  const [dismissed, setDismissed] = useState(false)
+  const [dismissed, setDismissed] = useState(() => localStorage.getItem(DISMISS_KEY) === '1')
 
   useEffect(() => {
     if (!isPushSupported()) return
@@ -45,6 +47,11 @@ export function NotificationBanner({ userId }: NotificationBannerProps) {
     const granted = await requestPermissionAndSubscribe(userId)
     setPermission(granted ? 'granted' : 'denied')
     setLoading(false)
+  }
+
+  function handleDismiss() {
+    localStorage.setItem(DISMISS_KEY, '1')
+    setDismissed(true)
   }
 
   return (
@@ -66,7 +73,7 @@ export function NotificationBanner({ userId }: NotificationBannerProps) {
         </button>
         <button
           type="button"
-          onClick={() => setDismissed(true)}
+          onClick={handleDismiss}
           className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-amber-500 transition hover:bg-amber-100"
           aria-label="Dismiss"
         >

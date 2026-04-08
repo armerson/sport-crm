@@ -3,6 +3,7 @@ import { isSupabaseConfigured, supabaseConfigError } from '../lib/supabase.ts'
 import { fetchParentIdsForPlayers, fetchTeamParentIds, sendPushToUsers } from '../lib/pushNotifications.ts'
 import {
   castMotmVote,
+  coachUpdateAttendance,
   computeMotmTally,
   createEventWithAttendance,
   deleteEvent,
@@ -330,6 +331,16 @@ export function useCoachClubData(coachId: string, selectedTeamId: string, select
      * Send a push notification to parents of players who have not yet responded
      * to the given event. Returns the count of parents notified.
      */
+    updateAttendance: async (attendanceId: string, status: AttendanceRecord['status']) => {
+      // Optimistic update
+      setAttendance((prev) => prev.map((a) => a.id === attendanceId ? { ...a, status } : a))
+      try {
+        await coachUpdateAttendance(attendanceId, status)
+      } catch {
+        // Realtime will correct state on error
+      }
+    },
+
     sendAttendanceReminder: async (eventId: string, eventTitle: string): Promise<number> => {
       const pendingPlayerIds = attendance
         .filter((a) => a.eventId === eventId && a.status === 'pending')

@@ -27,6 +27,8 @@ function mapProductRow(row: Record<string, unknown>): Product {
     description: (row.description as string | null) ?? null,
     pricePence: row.price_pence as number,
     billingType: row.billing_type as Product['billingType'],
+    durationMonths: (row.duration_months as number | null) ?? null,
+    seasonLabel: (row.season_label as string | null) ?? null,
     teamId: (row.team_id as string | null) ?? null,
     active: row.active as boolean,
     stripeProductId: (row.stripe_product_id as string | null) ?? null,
@@ -103,6 +105,8 @@ export async function createProduct(input: ProductFormInput): Promise<void> {
     description: input.description || null,
     price_pence: input.pricePence,
     billing_type: input.billingType,
+    duration_months: input.billingType === 'monthly' && input.durationMonths ? parseInt(input.durationMonths) : null,
+    season_label: input.billingType === 'membership' && input.seasonLabel ? input.seasonLabel : null,
     team_id: input.teamId || null,
   })
   if (error) throw new Error(error.message)
@@ -114,7 +118,11 @@ export async function updateProduct(id: string, input: Partial<ProductFormInput>
   if (input.name !== undefined) patch.name = input.name
   if (input.description !== undefined) patch.description = input.description || null
   if (input.pricePence !== undefined) patch.price_pence = input.pricePence
-  if (input.billingType !== undefined) patch.billing_type = input.billingType
+  if (input.billingType !== undefined) {
+    patch.billing_type = input.billingType
+    patch.duration_months = input.billingType === 'monthly' && input.durationMonths ? parseInt(input.durationMonths) : null
+    patch.season_label = input.billingType === 'membership' && input.seasonLabel ? input.seasonLabel : null
+  }
   if (input.teamId !== undefined) patch.team_id = input.teamId || null
 
   const { error } = await client.from('products').update(patch).eq('id', id)

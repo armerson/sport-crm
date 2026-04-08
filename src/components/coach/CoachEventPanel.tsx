@@ -4,6 +4,7 @@ import { useCoachClubData } from '../../hooks/useCoachClubData.ts'
 import { useTeamPlayers } from '../../hooks/useTeamPlayers.ts'
 import { MotmVotingCard } from '../shared/MotmVotingCard.tsx'
 import { PlayerProfileCard } from '../players/PlayerProfileCard.tsx'
+import { LocationPicker, LocationMapCard } from '../ui/LocationPicker.tsx'
 import { formatDate, formatDateTime } from '../../utils/date.ts'
 import { Button } from '../ui/Button.tsx'
 import { ConfirmInline } from '../ui/ConfirmInline.tsx'
@@ -12,6 +13,8 @@ import { SuccessMessage } from '../ui/SuccessMessage.tsx'
 import { TabNav } from '../ui/TabNav.tsx'
 import { TextField } from '../ui/TextField.tsx'
 import type { EventType, RecurrencePattern } from '../../types/club.ts'
+
+import { PostFeed } from '../posts/PostFeed.tsx'
 
 const TeamMessagesPanel = lazy(async () => {
   const module = await import('../messages/TeamMessagesPanel.tsx')
@@ -35,13 +38,14 @@ interface EventFormState {
   recurrenceWeeks: number
 }
 
-export type CoachTab = 'schedule' | 'create' | 'stats' | 'squad' | 'messages'
+export type CoachTab = 'schedule' | 'create' | 'stats' | 'squad' | 'messages' | 'feed'
 
 const COACH_TABS = [
   { label: 'Schedule', value: 'schedule' as CoachTab },
   { label: 'Create event', value: 'create' as CoachTab },
   { label: 'Squad', value: 'squad' as CoachTab },
   { label: 'Stats', value: 'stats' as CoachTab },
+  { label: 'Feed', value: 'feed' as CoachTab },
   { label: 'Messages', value: 'messages' as CoachTab },
 ] as const
 
@@ -96,6 +100,8 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
     recurrencePattern: 'weekly',
     recurrenceWeeks: 6,
   })
+  const [eventLocationMeta, setEventLocationMeta] = useState<{ placeId?: string; lat?: number; lng?: number }>({})
+  const [editLocationMeta, setEditLocationMeta] = useState<{ placeId?: string; lat?: number; lng?: number }>({})
   const [resultValues, setResultValues] = useState({ homeScore: '', awayScore: '', notes: '' })
   const [showResultForm, setShowResultForm] = useState(false)
   const [sendingReminder, setSendingReminder] = useState(false)
@@ -106,6 +112,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
     activeTeamId,
     attendance,
     createEvent,
+    updateAttendance,
     updateEvent,
     deleteEvent,
     deleteEventSeries,
@@ -182,12 +189,16 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
           type: eventValues.type,
           dateTime: eventValues.dateTime,
           location: eventValues.location.trim(),
+          placeId: eventLocationMeta.placeId,
+          lat: eventLocationMeta.lat,
+          lng: eventLocationMeta.lng,
         },
         players.map((player) => player.id),
         recurrence,
       )
 
       setEventValues({ title: '', type: 'training', dateTime: '', location: '', recurring: false, recurrencePattern: 'weekly', recurrenceWeeks: 6 })
+      setEventLocationMeta({})
       const sessionLabel = recurrence ? `${recurrence.weeks} training sessions` : 'event'
       setSuccessMessage(`${sessionLabel.charAt(0).toUpperCase() + sessionLabel.slice(1)} created. Players have been given a pending attendance record.`)
       setActiveTab('schedule')
@@ -220,9 +231,13 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
         type: editValues.type,
         dateTime: new Date(editValues.dateTime).toISOString(),
         location: editValues.location.trim(),
+        placeId: editLocationMeta.placeId,
+        lat: editLocationMeta.lat,
+        lng: editLocationMeta.lng,
       })
       setSuccessMessage('Event updated.')
       setEditingEventId(null)
+      setEditLocationMeta({})
     } catch {
       // Hook exposes a user-facing error.
     }
@@ -309,7 +324,8 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
           ) : null}
 
           <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
-            <article className="rounded-[1.75rem] border border-white/70 bg-white/85 p-5 shadow-lg shadow-slate-900/5 backdrop-blur-sm">
+            {/* On mobile: event list is hidden when an event is selected (replaced by attendance panel) */}
+            <article className={`rounded-[1.75rem] border border-white/70 bg-white/85 p-5 shadow-lg shadow-slate-900/5 backdrop-blur-sm ${activeEventId ? 'hidden xl:block' : ''}`}>
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <h2 className="text-xl font-semibold text-slate-950">
@@ -319,7 +335,22 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                     <p className="mt-1 text-sm text-slate-500">{selectedTeam.ageGroup} · {selectedTeam.playerCount} players</p>
                   ) : null}
                 </div>
-                <p className="text-sm text-slate-500">{loadingEvents ? 'Loading...' : `${events.length} events`}</p>
+                <div className="flex items-center gap-3">
+                  <p className="text-sm text-slate-500">{loadingEvents ? 'Loading...' : `${events.length} events`}</p>
+                  {(activeTeamId || isSingleTeamCoach) ? (
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('create')}
+                      title="Create event"
+                      className="flex h-8 w-8 items-center justify-center rounded-full bg-[#123524] text-white shadow-sm transition hover:bg-[#1a4a33] active:scale-95"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                      </svg>
+                    </button>
+                  ) : null}
+                </div>
               </div>
 
               <div className="mt-4 space-y-3">
@@ -339,13 +370,13 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                         onClick={() => setSelectedEventId(clubEvent.id)}
                         type="button"
                       >
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-2">
-                            <p className="font-semibold">{clubEvent.title}</p>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex min-w-0 items-center gap-1.5">
+                            <p className="truncate font-semibold">{clubEvent.title}</p>
                             {clubEvent.recurrenceGroupId ? <RecurringBadge /> : null}
                           </div>
                           <span
-                            className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] ${
+                            className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ${
                               activeEventId === clubEvent.id ? 'bg-white/15 text-white' : 'bg-white text-slate-600'
                             }`}
                           >
@@ -360,8 +391,8 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                         </p>
                       </button>
 
-                      {/* Actions — separate row, not nested inside the selection button */}
-                      <div className={`mt-2 flex items-center justify-between border-t pt-2 ${activeEventId === clubEvent.id ? 'border-white/20' : 'border-slate-200'}`}>
+                      {/* Actions */}
+                      <div className={`mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 border-t pt-2 ${activeEventId === clubEvent.id ? 'border-white/20' : 'border-slate-200'}`}>
                         <button
                           className={`text-xs font-semibold transition ${activeEventId === clubEvent.id ? 'text-white/70 hover:text-white' : 'text-slate-500 hover:text-[#123524]'}`}
                           onClick={() => startEditingEvent(clubEvent.id)}
@@ -369,20 +400,18 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                         >
                           Edit
                         </button>
-                        <div className="flex items-center gap-4">
                         {clubEvent.recurrenceGroupId ? (
                           <ConfirmInline
-                            confirmLabel="Yes, cancel remaining"
-                            label="Cancel series from here"
+                            confirmLabel="Yes, cancel"
+                            label="Cancel series"
                             onConfirm={() => { void handleDeleteSeries(clubEvent.recurrenceGroupId!, clubEvent.dateTime, clubEvent.id) }}
                           />
                         ) : null}
                         <ConfirmInline
                           confirmLabel="Yes, delete"
-                          label="Delete event"
+                          label="Delete"
                           onConfirm={() => { void handleDeleteEvent(clubEvent.id) }}
                         />
-                        </div>
                       </div>
                     </div>
                   ))
@@ -406,6 +435,20 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
             </article>
 
             <article className="rounded-[1.75rem] border border-white/70 bg-white/85 p-5 shadow-lg shadow-slate-900/5 backdrop-blur-sm">
+              {/* Mobile back button — shown only when an event is selected */}
+              {activeEventId && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedEventId('')}
+                  className="mb-4 flex items-center gap-1.5 text-sm font-semibold text-[#123524] xl:hidden"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="15 18 9 12 15 6" />
+                  </svg>
+                  Back to events
+                </button>
+              )}
+
               {editingEventId ? (
                 <>
                   <div className="flex items-center justify-between gap-3">
@@ -439,11 +482,17 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                       type="datetime-local"
                       value={editValues.dateTime}
                     />
-                    <TextField
-                      label="Location"
-                      onChange={(e) => setEditValues((c) => ({ ...c, location: e.target.value }))}
-                      value={editValues.location}
-                    />
+                    <div className="space-y-1">
+                      <label className="block text-sm font-medium text-slate-700">Location</label>
+                      <LocationPicker
+                        value={editValues.location}
+                        onChange={({ address, placeId, lat, lng }) => {
+                          setEditValues((c) => ({ ...c, location: address }))
+                          setEditLocationMeta({ placeId: placeId ?? undefined, lat: lat ?? undefined, lng: lng ?? undefined })
+                        }}
+                        placeholder="Search pitch, ground, or address…"
+                      />
+                    </div>
                     <Button className="w-full" loading={isSubmitting} type="submit">
                       Save changes
                     </Button>
@@ -455,6 +504,13 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
               <p className="mt-1 text-sm text-slate-500">
                 {activeEventId ? 'Responses for the selected event.' : 'Select an event to view attendance.'}
               </p>
+
+              {/* Location map for active event */}
+              {activeEvent?.location && (
+                <div className="mt-3">
+                  <LocationMapCard location={activeEvent.location} placeId={activeEvent.placeId} lat={activeEvent.lat} lng={activeEvent.lng} />
+                </div>
+              )}
 
               {activeEventId ? (
                 <>
@@ -500,7 +556,30 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                     </div>
                   )}
 
-                  <div className="mt-4 space-y-2">
+                  {attendance.length > 0 && !loadingAttendance && (
+                    <div className="mt-3 flex gap-2">
+                      <button
+                        type="button"
+                        className="rounded-xl bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 transition hover:bg-emerald-100 active:scale-95"
+                        onClick={() => {
+                          attendance.forEach((a) => { if (a.status !== 'yes') void updateAttendance(a.id, 'yes') })
+                        }}
+                      >
+                        ✓ Mark all present
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-xl bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:bg-slate-200 active:scale-95"
+                        onClick={() => {
+                          attendance.forEach((a) => { if (a.status !== 'pending') void updateAttendance(a.id, 'pending') })
+                        }}
+                      >
+                        Reset all
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="mt-3 space-y-2">
                     {loadingAttendance ? (
                       <p className="text-sm text-slate-500">Loading responses...</p>
                     ) : attendance.length > 0 ? (
@@ -514,17 +593,32 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                                 <p className="text-sm text-slate-500">{formatDate(player.dob)}</p>
                               ) : null}
                             </div>
-                            <span
-                              className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] ${
-                                entry.status === 'yes'
-                                  ? 'bg-emerald-100 text-emerald-700'
-                                  : entry.status === 'no'
-                                    ? 'bg-rose-100 text-rose-700'
-                                    : 'bg-amber-100 text-amber-700'
-                              }`}
-                            >
-                              {entry.status === 'yes' ? 'Going' : entry.status === 'no' ? 'Not going' : 'Pending'}
-                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                title="Present"
+                                onClick={() => void updateAttendance(entry.id, entry.status === 'yes' ? 'pending' : 'yes')}
+                                className={`flex h-9 w-9 items-center justify-center rounded-xl text-base transition active:scale-95 ${
+                                  entry.status === 'yes'
+                                    ? 'bg-emerald-500 text-white shadow-sm'
+                                    : 'bg-slate-200 text-slate-400 hover:bg-emerald-100 hover:text-emerald-600'
+                                }`}
+                              >
+                                ✓
+                              </button>
+                              <button
+                                type="button"
+                                title="Absent"
+                                onClick={() => void updateAttendance(entry.id, entry.status === 'no' ? 'pending' : 'no')}
+                                className={`flex h-9 w-9 items-center justify-center rounded-xl text-base transition active:scale-95 ${
+                                  entry.status === 'no'
+                                    ? 'bg-rose-500 text-white shadow-sm'
+                                    : 'bg-slate-200 text-slate-400 hover:bg-rose-100 hover:text-rose-500'
+                                }`}
+                              >
+                                ✕
+                              </button>
+                            </div>
                           </div>
                         )
                       })
@@ -763,12 +857,17 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
               type="datetime-local"
               value={eventValues.dateTime}
             />
-            <TextField
-              label="Location"
-              onChange={(event) => setEventValues((current) => ({ ...current, location: event.target.value }))}
-              placeholder="Main pitch"
-              value={eventValues.location}
-            />
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-slate-700">Location</label>
+              <LocationPicker
+                value={eventValues.location}
+                onChange={({ address, placeId, lat, lng }) => {
+                  setEventValues((c) => ({ ...c, location: address }))
+                  setEventLocationMeta({ placeId: placeId ?? undefined, lat: lat ?? undefined, lng: lng ?? undefined })
+                }}
+                placeholder="Search pitch, ground, or address…"
+              />
+            </div>
 
             {/* Recurring toggle — training only */}
             {eventValues.type === 'training' ? (
@@ -1072,6 +1171,10 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
       ) : null}
 
       {/* MESSAGES TAB */}
+      {activeTab === 'feed' ? (
+        <PostFeed profile={profile} teamIds={teams.map((t) => t.id)} />
+      ) : null}
+
       {activeTab === 'messages' ? (
         <Suspense fallback={<SectionFallback />}>
           <TeamMessagesPanel profile={profile} />

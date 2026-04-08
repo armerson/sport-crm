@@ -12,12 +12,14 @@ export function requireSupabase() {
 
 export function normalizeRoles(value: unknown): UserRole[] {
   if (Array.isArray(value)) {
-    const valid = value.filter((r): r is UserRole => r === 'admin' || r === 'coach' || r === 'parent')
+    const valid = value.filter((r): r is UserRole =>
+      r === 'admin' || r === 'coach' || r === 'parent' || r === 'player',
+    )
     return valid.length > 0 ? valid : ['parent']
   }
 
   // Backward-compat: handle a bare string from older rows
-  if (value === 'admin' || value === 'coach') return [value]
+  if (value === 'admin' || value === 'coach' || value === 'player') return [value]
   return ['parent']
 }
 
@@ -44,6 +46,7 @@ export function mapProfileRow(row: Record<string, unknown>, relations?: { teams?
     roles: normalizeRoles(row.roles),
     teams: relations?.teams ?? [],
     children: relations?.children ?? [],
+    linkedPlayerId: typeof row.linked_player_id === 'string' ? row.linked_player_id : null,
   }
 }
 
@@ -55,6 +58,7 @@ export function mapTeamRow(row: Record<string, unknown>): TeamRecord {
     id: typeof row.id === 'string' ? row.id : '',
     name: typeof row.name === 'string' ? row.name : 'Untitled team',
     ageGroup: typeof row.age_group === 'string' ? row.age_group : 'Unknown',
+    isSenior: row.is_senior === true,
     coaches,
     players,
     playerCount: players.length,
@@ -66,10 +70,15 @@ export function mapPlayerRow(row: Record<string, unknown>): PlayerRecord {
   const parentIds = normalizeRelationIds<string>(row.player_parents, 'parent_id')
   const teams = normalizeRelationIds<string>(row.player_teams, 'team_id')
 
+  const st = row.status
+  const status: import('../types/club.ts').PlayerStatus =
+    st === 'pending' ? 'pending' : 'active'
+
   return {
     id: typeof row.id === 'string' ? row.id : '',
     name: typeof row.name === 'string' ? row.name : 'Unnamed player',
     dob: typeof row.dob === 'string' ? row.dob : '',
+    status,
     parentIds,
     teams,
     position: typeof row.position === 'string' ? row.position : null,
@@ -91,6 +100,9 @@ export function mapEventRow(row: Record<string, unknown>): EventRecord {
     type: row.type === 'match' ? 'match' : 'training',
     dateTime: typeof row.date_time === 'string' ? row.date_time : '',
     location: typeof row.location === 'string' ? row.location : '',
+    placeId: typeof row.place_id === 'string' ? row.place_id : null,
+    lat: typeof row.lat === 'number' ? row.lat : null,
+    lng: typeof row.lng === 'number' ? row.lng : null,
     recurrenceGroupId: typeof row.recurrence_group_id === 'string' ? row.recurrence_group_id : null,
   }
 }

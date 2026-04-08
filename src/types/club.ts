@@ -2,6 +2,8 @@ export interface TeamRecord {
   id: string
   name: string
   ageGroup: string
+  /** Senior/adult team — players self-register */
+  isSenior: boolean
   coaches: string[]
   players: string[]
   playerCount: number
@@ -36,10 +38,13 @@ export interface EmergencyContact {
 
 export type DominantFoot = 'left' | 'right' | 'both'
 
+export type PlayerStatus = 'pending' | 'active'
+
 export interface PlayerRecord {
   id: string
   name: string
   dob: string
+  status: PlayerStatus
   parentIds: string[]
   teams: string[]
   // Profile fields (nullable — may not be filled in yet)
@@ -73,6 +78,7 @@ export interface EmergencyContactInput {
 export interface TeamFormInput {
   name: string
   ageGroup: string
+  isSenior?: boolean
 }
 
 export interface PlayerFormInput {
@@ -99,6 +105,9 @@ export interface EventRecord {
   type: EventType
   dateTime: string
   location: string
+  placeId: string | null
+  lat: number | null
+  lng: number | null
   recurrenceGroupId: string | null
 }
 
@@ -115,6 +124,9 @@ export interface EventFormInput {
   type: EventType
   dateTime: string
   location: string
+  placeId?: string
+  lat?: number
+  lng?: number
 }
 
 // Groups (hierarchical club sections, e.g. Academy → Boys / Girls)

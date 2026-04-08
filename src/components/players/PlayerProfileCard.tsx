@@ -25,27 +25,28 @@ import type {
   PlayerRecord,
 } from '../../types/club.ts'
 
-export type ProfileViewerRole = 'admin' | 'coach' | 'parent'
+export type ProfileViewerRole = 'admin' | 'coach' | 'parent' | 'player'
 
 interface Permissions {
-  canEditSportsProfile: boolean   // position, bio, jersey, photo — admin only
-  canEditContacts: boolean        // emergency contacts — admin + parent
-  canUploadDocuments: boolean     // birth cert / passport — admin + parent
+  canEditSportsProfile: boolean   // position, bio, jersey, photo — admin + self (player)
+  canEditContacts: boolean        // emergency contacts — admin + parent + self (player)
+  canUploadDocuments: boolean     // birth cert / passport — admin + parent + self (player)
   canVerifyDocuments: boolean     // mark as verified — admin only
   canDeleteDocuments: boolean     // admin only
   canViewMedicalNotes: boolean    // all roles that have access to this player
-  canViewDocuments: boolean       // admin + coach + parent (own child enforced by RLS)
+  canViewDocuments: boolean       // all roles — RLS enforces the actual row-level gate
 }
 
 function permissionsFor(role: ProfileViewerRole): Permissions {
+  const isSelf = role === 'player'
   return {
-    canEditSportsProfile:  role === 'admin',
-    canEditContacts:       role === 'admin' || role === 'parent',
-    canUploadDocuments:    role === 'admin' || role === 'parent',
+    canEditSportsProfile:  role === 'admin' || isSelf,
+    canEditContacts:       role === 'admin' || role === 'parent' || isSelf,
+    canUploadDocuments:    role === 'admin' || role === 'parent' || isSelf,
     canVerifyDocuments:    role === 'admin',
     canDeleteDocuments:    role === 'admin',
-    canViewMedicalNotes:   true,   // all roles with access to the card can see medical notes
-    canViewDocuments:      true,   // all roles — RLS enforces the actual row-level gate
+    canViewMedicalNotes:   true,
+    canViewDocuments:      true,
   }
 }
 

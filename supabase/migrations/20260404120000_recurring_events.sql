@@ -1,20 +1,18 @@
 -- Recurring events support.
 -- Adds a recurrence_group_id to events so sessions in the same series share an ID.
--- Null means a one-off event.
+-- Null means a one-off event. Idempotent for re-runs.
 
-ALTER TABLE public.events
-  ADD COLUMN recurrence_group_id uuid;
+alter table public.events
+  add column if not exists recurrence_group_id uuid;
 
--- Index so coaches can quickly query or cancel all sessions in a series.
-CREATE INDEX events_recurrence_group_idx ON public.events (recurrence_group_id)
-  WHERE recurrence_group_id IS NOT NULL;
+create index if not exists events_recurrence_group_idx on public.events (recurrence_group_id)
+  where recurrence_group_id is not null;
 
--- Coaches (and admins) can now delete events they manage.
--- Attendance rows cascade-delete automatically via the existing FK.
-CREATE POLICY "events coaches or admin delete" ON public.events
-  FOR DELETE USING (public.is_admin() OR public.is_coach_for_team(team_id));
+drop policy if exists "events coaches or admin delete" on public.events;
+create policy "events coaches or admin delete" on public.events
+  for delete using (public.is_admin() or public.is_coach_for_team(team_id));
 
--- Coaches can also update events (e.g. reschedule).
-CREATE POLICY "events coaches or admin update" ON public.events
-  FOR UPDATE USING (public.is_admin() OR public.is_coach_for_team(team_id))
-  WITH CHECK (public.is_admin() OR public.is_coach_for_team(team_id));
+drop policy if exists "events coaches or admin update" on public.events;
+create policy "events coaches or admin update" on public.events
+  for update using (public.is_admin() or public.is_coach_for_team(team_id))
+  with check (public.is_admin() or public.is_coach_for_team(team_id));

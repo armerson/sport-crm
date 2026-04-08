@@ -1,13 +1,8 @@
-import { Suspense, lazy, useMemo, useState } from 'react'
-import { AdminBillingPanel } from './AdminBillingPanel.tsx'
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
 import type { BillingTab } from './AdminBillingPanel.tsx'
-import { PlayerProfileCard } from '../players/PlayerProfileCard.tsx'
 import { Button } from '../ui/Button.tsx'
-import { BulkImportPanel } from './BulkImportPanel.tsx'
 import { AdminDashboardStats } from './AdminDashboardStats.tsx'
-import { ClubTreeView } from './ClubTreeView.tsx'
 import { ConfirmInline } from '../ui/ConfirmInline.tsx'
-import { GroupsManageSection } from './GroupsManageSection.tsx'
 import { SelectField } from '../ui/SelectField.tsx'
 import { SuccessMessage } from '../ui/SuccessMessage.tsx'
 import { TabNav } from '../ui/TabNav.tsx'
@@ -19,17 +14,55 @@ import { useAuth } from '../../hooks/useAuth.ts'
 import { formatDate, formatDateTime } from '../../utils/date.ts'
 import type { ProvisionableRole } from '../../services/provisioning.ts'
 
+// Heavy tab panels — only loaded when their tab is first opened
 const TeamMessagesPanel = lazy(async () => {
   const module = await import('../messages/TeamMessagesPanel.tsx')
   return { default: module.TeamMessagesPanel }
 })
 
-export type AdminTab = 'overview' | 'manage' | 'activity' | 'messages' | 'billing'
+const AdminBillingPanel = lazy(async () => {
+  const module = await import('./AdminBillingPanel.tsx')
+  return { default: module.AdminBillingPanel }
+})
+
+const PostsManageSection = lazy(async () => {
+  const module = await import('./PostsManageSection.tsx')
+  return { default: module.PostsManageSection }
+})
+
+const FormsManageSection = lazy(async () => {
+  const module = await import('./FormsManageSection.tsx')
+  return { default: module.FormsManageSection }
+})
+
+const PlayerProfileCard = lazy(async () => {
+  const module = await import('../players/PlayerProfileCard.tsx')
+  return { default: module.PlayerProfileCard }
+})
+
+const BulkImportPanel = lazy(async () => {
+  const module = await import('./BulkImportPanel.tsx')
+  return { default: module.BulkImportPanel }
+})
+
+const ClubTreeView = lazy(async () => {
+  const module = await import('./ClubTreeView.tsx')
+  return { default: module.ClubTreeView }
+})
+
+const GroupsManageSection = lazy(async () => {
+  const module = await import('./GroupsManageSection.tsx')
+  return { default: module.GroupsManageSection }
+})
+
+export type AdminTab = 'overview' | 'manage' | 'activity' | 'messages' | 'billing' | 'forms' | 'posts'
 type ManageSection = 'import' | 'team' | 'player' | 'coach' | 'parent' | 'staff' | 'groups'
 
 const ADMIN_TABS = [
   { label: 'Overview', value: 'overview' as AdminTab },
   { label: 'Manage', value: 'manage' as AdminTab },
+  { label: 'Posts', value: 'posts' as AdminTab },
+  { label: 'Forms', value: 'forms' as AdminTab },
   { label: 'Billing', value: 'billing' as AdminTab },
   { label: 'Activity', value: 'activity' as AdminTab },
   { label: 'Messages', value: 'messages' as AdminTab },
@@ -64,15 +97,27 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
   const [viewingPlayerId, setViewingPlayerId] = useState<string | null>(null)
   const { profile } = useAuth()
   const {
-    addPlayer, assignCoach, coaches, createGroup, createTeam, deleteGroup, error, events,
-    groups, isConfigured, isSubmitting, loading, linkParent, movePlayer, parents, provisionUser,
-    removePlayer, teams, unlinkParent, updateGroup,
+    addPlayer, approvePendingPlayer, assignCoach, coaches, createGroup, createTeam, deleteGroup, deleteTeam,
+    error, events, groups, isConfigured, isSubmitting, loading, linkParent, movePlayer, parents,
+    pendingRegistrations, provisionUser, rejectPendingRegistration, removePlayer, teams, triggerLoadContacts,
+    unlinkParent, updateGroup, updateTeam,
   } = useAdminClubData()
+
+  // Trigger contacts load the first time the Manage tab is opened (stable ref avoids re-running)
+  const contactsTriggered = useRef(false)
+  useEffect(() => {
+    if ((activeTab === 'manage') && !contactsTriggered.current) {
+      contactsTriggered.current = true
+      triggerLoadContacts()
+    }
+  }, [activeTab, triggerLoadContacts])
+
   const { logs: auditLogs, loading: loadingAuditLogs, error: auditLogError } = useAuditLogs()
   const [manageSection, setManageSection] = useState<ManageSection>('import')
   const [showAllPlayers, setShowAllPlayers] = useState(false)
 
-  const [teamValues, setTeamValues] = useState({ name: '', ageGroup: '' })
+  const [teamValues, setTeamValues] = useState({ name: '', ageGroup: '', isSenior: false })
+  const [pendingTeamPick, setPendingTeamPick] = useState<Record<string, string>>({})
   const [playerValues, setPlayerValues] = useState({ name: '', dob: '', teamId: '' })
   const [assignmentValues, setAssignmentValues] = useState({ teamId: '', coachId: '' })
   const [linkValues, setLinkValues] = useState({ teamId: '', playerId: '', parentId: '' })
@@ -85,8 +130,18 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
   const [moveDestination, setMoveDestination] = useState('')
   const [localError, setLocalError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [editingTeamId, setEditingTeamId] = useState<string | null>(null)
+  const [editTeamValues, setEditTeamValues] = useState({ name: '', ageGroup: '', isSenior: false })
 
   const isSingleTeamClub = teams.length === 1
+
+  // Needs-attention items
+  const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0)
+  const todayEnd = new Date(); todayEnd.setHours(23, 59, 59, 999)
+  const eventsToday = events.filter((e) => {
+    const d = new Date(e.dateTime)
+    return d >= todayStart && d <= todayEnd
+  })
   const resolvedPlayerTeamId = isSingleTeamClub ? (teams[0]?.id ?? '') : playerValues.teamId
   const resolvedAssignmentTeamId = isSingleTeamClub ? (teams[0]?.id ?? '') : assignmentValues.teamId
   const resolvedLinkTeamId = isSingleTeamClub ? (teams[0]?.id ?? '') : linkValues.teamId
@@ -122,9 +177,34 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
       return
     }
     try {
-      await createTeam({ name: teamValues.name.trim(), ageGroup: teamValues.ageGroup.trim() })
-      setTeamValues({ name: '', ageGroup: '' })
+      await createTeam({
+        name: teamValues.name.trim(),
+        ageGroup: teamValues.ageGroup.trim(),
+        isSenior: teamValues.isSenior,
+      })
+      setTeamValues({ name: '', ageGroup: '', isSenior: false })
       showSuccess('Team saved successfully.')
+    } catch {
+      // Hook exposes a user-facing error.
+    }
+  }
+
+  async function handleTeamEditSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!editingTeamId) return
+    setLocalError(null)
+    if (!editTeamValues.name.trim() || !editTeamValues.ageGroup.trim()) {
+      setLocalError('Team name and age group are required.')
+      return
+    }
+    try {
+      await updateTeam(editingTeamId, {
+        name: editTeamValues.name.trim(),
+        ageGroup: editTeamValues.ageGroup.trim(),
+        isSenior: editTeamValues.isSenior,
+      })
+      setEditingTeamId(null)
+      showSuccess('Team updated.')
     } catch {
       // Hook exposes a user-facing error.
     }
@@ -251,7 +331,139 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
             </div>
           </div>
 
+          {/* ── Needs attention ── */}
+          {(pendingRegistrations.length > 0 || eventsToday.length > 0) && (
+            <div className="space-y-2">
+              <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Needs attention</p>
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {pendingRegistrations.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('manage')}
+                    className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-left transition hover:bg-amber-100 active:scale-[0.98]"
+                  >
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-400 text-base font-bold text-white">
+                      {pendingRegistrations.length}
+                    </span>
+                    <div>
+                      <p className="text-sm font-bold text-amber-900">Pending registrations</p>
+                      <p className="text-xs text-amber-700">Tap to assign to teams →</p>
+                    </div>
+                  </button>
+                )}
+                {eventsToday.map((event) => (
+                  <div
+                    key={event.id}
+                    className="flex items-center gap-3 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3"
+                  >
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-500 text-white">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round">
+                        <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+                      </svg>
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold text-blue-900">Today: {event.title}</p>
+                      <p className="text-xs text-blue-700">
+                        {new Date(event.dateTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                        {event.location ? ` · ${event.location}` : ''}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <AdminDashboardStats teams={teams} events={events} coaches={coaches} parents={parents} />
+
+          {pendingRegistrations.length > 0 ? (
+            <article className="rounded-[1.75rem] border border-amber-200 bg-amber-50/80 p-5 shadow-lg shadow-slate-900/5">
+              <div className="flex items-center gap-2">
+                <h3 className="text-lg font-semibold text-slate-900">Pending registrations</h3>
+                <span className="rounded-full bg-amber-600 px-2 py-0.5 text-xs font-bold text-white">
+                  {pendingRegistrations.length}
+                </span>
+              </div>
+              <p className="mt-1 text-sm text-slate-600">
+                Parents and senior players who signed up online. Assign each to a team to activate their account.
+              </p>
+              <div className="mt-4 space-y-3">
+                {pendingRegistrations.map((reg) => {
+                  const isSeniorReg = reg.parentIds.length === 0
+                  const teamOptions = teams.filter((t) => (isSeniorReg ? t.isSenior : true))
+                  return (
+                    <div key={reg.playerId} className="rounded-2xl border border-amber-200/80 bg-white px-4 py-3">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="font-semibold text-slate-900">{reg.name}</p>
+                          <p className="text-xs text-slate-500">
+                            {reg.dob ? formatDate(reg.dob) : 'DOB not set'} · {isSeniorReg ? 'Senior (self)' : 'Junior'}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-600">{reg.registeredByLabel}</p>
+                        </div>
+                        <div className="flex flex-wrap items-end gap-2">
+                          <div className="min-w-[10rem]">
+                            <SelectField
+                              label="Assign to team"
+                              onChange={(event) => {
+                                setPendingTeamPick((p) => ({ ...p, [reg.playerId]: event.target.value }))
+                              }}
+                              options={[
+                                { label: 'Choose team', value: '' },
+                                ...teamOptions.map((team) => ({
+                                  label: `${team.name} (${team.ageGroup})${team.isSenior ? ' · Senior' : ''}`,
+                                  value: team.id,
+                                })),
+                              ]}
+                              value={pendingTeamPick[reg.playerId] ?? ''}
+                            />
+                          </div>
+                          <Button
+                            disabled={!pendingTeamPick[reg.playerId]}
+                            loading={isSubmitting}
+                            onClick={() => {
+                              const tid = pendingTeamPick[reg.playerId]
+                              if (!tid) return
+                              void (async () => {
+                                try {
+                                  await approvePendingPlayer(reg.playerId, tid)
+                                  setPendingTeamPick((p) => {
+                                    const next = { ...p }
+                                    delete next[reg.playerId]
+                                    return next
+                                  })
+                                  showSuccess(`${reg.name} approved onto squad.`)
+                                } catch { /* hook error */ }
+                              })()
+                            }}
+                            type="button"
+                            variant="primary"
+                          >
+                            Approve
+                          </Button>
+                          <ConfirmInline
+                            confirmLabel="Yes, reject"
+                            label="Reject"
+                            onConfirm={() => void (async () => {
+                              try {
+                                await rejectPendingRegistration(reg.playerId)
+                                showSuccess(`Rejected ${reg.name}.`)
+                              } catch { /* hook error */ }
+                            })()}
+                          />
+                        </div>
+                      </div>
+                  {isSeniorReg && teamOptions.length === 0 ? (
+                    <p className="mt-2 text-xs text-rose-600">
+                      Create a senior team (Manage → Create team → check &quot;Senior team&quot;) before approving.
+                    </p>
+                  ) : null}
+                    </div>
+                  )
+                })}
+              </div>
+            </article>
+          ) : null}
 
           {teams.length === 0 ? (
             <div className="rounded-[2rem] border border-dashed border-slate-300 px-4 py-12 text-center">
@@ -404,30 +616,89 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
               <div className="space-y-4">
                 {teamCards.map((team) => (
                   <article key={team.id} className="rounded-[1.75rem] border border-white/70 bg-white/85 p-5 shadow-lg shadow-slate-900/5 backdrop-blur-sm">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <h3 className="text-xl font-semibold text-slate-950">{team.name}</h3>
-                        <p className="text-sm text-slate-500">{team.ageGroup}</p>
-                      </div>
-                      <div className="flex gap-2 text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">
-                        <span className="rounded-full bg-slate-100 px-3 py-1">{team.playerCount} players</span>
-                        <span className="rounded-full bg-slate-100 px-3 py-1">{team.coachCount} coaches</span>
-                      </div>
-                    </div>
-                    <div className="mt-4">
-                      <p className="text-sm font-medium text-slate-500">Coaches</p>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {team.coaches.length > 0 ? (
-                          team.coaches.map((coachId) => (
-                            <span key={coachId} className="rounded-full bg-[#123524] px-3 py-1 text-xs font-semibold text-white">
-                              {getCoachName(coachId)}
-                            </span>
-                          ))
-                        ) : (
-                          <span className="text-sm text-slate-400">No coaches assigned</span>
-                        )}
-                      </div>
-                    </div>
+                    {editingTeamId === team.id ? (
+                      <form onSubmit={handleTeamEditSubmit} className="space-y-3">
+                        <p className="text-sm font-semibold text-slate-700">Edit team</p>
+                        <TextField
+                          label="Team name"
+                          onChange={(e) => setEditTeamValues((v) => ({ ...v, name: e.target.value }))}
+                          value={editTeamValues.name}
+                        />
+                        <TextField
+                          label="Age group"
+                          onChange={(e) => setEditTeamValues((v) => ({ ...v, ageGroup: e.target.value }))}
+                          value={editTeamValues.ageGroup}
+                        />
+                        <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+                          <input
+                            checked={editTeamValues.isSenior}
+                            className="rounded border-slate-300"
+                            onChange={(e) => setEditTeamValues((v) => ({ ...v, isSenior: e.target.checked }))}
+                            type="checkbox"
+                          />
+                          Senior team (18+)
+                        </label>
+                        <div className="flex gap-2">
+                          <Button loading={isSubmitting} type="submit" variant="primary">Save</Button>
+                          <button
+                            className="text-sm font-medium text-slate-400 hover:text-slate-600"
+                            onClick={() => setEditingTeamId(null)}
+                            type="button"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </form>
+                    ) : (
+                      <>
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <h3 className="text-xl font-semibold text-slate-950">{team.name}</h3>
+                            <p className="text-sm text-slate-500">{team.ageGroup}{team.isSenior ? ' · Senior' : ''}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="flex gap-2 text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">
+                              <span className="rounded-full bg-slate-100 px-3 py-1">{team.playerCount} players</span>
+                              <span className="rounded-full bg-slate-100 px-3 py-1">{team.coachCount} coaches</span>
+                            </div>
+                            <button
+                              className="rounded-xl border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                              onClick={() => {
+                                setEditTeamValues({ name: team.name, ageGroup: team.ageGroup, isSenior: team.isSenior })
+                                setEditingTeamId(team.id)
+                              }}
+                              type="button"
+                            >
+                              Edit
+                            </button>
+                            <ConfirmInline
+                              confirmLabel="Yes, delete"
+                              label="Delete"
+                              onConfirm={() => void (async () => {
+                                try {
+                                  await deleteTeam(team.id)
+                                  showSuccess(`${team.name} deleted.`)
+                                } catch { /* hook exposes error */ }
+                              })()}
+                            />
+                          </div>
+                        </div>
+                        <div className="mt-4">
+                          <p className="text-sm font-medium text-slate-500">Coaches</p>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {team.coaches.length > 0 ? (
+                              team.coaches.map((coachId) => (
+                                <span key={coachId} className="rounded-full bg-[#123524] px-3 py-1 text-xs font-semibold text-white">
+                                  {getCoachName(coachId)}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-sm text-slate-400">No coaches assigned</span>
+                            )}
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </article>
                 ))}
               </div>
@@ -436,7 +707,9 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
 
           {/* Club structure tree */}
           {(groups.length > 0 || teams.length > 0) ? (
-            <ClubTreeView groups={groups} teams={teams} />
+            <Suspense fallback={<SectionFallback />}>
+              <ClubTreeView groups={groups} teams={teams} />
+            </Suspense>
           ) : null}
 
           {/* Upcoming events across all teams */}
@@ -533,33 +806,37 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
 
           <article className="rounded-[1.75rem] border border-white/70 bg-white/85 p-6 shadow-lg shadow-slate-900/5 backdrop-blur-sm">
             {manageSection === 'import' ? (
-              <BulkImportPanel />
+              <Suspense fallback={<SectionFallback />}>
+                <BulkImportPanel />
+              </Suspense>
             ) : null}
 
             {manageSection === 'groups' ? (
-              <GroupsManageSection
-                groups={groups}
-                teams={teams}
-                isSubmitting={isSubmitting}
-                onCreate={async (input, teamIds) => {
-                  try {
-                    await createGroup(input, teamIds)
-                    showSuccess('Group created.')
-                  } catch { /* hook exposes error */ }
-                }}
-                onUpdate={async (id, input, teamIds) => {
-                  try {
-                    await updateGroup(id, input, teamIds)
-                    showSuccess('Group updated.')
-                  } catch { /* hook exposes error */ }
-                }}
-                onDelete={async (id) => {
-                  try {
-                    await deleteGroup(id)
-                    showSuccess('Group deleted.')
-                  } catch { /* hook exposes error */ }
-                }}
-              />
+              <Suspense fallback={<SectionFallback />}>
+                <GroupsManageSection
+                  groups={groups}
+                  teams={teams}
+                  isSubmitting={isSubmitting}
+                  onCreate={async (input, teamIds) => {
+                    try {
+                      await createGroup(input, teamIds)
+                      showSuccess('Group created.')
+                    } catch { /* hook exposes error */ }
+                  }}
+                  onUpdate={async (id, input, teamIds) => {
+                    try {
+                      await updateGroup(id, input, teamIds)
+                      showSuccess('Group updated.')
+                    } catch { /* hook exposes error */ }
+                  }}
+                  onDelete={async (id) => {
+                    try {
+                      await deleteGroup(id)
+                      showSuccess('Group deleted.')
+                    } catch { /* hook exposes error */ }
+                  }}
+                />
+              </Suspense>
             ) : null}
 
             {manageSection === 'team' ? (
@@ -576,9 +853,18 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
                   <TextField
                     label="Age group"
                     onChange={(event) => setTeamValues((current) => ({ ...current, ageGroup: event.target.value }))}
-                    placeholder="U12"
+                    placeholder="U12 or Senior"
                     value={teamValues.ageGroup}
                   />
+                  <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+                    <input
+                      checked={teamValues.isSenior}
+                      className="rounded border-slate-300"
+                      onChange={(e) => setTeamValues((c) => ({ ...c, isSenior: e.target.checked }))}
+                      type="checkbox"
+                    />
+                    Senior team (18+) — players can register themselves
+                  </label>
                   <Button className="w-full" loading={isSubmitting} type="submit">
                     Save team
                   </Button>
@@ -820,10 +1106,26 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
 
       {/* BILLING TAB */}
       {activeTab === 'billing' ? (
-        <AdminBillingPanel
-          activeTab={billingTab}
-          onTabChange={setBillingTab}
-        />
+        <Suspense fallback={<SectionFallback />}>
+          <AdminBillingPanel
+            activeTab={billingTab}
+            onTabChange={setBillingTab}
+          />
+        </Suspense>
+      ) : null}
+
+      {/* POSTS TAB */}
+      {activeTab === 'posts' && profile ? (
+        <Suspense fallback={<SectionFallback />}>
+          <PostsManageSection profile={profile} teams={teams} />
+        </Suspense>
+      ) : null}
+
+      {/* FORMS TAB */}
+      {activeTab === 'forms' && profile ? (
+        <Suspense fallback={<SectionFallback />}>
+          <FormsManageSection profile={profile} teams={teams} />
+        </Suspense>
       ) : null}
 
       {/* MESSAGES TAB */}
@@ -858,11 +1160,13 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
               </button>
             </div>
             <div className="overflow-y-auto p-6">
-              <PlayerProfileCard
-                playerId={viewingPlayerId}
-                role="admin"
-                currentUserId={profile.id}
-              />
+              <Suspense fallback={<SectionFallback />}>
+                <PlayerProfileCard
+                  playerId={viewingPlayerId}
+                  role="admin"
+                  currentUserId={profile.id}
+                />
+              </Suspense>
             </div>
           </div>
         </div>

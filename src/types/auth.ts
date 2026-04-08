@@ -1,6 +1,6 @@
 import type { User } from '@supabase/supabase-js'
 
-export type UserRole = 'admin' | 'coach' | 'parent'
+export type UserRole = 'admin' | 'coach' | 'parent' | 'player'
 
 export interface UserProfile {
   id: string
@@ -9,6 +9,8 @@ export interface UserProfile {
   roles: UserRole[]
   teams: string[]
   children: string[]
+  /** Senior self-registered player: their own `players.id` */
+  linkedPlayerId: string | null
 }
 
 export interface SignInInput {
@@ -16,9 +18,18 @@ export interface SignInInput {
   password: string
 }
 
+export interface SignUpChildInput {
+  name: string
+  dob: string
+}
+
 export interface SignUpInput extends SignInInput {
   name: string
   roles: UserRole[]
+  /** Stored in auth metadata and applied after first session (email confirm safe). */
+  signupChildren?: SignUpChildInput[]
+  /** When roles include `player`, date of birth for the player row */
+  playerDob?: string
 }
 
 export interface AuthContextValue {

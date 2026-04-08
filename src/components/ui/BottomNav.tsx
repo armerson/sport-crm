@@ -8,6 +8,7 @@ interface BottomNavProps {
   items: readonly BottomNavItem[]
   active: string
   onChange: (value: string) => void
+  badges?: Record<string, boolean>
 }
 
 function HomeIcon({ active }: { active: boolean }) {
@@ -84,17 +85,31 @@ function ChatIcon({ active }: { active: boolean }) {
   )
 }
 
+function NewspaperIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.7} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2" />
+      <path d="M18 14h-8" />
+      <path d="M15 18h-5" />
+      <path d="M10 6h8v4h-8z" fill={active ? 'currentColor' : 'none'} strokeWidth={0} />
+      <path d="M10 6h8v4h-8V6z" />
+    </svg>
+  )
+}
+
+
 export const ADMIN_BOTTOM_NAV: readonly BottomNavItem[] = [
   { value: 'overview', label: 'Overview', icon: (a) => <HomeIcon active={a} /> },
   { value: 'manage', label: 'Manage', icon: (a) => <SlidersIcon active={a} /> },
+  { value: 'posts', label: 'Posts', icon: (a) => <NewspaperIcon active={a} /> },
   { value: 'billing', label: 'Billing', icon: (a) => <CreditCardIcon active={a} /> },
-  { value: 'activity', label: 'Activity', icon: (a) => <ClipboardIcon active={a} /> },
   { value: 'messages', label: 'Messages', icon: (a) => <ChatIcon active={a} /> },
 ]
 
 export const COACH_BOTTOM_NAV: readonly BottomNavItem[] = [
   { value: 'schedule', label: 'Schedule', icon: (a) => <CalendarIcon active={a} /> },
   { value: 'create', label: 'Create', icon: (a) => <PlusIcon active={a} /> },
+  { value: 'feed', label: 'Feed', icon: (a) => <NewspaperIcon active={a} /> },
   { value: 'squad', label: 'Squad', icon: (a) => <ClipboardIcon active={a} /> },
   { value: 'messages', label: 'Messages', icon: (a) => <ChatIcon active={a} /> },
 ]
@@ -102,25 +117,41 @@ export const COACH_BOTTOM_NAV: readonly BottomNavItem[] = [
 export const PARENT_BOTTOM_NAV: readonly BottomNavItem[] = [
   { value: 'schedule', label: 'Schedule', icon: (a) => <CalendarIcon active={a} /> },
   { value: 'children', label: 'My children', icon: (a) => <ClipboardIcon active={a} /> },
+  { value: 'feed', label: 'Feed', icon: (a) => <NewspaperIcon active={a} /> },
   { value: 'billing', label: 'Billing', icon: (a) => <CreditCardIcon active={a} /> },
   { value: 'messages', label: 'Messages', icon: (a) => <ChatIcon active={a} /> },
 ]
 
-export function BottomNav({ items, active, onChange }: BottomNavProps) {
+/** Senior / self-registered player portal (matches `PlayerTab` values). */
+export const PLAYER_BOTTOM_NAV: readonly BottomNavItem[] = [
+  { value: 'schedule', label: 'Schedule', icon: (a) => <CalendarIcon active={a} /> },
+  { value: 'feed', label: 'Feed', icon: (a) => <NewspaperIcon active={a} /> },
+  { value: 'profile', label: 'Profile', icon: (a) => <ClipboardIcon active={a} /> },
+  { value: 'billing', label: 'Billing', icon: (a) => <CreditCardIcon active={a} /> },
+  { value: 'messages', label: 'Messages', icon: (a) => <ChatIcon active={a} /> },
+]
+
+export function BottomNav({ items, active, onChange, badges = {} }: BottomNavProps) {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 flex border-t border-slate-200 bg-white/95 pb-safe backdrop-blur-md sm:hidden">
       {items.map((item) => {
         const isActive = item.value === active
+        const hasBadge = badges[item.value] === true
         return (
           <button
             key={item.value}
             type="button"
             onClick={() => onChange(item.value)}
-            className={`flex flex-1 flex-col items-center gap-1 px-1 pb-3 pt-2.5 transition-colors ${
+            className={`relative flex flex-1 flex-col items-center gap-1 px-1 pb-3 pt-2.5 transition-colors ${
               isActive ? 'text-[#123524]' : 'text-slate-400 active:text-slate-600'
             }`}
           >
-            {item.icon(isActive)}
+            <span className="relative">
+              {item.icon(isActive)}
+              {hasBadge && !isActive && (
+                <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-white" />
+              )}
+            </span>
             <span className={`text-[10px] font-semibold leading-none tracking-wide ${isActive ? 'text-[#123524]' : 'text-slate-400'}`}>
               {item.label}
             </span>

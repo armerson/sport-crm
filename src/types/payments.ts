@@ -1,6 +1,7 @@
 // All monetary values stored as integer pence (e.g. 2500 = £25.00)
 
-export type BillingType = 'monthly' | 'one_off'
+/** monthly = recurring subscription, one_off = ad-hoc charge, membership = annual/seasonal registration fee */
+export type BillingType = 'monthly' | 'one_off' | 'membership'
 
 export type PricingRuleType = 'tiered_discount' | 'family_cap'
 
@@ -16,6 +17,10 @@ export interface Product {
   description: string | null
   pricePence: number
   billingType: BillingType
+  /** For monthly: how many months to charge (null = ongoing until cancelled) */
+  durationMonths: number | null
+  /** For membership: season label e.g. "2025/26 Season" */
+  seasonLabel: string | null
   teamId: string | null
   active: boolean
   stripeProductId: string | null
@@ -29,6 +34,8 @@ export interface ProductFormInput {
   description: string
   pricePence: number
   billingType: BillingType
+  durationMonths: string        // stored as string for form inputs, parsed on save
+  seasonLabel: string
   teamId: string | null
 }
 

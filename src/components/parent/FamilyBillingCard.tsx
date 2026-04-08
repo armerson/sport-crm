@@ -6,6 +6,7 @@ import {
   fetchPlayerProductsForParent,
   fetchPricingRules,
 } from '../../services/payments.ts'
+import { redirectToCheckout, redirectToPortal } from '../../services/stripe.ts'
 import { isSupabaseConfigured } from '../../lib/supabase.ts'
 import type { FamilySubscription, OneOffPayment, PlayerProduct, PricingResult, PricingRule } from '../../types/payments.ts'
 import type { PlayerRecord } from '../../types/club.ts'
@@ -48,6 +49,8 @@ export function FamilyBillingCard({ profile, players }: FamilyBillingCardProps) 
   const [pricing, setPricing] = useState<PricingResult | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [stripeLoading, setStripeLoading] = useState<'subscription' | 'payment' | 'portal' | null>(null)
+  const [stripeError, setStripeError] = useState<string | null>(null)
 
   const playerIds = players.map((p) => p.id)
 
@@ -112,8 +115,27 @@ export function FamilyBillingCard({ profile, players }: FamilyBillingCardProps) 
     )
   }
 
+  async function handleStripeAction(action: 'subscription' | 'payment' | 'portal') {
+    setStripeError(null)
+    setStripeLoading(action)
+    try {
+      if (action === 'portal') {
+        await redirectToPortal()
+      } else {
+        await redirectToCheckout(action)
+      }
+    } catch (err) {
+      setStripeError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
+      setStripeLoading(null)
+    }
+  }
+
   const hasAssignments = assignments.length > 0
   const activeRules = rules.filter((r) => r.active)
+  const hasMonthlyProducts = assignments.some((a) => a.product.billingType === 'monthly')
+  const hasOneOffProducts = assignments.some((a) => a.product.billingType === 'one_off' || a.product.billingType === 'membership')
+  const subscriptionActive = subscription?.status === 'active' || subscription?.status === 'trialing'
+  const hasStripeAccount = !!subscription?.stripeCustomerId
 
   return (
     <div className="space-y-4 rounded-[1.75rem] border border-white/70 bg-white/85 p-5 shadow-lg shadow-slate-900/5 backdrop-blur-sm sm:p-6">
@@ -238,15 +260,81 @@ export function FamilyBillingCard({ profile, players }: FamilyBillingCardProps) 
             </div>
           )}
 
-          {/* Stripe portal placeholder */}
-          {subscription?.stripeSubscriptionId && (
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-              <p className="text-sm text-slate-600">
-                To update your payment method or download invoices, use the{' '}
-                <span className="font-semibold text-slate-800">billing portal</span> (coming with Stripe setup).
-              </p>
+          {/* Stripe action buttons */}
+          {stripeError && (
+            <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              {stripeError}
             </div>
           )}
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+            {/* Monthly subscription setup */}
+            {hasMonthlyProducts && !subscriptionActive && (
+              <button
+                className="flex items-center justify-center gap-2 rounded-2xl bg-[#123524] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1a4d35] disabled:opacity-60"
+                disabled={stripeLoading !== null}
+                onClick={() => void handleStripeAction('subscription')}
+                type="button"
+              >
+                {stripeLoading === 'subscription' ? (
+                  <svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                    <path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" strokeOpacity="0.25" />
+                    <path d="M21 12a9 9 0 0 1-9 9" />
+                  </svg>
+                ) : (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="1" y="4" width="22" height="16" rx="2" /><line x1="1" y1="10" x2="23" y2="10" />
+                  </svg>
+                )}
+                Set up monthly payments
+              </button>
+            )}
+
+            {/* One-off / membership payment */}
+            {hasOneOffProducts && (
+              <button
+                className="flex items-center justify-center gap-2 rounded-2xl bg-[#f18a3f] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#d97832] disabled:opacity-60"
+                disabled={stripeLoading !== null}
+                onClick={() => void handleStripeAction('payment')}
+                type="button"
+              >
+                {stripeLoading === 'payment' ? (
+                  <svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                    <path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" strokeOpacity="0.25" />
+                    <path d="M21 12a9 9 0 0 1-9 9" />
+                  </svg>
+                ) : (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                  </svg>
+                )}
+                Pay outstanding fees
+              </button>
+            )}
+
+            {/* Billing portal (manage existing subscription) */}
+            {hasStripeAccount && (
+              <button
+                className="flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+                disabled={stripeLoading !== null}
+                onClick={() => void handleStripeAction('portal')}
+                type="button"
+              >
+                {stripeLoading === 'portal' ? (
+                  <svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                    <path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" strokeOpacity="0.25" />
+                    <path d="M21 12a9 9 0 0 1-9 9" />
+                  </svg>
+                ) : (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                    <polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
+                  </svg>
+                )}
+                Manage billing ↗
+              </button>
+            )}
+          </div>
         </>
       )}
     </div>

@@ -13,6 +13,11 @@ const DashboardPage = lazy(async () => {
   return { default: module.DashboardPage }
 })
 
+const RegisterPage = lazy(async () => {
+  const module = await import('./pages/RegisterPage.tsx')
+  return { default: module.RegisterPage }
+})
+
 function RouteFallback() {
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
@@ -33,6 +38,8 @@ function App() {
         <Route element={<ProtectedRoute />}>
           <Route path="/" element={<DashboardPage />} />
         </Route>
+        {/* Public registration forms — no auth required */}
+        <Route path="/register/:slug" element={<RegisterPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>

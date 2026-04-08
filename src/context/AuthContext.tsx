@@ -17,13 +17,42 @@ import type {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
+// ---------- sessionStorage profile cache ----------
+// Caches the user profile for the lifetime of the browser tab so a page
+// refresh never blocks on DB queries. The cache is keyed by user ID and
+// invalidated automatically when the user signs out or the ID changes.
+const PROFILE_CACHE_KEY = 'crm_profile_cache'
+
+function readCachedProfile(userId: string): UserProfile | null {
+  try {
+    const raw = sessionStorage.getItem(PROFILE_CACHE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as { userId: string; profile: UserProfile }
+    if (parsed.userId !== userId) return null
+    return parsed.profile
+  } catch {
+    return null
+  }
+}
+
+function writeCachedProfile(userId: string, profile: UserProfile) {
+  try {
+    sessionStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify({ userId, profile }))
+  } catch { /* sessionStorage unavailable — ignore */ }
+}
+
+function clearCachedProfile() {
+  try { sessionStorage.removeItem(PROFILE_CACHE_KEY) } catch { /* ignore */ }
+}
+// --------------------------------------------------
+
 async function loadUserProfile(user: User): Promise<UserProfile> {
   if (!supabase) {
     throw new Error(supabaseConfigError)
   }
 
   const [{ data: profileRow, error: profileError }, { data: teamRows, error: teamError }, { data: childRows, error: childError }] = await Promise.all([
-    supabase.from('profiles').select('id, name, email, roles').eq('id', user.id).maybeSingle(),
+    supabase.from('profiles').select('id, name, email, roles, linked_player_id').eq('id', user.id).maybeSingle(),
     supabase.from('team_coaches').select('team_id').eq('coach_id', user.id),
     supabase.from('player_parents').select('player_id').eq('parent_id', user.id),
   ])
@@ -48,6 +77,7 @@ async function loadUserProfile(user: User): Promise<UserProfile> {
       roles: normalizeRoles(user.user_metadata.roles ?? user.user_metadata.role),
       teams: [],
       children: [],
+      linkedPlayerId: null,
     }
 
     const { error: insertError } = await supabase.from('profiles').upsert({
@@ -64,6 +94,9 @@ async function loadUserProfile(user: User): Promise<UserProfile> {
     return fallbackProfile
   }
 
+  const linkedPlayerId =
+    typeof profileRow.linked_player_id === 'string' ? profileRow.linked_player_id : null
+
   return {
     id: user.id,
     name: typeof profileRow.name === 'string' && profileRow.name.length > 0 ? profileRow.name : ((user.user_metadata.name as string | undefined) ?? 'Club Member'),
@@ -71,7 +104,46 @@ async function loadUserProfile(user: User): Promise<UserProfile> {
     roles: normalizeRoles(profileRow.roles),
     teams: Array.isArray(teamRows) ? teamRows.map((row) => row.team_id).filter(Boolean) : [],
     children: Array.isArray(childRows) ? childRows.map((row) => row.player_id).filter(Boolean) : [],
+    linkedPlayerId,
   }
+}
+
+/** Runs signup RPCs using auth metadata (works after email confirmation). */
+async function completePendingRegistration(user: User, profile: UserProfile): Promise<boolean> {
+  if (!supabase) return false
+
+  const meta = user.user_metadata as Record<string, unknown>
+  let changed = false
+
+  const signupChildren = meta.signup_children as Array<{ name: string; dob: string }> | undefined
+  if (profile.roles.includes('parent') && signupChildren?.length && profile.children.length === 0) {
+    const { error } = await supabase.rpc('register_signup_children', {
+      children: signupChildren,
+    })
+    if (!error) {
+      await supabase.auth.updateUser({ data: { signup_children: null } })
+      changed = true
+    }
+  }
+
+  if (
+    profile.roles.includes('player')
+    && !profile.linkedPlayerId
+    && meta.signup_account === 'player'
+    && typeof meta.player_dob === 'string'
+    && meta.player_dob.length > 0
+  ) {
+    const { error } = await supabase.rpc('register_self_as_player', {
+      p_name: profile.name.trim(),
+      p_dob: meta.player_dob,
+    })
+    if (!error) {
+      await supabase.auth.updateUser({ data: { signup_account: null, player_dob: null } })
+      changed = true
+    }
+  }
+
+  return changed
 }
 
 function getAuthMessage(error: unknown): string {
@@ -122,13 +194,35 @@ async function syncSessionProfile(
   setCurrentUser(user)
 
   if (!user) {
+    clearCachedProfile()
     setProfile(null)
     setLoading(false)
     return
   }
 
+  // Serve cached profile immediately so the UI appears without any DB round-trip.
+  const cached = readCachedProfile(user.id)
+  if (cached) {
+    setProfile(cached)
+    setLoading(false)
+    // Refresh in the background to pick up any role or team changes.
+    void (async () => {
+      try {
+        const nextProfile = await loadUserProfile(user)
+        writeCachedProfile(user.id, nextProfile)
+        setProfile(nextProfile)
+      } catch { /* silent — user already has a working profile */ }
+    })()
+    return
+  }
+
   try {
-    const nextProfile = await loadUserProfile(user)
+    let nextProfile = await loadUserProfile(user)
+    const ranRegistration = await completePendingRegistration(user, nextProfile)
+    if (ranRegistration) {
+      nextProfile = await loadUserProfile(user)
+    }
+    writeCachedProfile(user.id, nextProfile)
     setProfile(nextProfile)
     setError(null)
   } catch (authError) {
@@ -150,16 +244,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return undefined
     }
 
-    void supabase.auth.getSession().then(({ data, error: sessionError }) => {
-      if (sessionError) {
-        setError(getAuthMessage(sessionError))
-        setLoading(false)
-        return
-      }
-
-      void syncSessionProfile(data.session, setCurrentUser, setProfile, setError, setLoading)
-    })
-
+    // onAuthStateChange fires INITIAL_SESSION immediately on subscription,
+    // covering the same case as getSession(). Using only one listener avoids
+    // a double-call to syncSessionProfile (and the resulting 6 parallel DB
+    // connections) that was causing ~15 s load times on the Nano plan.
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -194,7 +282,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           throw new Error(message)
         }
       },
-      signUp: async ({ name, email, password, roles }: SignUpInput) => {
+      signUp: async ({
+        name,
+        email,
+        password,
+        roles,
+        signupChildren,
+        playerDob,
+      }: SignUpInput) => {
         if (!supabase) {
           setError(supabaseConfigError)
           return
@@ -202,6 +297,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         setError(null)
 
+        const isPlayer = roles.includes('player')
         const { data, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
@@ -209,6 +305,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             data: {
               name,
               roles,
+              signup_children: !isPlayer && signupChildren?.length ? signupChildren : undefined,
+              signup_account: isPlayer ? 'player' : undefined,
+              player_dob: isPlayer ? playerDob : undefined,
             },
           },
         })

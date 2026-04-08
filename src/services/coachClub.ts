@@ -35,7 +35,7 @@ export function subscribeToEventsForTeam(
   return subscribeToTables(`team-events-${teamId}`, ['events'], async () => {
     const { data, error } = await client
       .from('events')
-      .select('id, team_id, title, type, date_time, location, recurrence_group_id')
+      .select('id, team_id, title, type, date_time, location, place_id, lat, lng, recurrence_group_id')
       .eq('team_id', teamId)
       .order('date_time', { ascending: true })
 
@@ -92,6 +92,9 @@ export async function createEventWithAttendance(
       type: input.type,
       date_time: date.toISOString(),
       location: input.location,
+      place_id: input.placeId ?? null,
+      lat: input.lat ?? null,
+      lng: input.lng ?? null,
       recurrence_group_id: recurrenceGroupId,
     }
   })
@@ -131,6 +134,9 @@ export async function updateEvent(eventId: string, input: Partial<EventFormInput
   if (input.type !== undefined) updates.type = input.type
   if (input.dateTime !== undefined) updates.date_time = input.dateTime
   if (input.location !== undefined) updates.location = input.location
+  if (input.placeId !== undefined) updates.place_id = input.placeId ?? null
+  if (input.lat !== undefined) updates.lat = input.lat ?? null
+  if (input.lng !== undefined) updates.lng = input.lng ?? null
 
   const { error } = await client.from('events').update(updates).eq('id', eventId)
   if (error) throw new Error(error.message)
@@ -232,6 +238,12 @@ export async function upsertLineupPlayer(eventId: string, playerId: string, isSt
       { event_id: eventId, player_id: playerId, is_starting: isStarting },
       { onConflict: 'event_id,player_id' },
     )
+  if (error) throw new Error(error.message)
+}
+
+export async function coachUpdateAttendance(attendanceId: string, status: import('../types/club.ts').AttendanceStatus): Promise<void> {
+  const client = requireSupabase()
+  const { error } = await client.from('attendance').update({ status }).eq('id', attendanceId)
   if (error) throw new Error(error.message)
 }
 

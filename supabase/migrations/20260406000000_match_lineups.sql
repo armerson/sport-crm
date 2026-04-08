@@ -1,8 +1,9 @@
 -- ──────────────────────────────────────────────────────────────
 -- Match lineups — coach-managed squad selection per match event
+-- Idempotent: safe if table already exists (remote drift / partial apply).
 -- ──────────────────────────────────────────────────────────────
 
-create table public.match_lineups (
+create table if not exists public.match_lineups (
   id         uuid        primary key default gen_random_uuid(),
   event_id   uuid        not null references public.events(id) on delete cascade,
   player_id  uuid        not null references public.players(id) on delete cascade,
@@ -34,13 +35,16 @@ as $$
   );
 $$;
 
--- Any authenticated user can read lineups (coaches, parents, admins)
+drop policy if exists "lineup read by authenticated" on public.match_lineups;
+drop policy if exists "lineup insert by coach or admin" on public.match_lineups;
+drop policy if exists "lineup update by coach or admin" on public.match_lineups;
+drop policy if exists "lineup delete by coach or admin" on public.match_lineups;
+
 create policy "lineup read by authenticated"
   on public.match_lineups
   for select
   using (auth.uid() is not null);
 
--- Only coaches of the event's team (or admins) can write
 create policy "lineup insert by coach or admin"
   on public.match_lineups
   for insert
@@ -56,8 +60,19 @@ create policy "lineup delete by coach or admin"
   for delete
   using (public.can_manage_event_lineup(event_id));
 
--- Real-time
-alter publication supabase_realtime add table public.match_lineups;
+-- Real-time (skip if already in publication)
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'match_lineups'
+  ) then
+    alter publication supabase_realtime add table public.match_lineups;
+  end if;
+end $$;
 
 -- ──────────────────────────────────────────────────────────────
 -- Club-wide attendance rate (last N days) — used by admin dashboard
