@@ -3,6 +3,7 @@ import { useAttendanceStats } from '../../hooks/useAttendanceStats.ts'
 import { useCoachClubData } from '../../hooks/useCoachClubData.ts'
 import { useTeamPlayers } from '../../hooks/useTeamPlayers.ts'
 import { MotmVotingCard } from '../shared/MotmVotingCard.tsx'
+import { EventComments } from '../events/EventComments.tsx'
 import { PlayerProfileCard } from '../players/PlayerProfileCard.tsx'
 import { LocationPicker, LocationMapCard } from '../ui/LocationPicker.tsx'
 import { formatDate, formatDateTime } from '../../utils/date.ts'
@@ -721,6 +722,11 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                   currentUserId={profile.id}
                   readOnly
                 />
+              ) : null}
+
+              {/* Event comments — visible when an event is selected */}
+              {activeEventId ? (
+                <EventComments eventId={activeEventId} currentUserId={profile.id} isAdmin />
               ) : null}
 
               {/* Match Squad — shown for any match event when one is selected */}

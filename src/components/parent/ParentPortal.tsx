@@ -5,6 +5,7 @@ import { PostFeed } from '../posts/PostFeed.tsx'
 import { PlayerProfileCard } from '../players/PlayerProfileCard.tsx'
 import { LocationMapCard } from '../ui/LocationPicker.tsx'
 import { MotmVotingCard } from '../shared/MotmVotingCard.tsx'
+import { EventComments } from '../events/EventComments.tsx'
 import type { UserProfile } from '../../types/auth.ts'
 import type { AttendanceStatus } from '../../types/club.ts'
 import { formatDateTime } from '../../utils/date.ts'
@@ -151,6 +152,10 @@ export function EventList({
                 teamId={event.teamId}
                 currentUserId={currentUserId}
               />
+            ) : null}
+
+            {currentUserId ? (
+              <EventComments eventId={event.id} currentUserId={currentUserId} />
             ) : null}
           </article>
         )
