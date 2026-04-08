@@ -42,5 +42,6 @@ export interface AuthContextValue {
   signUp: (input: SignUpInput) => Promise<void>
   signOutUser: () => Promise<void>
   resetPassword: (email: string) => Promise<void>
+  updateProfile: (name: string) => Promise<void>
   clearError: () => void
 }

@@ -357,6 +357,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         await supabase.auth.signOut()
       },
+      updateProfile: async (name: string) => {
+        if (!supabase || !currentUser) return
+        const trimmed = name.trim()
+        if (!trimmed) return
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({ name: trimmed })
+          .eq('id', currentUser.id)
+        if (updateError) throw new Error(updateError.message)
+        // Patch local state and cache so the UI updates immediately
+        setProfile((prev) => {
+          if (!prev) return prev
+          const next = { ...prev, name: trimmed }
+          writeCachedProfile(currentUser.id, next)
+          return next
+        })
+      },
     }),
     [currentUser, error, loading, profile],
   )

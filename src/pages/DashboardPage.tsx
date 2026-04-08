@@ -3,6 +3,7 @@ import { Button } from '../components/ui/Button.tsx'
 import { BottomNav, ADMIN_BOTTOM_NAV, COACH_BOTTOM_NAV, PARENT_BOTTOM_NAV, PLAYER_BOTTOM_NAV } from '../components/ui/BottomNav.tsx'
 import { InstallBanner } from '../components/ui/InstallBanner.tsx'
 import { NotificationBanner } from '../components/ui/NotificationBanner.tsx'
+import { SettingsPanel } from '../components/settings/SettingsPanel.tsx'
 import { useAuth } from '../hooks/useAuth.ts'
 import { markMessagesRead, useUnreadMessages } from '../hooks/useUnreadMessages.ts'
 import type { UserRole } from '../types/auth.ts'
@@ -77,6 +78,15 @@ function SignOutIcon() {
   )
 }
 
+function GearIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </svg>
+  )
+}
+
 /** Returns the user's highest-privilege role (admin > coach > player > parent). */
 function defaultRole(roles: UserRole[]): UserRole {
   for (const role of ROLE_ORDER) {
@@ -103,6 +113,7 @@ function prefetchPanels() {
 
 export function DashboardPage() {
   const { profile, signOutUser } = useAuth()
+  const [showSettings, setShowSettings] = useState(false)
   const [adminTab, setAdminTab] = useState<AdminTab>('overview')
   const [coachTab, setCoachTab] = useState<CoachTab>('schedule')
   const [parentTab, setParentTab] = useState<ParentTab>('schedule')
@@ -202,6 +213,14 @@ export function DashboardPage() {
           </div>
           <button
             type="button"
+            onClick={() => setShowSettings(true)}
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white/80 transition active:bg-white/20"
+            aria-label="Settings"
+          >
+            <GearIcon />
+          </button>
+          <button
+            type="button"
             onClick={() => void signOutUser()}
             className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white/80 transition active:bg-white/20"
             aria-label="Sign out"
@@ -246,9 +265,14 @@ export function DashboardPage() {
                     {sortedRoles.map((r) => ROLE_LABELS[r]).join(' · ')}
                   </p>
                 </div>
-                <Button className="w-full" onClick={() => void signOutUser()} variant="secondary">
-                  Sign out
-                </Button>
+                <div className="flex w-full gap-2">
+                  <Button className="flex-1" onClick={() => setShowSettings(true)} variant="secondary">
+                    Settings
+                  </Button>
+                  <Button className="flex-1" onClick={() => void signOutUser()} variant="secondary">
+                    Sign out
+                  </Button>
+                </div>
               </div>
             </div>
           </header>
@@ -258,19 +282,25 @@ export function DashboardPage() {
       {/* ── Main content ── */}
       <div className="px-4 py-4 sm:px-6 sm:py-0 lg:px-8">
         <div className="mx-auto max-w-6xl space-y-4 sm:space-y-6">
-          <InstallBanner />
-          <NotificationBanner userId={profile.id} />
-          <Suspense fallback={<SectionFallback label="workspace" />}>
-            {isAdmin ? (
-              <AdminClubPanel activeTab={adminTab} onTabChange={(t) => setAdminTab(t)} />
-            ) : isCoach ? (
-              <CoachEventPanel coachId={profile.id} profile={profile} activeTab={coachTab} onTabChange={(t) => setCoachTab(t)} />
-            ) : isPlayer ? (
-              <PlayerPortal profile={profile} activeTab={playerTab} onTabChange={(t) => setPlayerTab(t)} />
-            ) : (
-              <ParentPortal profile={profile} activeTab={parentTab} onTabChange={(t) => setParentTab(t)} />
-            )}
-          </Suspense>
+          {showSettings ? (
+            <SettingsPanel onClose={() => setShowSettings(false)} />
+          ) : (
+            <>
+              <InstallBanner />
+              <NotificationBanner userId={profile.id} />
+              <Suspense fallback={<SectionFallback label="workspace" />}>
+                {isAdmin ? (
+                  <AdminClubPanel activeTab={adminTab} onTabChange={(t) => setAdminTab(t)} />
+                ) : isCoach ? (
+                  <CoachEventPanel coachId={profile.id} profile={profile} activeTab={coachTab} onTabChange={(t) => setCoachTab(t)} />
+                ) : isPlayer ? (
+                  <PlayerPortal profile={profile} activeTab={playerTab} onTabChange={(t) => setPlayerTab(t)} />
+                ) : (
+                  <ParentPortal profile={profile} activeTab={parentTab} onTabChange={(t) => setParentTab(t)} />
+                )}
+              </Suspense>
+            </>
+          )}
         </div>
       </div>
 
