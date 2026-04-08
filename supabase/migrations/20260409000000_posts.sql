@@ -93,13 +93,13 @@ drop policy if exists "authenticated insert own like" on public.post_likes;
 create policy "authenticated insert own like"
   on public.post_likes for insert
   to authenticated
-  with check (profile_id = (select id from public.profiles where auth_user_id = auth.uid() limit 1));
+  with check (profile_id = auth.uid());
 
 drop policy if exists "authenticated delete own like" on public.post_likes;
 create policy "authenticated delete own like"
   on public.post_likes for delete
   to authenticated
-  using (profile_id = (select id from public.profiles where auth_user_id = auth.uid() limit 1));
+  using (profile_id = auth.uid());
 
 -- Comments: anyone authenticated can read/create; author or admin can delete
 drop policy if exists "authenticated read post comments" on public.post_comments;
@@ -112,16 +112,13 @@ drop policy if exists "authenticated insert post comment" on public.post_comment
 create policy "authenticated insert post comment"
   on public.post_comments for insert
   to authenticated
-  with check (author_id = (select id from public.profiles where auth_user_id = auth.uid() limit 1));
+  with check (author_id = auth.uid());
 
 drop policy if exists "author or admin delete comment" on public.post_comments;
 create policy "author or admin delete comment"
   on public.post_comments for delete
   to authenticated
-  using (
-    public.is_admin()
-    or author_id = (select id from public.profiles where auth_user_id = auth.uid() limit 1)
-  );
+  using (public.is_admin() or author_id = auth.uid());
 
 -- ─────────────────────────────────────────────
 -- Realtime

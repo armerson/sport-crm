@@ -80,11 +80,13 @@ for select using (
 );
 
 -- Profile updates (photos, bio, etc.) — not full admin write
+drop policy if exists "parents update own children players" on public.players;
 create policy "parents update own children players" on public.players
 for update to authenticated
 using (public.is_parent_for_player(id))
 with check (public.is_parent_for_player(id));
 
+drop policy if exists "linked players update own row" on public.players;
 create policy "linked players update own row" on public.players
 for update to authenticated
 using (public.is_linked_player(id))
@@ -291,14 +293,17 @@ for select using (
 
 -- ── Emergency contacts: linked player read own ───────────
 
+drop policy if exists "linked player read own emergency contacts" on public.emergency_contacts;
 create policy "linked player read own emergency contacts" on public.emergency_contacts
 for select using (public.is_linked_player(player_id));
 
 -- ── Player documents: linked player read/manage own ───────
 
+drop policy if exists "linked player read own documents" on public.player_documents;
 create policy "linked player read own documents" on public.player_documents
 for select using (public.is_linked_player(player_id));
 
+drop policy if exists "linked player manage own documents" on public.player_documents;
 create policy "linked player manage own documents" on public.player_documents
 for all using (public.is_linked_player(player_id))
 with check (public.is_linked_player(player_id));
