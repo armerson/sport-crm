@@ -323,9 +323,9 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
             </div>
           ) : null}
 
-          <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
+          <div className="grid min-w-0 gap-4 xl:grid-cols-[1.05fr_0.95fr]">
             {/* On mobile: event list is hidden when an event is selected (replaced by attendance panel) */}
-            <article className={`rounded-[1.75rem] border border-white/70 bg-white/85 p-5 shadow-lg shadow-slate-900/5 backdrop-blur-sm ${activeEventId ? 'hidden xl:block' : ''}`}>
+            <article className={`min-w-0 rounded-[1.75rem] border border-white/70 bg-white/85 p-5 shadow-lg shadow-slate-900/5 backdrop-blur-sm ${activeEventId ? 'hidden xl:block' : ''}`}>
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <h2 className="text-xl font-semibold text-slate-950">
@@ -434,7 +434,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
               </div>
             </article>
 
-            <article className="rounded-[1.75rem] border border-white/70 bg-white/85 p-5 shadow-lg shadow-slate-900/5 backdrop-blur-sm">
+            <article className="min-w-0 overflow-hidden rounded-[1.75rem] border border-white/70 bg-white/85 p-5 shadow-lg shadow-slate-900/5 backdrop-blur-sm">
               {/* Mobile back button — shown only when an event is selected */}
               {activeEventId && (
                 <button

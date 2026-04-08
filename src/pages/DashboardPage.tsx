@@ -162,7 +162,7 @@ export function DashboardPage() {
     .toUpperCase()
 
   return (
-    <main className="min-h-screen pb-20 sm:pb-0">
+    <main className="min-h-screen overflow-x-hidden pb-20 sm:pb-0">
       {/* ── Mobile header ── */}
       <header className="flex items-center justify-between bg-[#123524] px-4 py-3 sm:hidden">
         <div className="flex items-center gap-2.5">
