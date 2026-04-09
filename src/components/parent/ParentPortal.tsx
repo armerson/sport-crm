@@ -324,16 +324,24 @@ export function EventList({
 function DevelopmentTab({ players, loadingPlayers }: { players: import('../../types/club.ts').PlayerRecord[]; loadingPlayers: boolean }) {
   const [reviewsByPlayer, setReviewsByPlayer] = useState<Record<string, PlayerReview[]>>({})
   const [loading, setLoading] = useState(true)
+  // Player rows get a new array reference on every realtime tick — key by ids so we don't refetch in a tight loop.
+  const playerIdsKey = useMemo(() => players.map((p) => p.id).sort().join('|'), [players])
 
   useEffect(() => {
-    if (!players.length) { setLoading(false); return }
-    Promise.all(
-      players.map((p) => fetchPublishedReviewsForPlayer(p.id).then((r) => [p.id, r] as const)),
-    ).then((entries) => {
-      setReviewsByPlayer(Object.fromEntries(entries))
+    if (!playerIdsKey) {
+      setReviewsByPlayer({})
       setLoading(false)
-    }).catch(() => setLoading(false))
-  }, [players])
+      return
+    }
+    const ids = playerIdsKey.split('|')
+    setLoading(true)
+    Promise.all(ids.map((id) => fetchPublishedReviewsForPlayer(id).then((r) => [id, r] as const)))
+      .then((entries) => {
+        setReviewsByPlayer(Object.fromEntries(entries))
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+  }, [playerIdsKey])
 
   const hasAnyReview = Object.values(reviewsByPlayer).some((r) => r.length > 0)
 

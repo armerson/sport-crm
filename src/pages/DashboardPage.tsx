@@ -135,22 +135,9 @@ export function DashboardPage() {
     profile ? defaultRole(profile.roles) : 'parent',
   )
 
-  if (!profile) {
-    return null
-  }
-
-  // Sorted roles for the switcher. DB `roles` may omit `parent` even when `player_parents`
-  // links exist — still offer Parent (and Player when linked) so multi-hat users can switch.
-  const sortedRoles = ROLE_ORDER.filter((r) => {
-    if (profile.roles.includes(r)) return true
-    if (r === 'parent' && profile.children.length > 0) return true
-    if (r === 'player' && profile.linkedPlayerId) return true
-    return false
-  })
-  const hasMultipleRoles = sortedRoles.length > 1
-
-  // Deep link: /parent → /?view=parent (see App.tsx)
+  // Deep link: /parent → /?view=parent (see App.tsx). Must run before any early return — conditional hooks break React.
   useEffect(() => {
+    if (!profile) return
     const v = searchParams.get('view')
     if (!v) return
     if (v === 'parent' && (profile.roles.includes('parent') || profile.children.length > 0)) {
@@ -166,6 +153,20 @@ export function DashboardPage() {
       return next
     }, { replace: true })
   }, [profile, searchParams, setSearchParams])
+
+  if (!profile) {
+    return null
+  }
+
+  // Sorted roles for the switcher. DB `roles` may omit `parent` even when `player_parents`
+  // links exist — still offer Parent (and Player when linked) so multi-hat users can switch.
+  const sortedRoles = ROLE_ORDER.filter((r) => {
+    if (profile.roles.includes(r)) return true
+    if (r === 'parent' && profile.children.length > 0) return true
+    if (r === 'player' && profile.linkedPlayerId) return true
+    return false
+  })
+  const hasMultipleRoles = sortedRoles.length > 1
 
   const isAdmin = activeRole === 'admin'
   const isCoach = activeRole === 'coach'

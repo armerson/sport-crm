@@ -10,11 +10,19 @@ import {
 } from '../services/parentClub.ts'
 import type { AttendanceRecord, AttendanceStatus, EventRecord, PlayerRecord, ResultRecord, TeamRecord } from '../types/club.ts'
 
+/** Stable key when `profile.children` gets a new array reference with the same ids. */
+function sortedChildIdsKey(ids: string[]) {
+  return [...ids].sort().join('|')
+}
+
 function getParentErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback
 }
 
 export function useParentClubData(childIds: string[]) {
+  const childIdsKey = sortedChildIdsKey(childIds)
+  const stableChildIds = useMemo(() => [...childIds], [childIdsKey])
+
   const [players, setPlayers] = useState<PlayerRecord[]>([])
   const [teams, setTeams] = useState<TeamRecord[]>([])
   const [events, setEvents] = useState<EventRecord[]>([])
@@ -34,8 +42,10 @@ export function useParentClubData(childIds: string[]) {
       return undefined
     }
 
+    playersResolvedRef.current = false
+
     const unsubscribe = subscribeToParentPlayers(
-      childIds,
+      stableChildIds,
       (nextPlayers) => {
         playersResolvedRef.current = true
         setPlayers(nextPlayers)
@@ -50,7 +60,7 @@ export function useParentClubData(childIds: string[]) {
     )
 
     return unsubscribe
-  }, [childIds])
+  }, [stableChildIds])
 
   const teamIds = useMemo(
     () => [...new Set(players.flatMap((player) => player.teams))],
@@ -106,13 +116,13 @@ export function useParentClubData(childIds: string[]) {
     }
 
     const unsubscribe = subscribeToAttendanceForPlayers(
-      childIds,
+      stableChildIds,
       (nextAttendance) => { setAttendance(nextAttendance); setLoadingAttendance(false); setError(null) },
       (message) => { setError(message); setLoadingAttendance(false) },
     )
 
     return unsubscribe
-  }, [childIds])
+  }, [stableChildIds])
 
   // Results subscription — non-critical, only starts once we have real teamIds
   useEffect(() => {
@@ -127,17 +137,17 @@ export function useParentClubData(childIds: string[]) {
     )
   }, [teamIds, teamIdsReady])
 
-  const configError = !isSupabaseConfigured ? (childIds.length > 0 ? supabaseConfigError : null) : null
+  const configError = !isSupabaseConfigured ? (stableChildIds.length > 0 ? supabaseConfigError : null) : null
 
   return {
-    players: childIds.length > 0 ? players : [],
+    players: stableChildIds.length > 0 ? players : [],
     teams: teamIds.length > 0 ? teams : [],
     events: teamIds.length > 0 ? events : [],
-    attendance: childIds.length > 0 ? attendance : [],
-    loadingPlayers: childIds.length > 0 ? loadingPlayers : false,
-    loadingTeams: childIds.length > 0 ? loadingTeams : false,
-    loadingEvents: childIds.length > 0 ? loadingEvents : false,
-    loadingAttendance: childIds.length > 0 ? loadingAttendance : false,
+    attendance: stableChildIds.length > 0 ? attendance : [],
+    loadingPlayers: stableChildIds.length > 0 ? loadingPlayers : false,
+    loadingTeams: stableChildIds.length > 0 ? loadingTeams : false,
+    loadingEvents: stableChildIds.length > 0 ? loadingEvents : false,
+    loadingAttendance: stableChildIds.length > 0 ? loadingAttendance : false,
     resultByEventId: new Map(results.map((r) => [r.eventId, r])),
     error: configError ?? error,
     isConfigured: isSupabaseConfigured,
