@@ -123,6 +123,13 @@ async function completePendingRegistration(user: User, profile: UserProfile): Pr
     changed = true
   }
 
+  const pendingClubCode = sessionStorage.getItem('pending_club_invite_code')
+  if (pendingClubCode) {
+    sessionStorage.removeItem('pending_club_invite_code')
+    await supabase.rpc('use_club_invite', { p_code: pendingClubCode }).then(() => undefined, () => undefined)
+    changed = true
+  }
+
   const signupChildren = meta.signup_children as Array<{ name: string; dob: string }> | undefined
   if (profile.roles.includes('parent') && signupChildren?.length && profile.children.length === 0) {
     const { error } = await supabase.rpc('register_signup_children', {

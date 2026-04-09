@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { TeamRecord } from '../../types/club.ts'
 import type { UserRole } from '../../types/auth.ts'
+import { ClubInviteButton } from '../shared/ClubInviteButton.tsx'
 import {
   fetchAllProfiles, fetchDuplicatePlayers, mergePlayers,
   syncCoachTeams, updateProfileRoles,
@@ -478,6 +479,10 @@ export function AdminMembersPanel({ teams }: { teams: TeamRecord[] }) {
         <div>
           <h2 className="text-2xl font-semibold tracking-tight text-slate-950">Members</h2>
           <p className="mt-1 text-sm text-slate-500">View all accounts, edit roles and team assignments, and resolve duplicate player records.</p>
+        </div>
+        <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+          <ClubInviteButton role="coach" />
+          <ClubInviteButton role="admin" />
         </div>
       </div>
 

@@ -43,3 +43,32 @@ export async function useTeamInvite(code: string): Promise<void> {
   const { error } = await client.rpc('use_team_invite', { p_code: code })
   if (error) throw new Error(error.message)
 }
+
+// ── Club-level invites ────────────────────────────────────────────
+
+export interface ClubInviteInfo {
+  role: 'coach' | 'admin'
+  code: string
+}
+
+export async function getClubInviteInfo(code: string): Promise<ClubInviteInfo | { error: string }> {
+  const client = requireSupabase()
+  const { data, error } = await client.rpc('get_club_invite_info', { p_code: code })
+  if (error) return { error: error.message }
+  const d = data as Record<string, unknown>
+  if (d.error) return { error: d.error as string }
+  return { role: d.role === 'admin' ? 'admin' : 'coach', code }
+}
+
+export async function createClubInvite(role: 'coach' | 'admin'): Promise<string> {
+  const client = requireSupabase()
+  const { data, error } = await client.rpc('create_club_invite', { p_role: role })
+  if (error) throw new Error(error.message)
+  return data as string
+}
+
+export async function useClubInvite(code: string): Promise<void> {
+  const client = requireSupabase()
+  const { error } = await client.rpc('use_club_invite', { p_code: code })
+  if (error) throw new Error(error.message)
+}

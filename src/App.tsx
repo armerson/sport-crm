@@ -23,6 +23,11 @@ const JoinPage = lazy(async () => {
   return { default: module.JoinPage }
 })
 
+const ClubJoinPage = lazy(async () => {
+  const module = await import('./pages/ClubJoinPage.tsx')
+  return { default: module.ClubJoinPage }
+})
+
 function RouteFallback() {
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
@@ -47,6 +52,7 @@ function App() {
         <Route path="/register/:slug" element={<RegisterPage />} />
         {/* Team invite links — public, anyone can land here */}
         <Route path="/join/:code" element={<JoinPage />} />
+        <Route path="/join/club/:code" element={<ClubJoinPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>
