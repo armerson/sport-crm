@@ -35,7 +35,7 @@ export function subscribeToEventsForTeam(
   return subscribeToTables(`team-events-${teamId}`, ['events'], async () => {
     const { data, error } = await client
       .from('events')
-      .select('id, team_id, title, type, date_time, location, place_id, lat, lng, recurrence_group_id, opponent, event_status')
+      .select('id, team_id, title, type, date_time, location, place_id, lat, lng, recurrence_group_id, opponent')
       .eq('team_id', teamId)
       .order('date_time', { ascending: true })
 
