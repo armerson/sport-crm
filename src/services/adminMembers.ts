@@ -118,29 +118,22 @@ export async function updateProfileRoles(profileId: string, roles: UserRole[]): 
   if (error) throw new Error(error.message)
 
   if (!roles.includes('coach')) {
-    const { error: delErr } = await client.from('team_coaches').delete().eq('coach_id', profileId)
-    if (delErr) throw new Error(delErr.message)
+    const { error: rpcErr } = await client.rpc('sync_coach_teams', {
+      p_coach_id: profileId,
+      p_team_ids: [] as string[],
+    })
+    if (rpcErr) throw new Error(rpcErr.message)
   }
 }
 
-/** Replace a coach's team assignments atomically. */
+/** Replace a coach's team assignments atomically (SECURITY DEFINER — survives RLS quirks). */
 export async function syncCoachTeams(coachId: string, teamIds: string[]): Promise<void> {
   const client = requireSupabase()
-
-  // Remove all current team assignments for this coach
-  const { error: delErr } = await client
-    .from('team_coaches')
-    .delete()
-    .eq('coach_id', coachId)
-  if (delErr) throw new Error(delErr.message)
-
-  // Re-insert the new set
-  if (teamIds.length > 0) {
-    const { error: insErr } = await client
-      .from('team_coaches')
-      .insert(teamIds.map((teamId) => ({ team_id: teamId, coach_id: coachId })))
-    if (insErr) throw new Error(insErr.message)
-  }
+  const { error } = await client.rpc('sync_coach_teams', {
+    p_coach_id: coachId,
+    p_team_ids: teamIds,
+  })
+  if (error) throw new Error(error.message)
 }
 
 /** Merge two player records — all data moves to primary, secondary is deleted. */
