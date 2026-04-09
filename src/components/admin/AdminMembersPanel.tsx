@@ -172,18 +172,28 @@ function MemberRow({
   onUpdated: (updated: MemberProfile) => void
 }) {
   const [editing, setEditing] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
 
   const coachTeamNames = member.coachTeams
     .map((id) => teams.find((t) => t.id === id)?.name)
     .filter(Boolean)
 
   async function handleSave(roles: UserRole[], coachTeamIds: string[]) {
-    await updateProfileRoles(member.id, roles)
-    if (roles.includes('coach')) {
-      await syncCoachTeams(member.id, coachTeamIds)
+    setSaving(true)
+    setSaveError(null)
+    try {
+      await updateProfileRoles(member.id, roles)
+      if (roles.includes('coach')) {
+        await syncCoachTeams(member.id, coachTeamIds)
+      }
+      onUpdated({ ...member, roles, coachTeams: coachTeamIds })
+      setEditing(false)
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : 'Failed to save. Please try again.')
+    } finally {
+      setSaving(false)
     }
-    onUpdated({ ...member, roles, coachTeams: coachTeamIds })
-    setEditing(false)
   }
 
   return (
@@ -214,12 +224,20 @@ function MemberRow({
         </button>
       </div>
       {editing && (
-        <MemberEditor
-          member={member}
-          teams={teams}
-          onSave={handleSave}
-          onCancel={() => setEditing(false)}
-        />
+        <>
+          <MemberEditor
+            member={member}
+            teams={teams}
+            onSave={handleSave}
+            onCancel={() => { setEditing(false); setSaveError(null) }}
+          />
+          {saveError && (
+            <p className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-xs text-red-600">{saveError}</p>
+          )}
+          {saving && (
+            <p className="mt-1 text-xs text-slate-400">Saving…</p>
+          )}
+        </>
       )}
     </li>
   )

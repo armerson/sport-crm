@@ -108,11 +108,21 @@ export async function updateProfileRoles(profileId: string, roles: UserRole[]): 
 /** Replace a coach's team assignments atomically. */
 export async function syncCoachTeams(coachId: string, teamIds: string[]): Promise<void> {
   const client = requireSupabase()
-  const { error } = await client.rpc('sync_coach_teams', {
-    p_coach_id: coachId,
-    p_team_ids: teamIds,
-  })
-  if (error) throw new Error(error.message)
+
+  // Remove all current team assignments for this coach
+  const { error: delErr } = await client
+    .from('team_coaches')
+    .delete()
+    .eq('coach_id', coachId)
+  if (delErr) throw new Error(delErr.message)
+
+  // Re-insert the new set
+  if (teamIds.length > 0) {
+    const { error: insErr } = await client
+      .from('team_coaches')
+      .insert(teamIds.map((teamId) => ({ team_id: teamId, coach_id: coachId })))
+    if (insErr) throw new Error(insErr.message)
+  }
 }
 
 /** Merge two player records — all data moves to primary, secondary is deleted. */
