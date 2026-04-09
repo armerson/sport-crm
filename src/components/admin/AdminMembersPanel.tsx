@@ -4,7 +4,7 @@ import type { UserRole } from '../../types/auth.ts'
 import { ClubInviteButton } from '../shared/ClubInviteButton.tsx'
 import {
   fetchAllProfiles, fetchDuplicatePlayers, mergePlayers,
-  syncCoachTeams, updateProfileRoles,
+  adminSetProfileRolesAndCoachTeams,
   type DuplicateGroup, type MemberProfile,
 } from '../../services/adminMembers.ts'
 
@@ -183,10 +183,7 @@ function MemberRow({
     setSaving(true)
     setSaveError(null)
     try {
-      await updateProfileRoles(member.id, roles)
-      if (roles.includes('coach')) {
-        await syncCoachTeams(member.id, coachTeamIds)
-      }
+      await adminSetProfileRolesAndCoachTeams(member.id, roles, coachTeamIds)
       await onRefetch()
       setEditing(false)
     } catch (e) {

@@ -108,25 +108,29 @@ export async function fetchDuplicatePlayers(): Promise<DuplicateGroup[]> {
 
 // ── Mutations ─────────────────────────────────────────────────────
 
-/** Update the roles array for a profile. */
-export async function updateProfileRoles(profileId: string, roles: UserRole[]): Promise<void> {
-  const client = requireSupabase()
-  const { error } = await client
-    .from('profiles')
-    .update({ roles })
-    .eq('id', profileId)
-  if (error) throw new Error(error.message)
-
-  if (!roles.includes('coach')) {
-    const { error: rpcErr } = await client.rpc('sync_coach_teams', {
-      p_coach_id: profileId,
-      p_team_ids: [] as string[],
-    })
-    if (rpcErr) throw new Error(rpcErr.message)
+/**
+ * Atomically update a member's roles and their coach↔team links (one DB transaction).
+ * Requires migration `admin_set_profile_roles_and_coach_teams`.
+ */
+export async function adminSetProfileRolesAndCoachTeams(
+  profileId: string,
+  roles: UserRole[],
+  coachTeamIds: string[],
+): Promise<void> {
+  if (!roles.length) {
+    throw new Error('At least one role is required.')
   }
+  const client = requireSupabase()
+  const teamIdsForRpc = roles.includes('coach') ? coachTeamIds : []
+  const { error } = await client.rpc('admin_set_profile_roles_and_coach_teams', {
+    p_profile_id: profileId,
+    p_roles: roles,
+    p_coach_team_ids: teamIdsForRpc,
+  })
+  if (error) throw new Error(error.message)
 }
 
-/** Replace a coach's team assignments atomically (SECURITY DEFINER — survives RLS quirks). */
+/** Replace a coach's team assignments only (roles unchanged). Uses SECURITY DEFINER RPC. */
 export async function syncCoachTeams(coachId: string, teamIds: string[]): Promise<void> {
   const client = requireSupabase()
   const { error } = await client.rpc('sync_coach_teams', {
