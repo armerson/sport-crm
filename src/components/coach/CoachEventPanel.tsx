@@ -8,10 +8,9 @@ import { PlayerProfileCard } from '../players/PlayerProfileCard.tsx'
 import { PlayerReviewsPanel } from '../reviews/PlayerReviewsPanel.tsx'
 import { InviteButton } from '../shared/InviteButton.tsx'
 import { LocationPicker, LocationMapCard } from '../ui/LocationPicker.tsx'
-import { formatDate, formatDateTime, formatDateTimeRelative, dateBox, shortenAddress, groupByWeek } from '../../utils/date.ts'
+import { formatDate, formatDateTimeRelative, dateBox, shortenAddress, groupByWeek } from '../../utils/date.ts'
 import { EventTypeChip } from '../ui/EventTypeChip.tsx'
 import { Button } from '../ui/Button.tsx'
-import { ConfirmInline } from '../ui/ConfirmInline.tsx'
 import { SelectField } from '../ui/SelectField.tsx'
 import { SuccessMessage } from '../ui/SuccessMessage.tsx'
 import { TabNav } from '../ui/TabNav.tsx'
@@ -314,7 +313,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
   const existingResult = isPastMatch ? resultByEventId.get(activeEventId) : undefined
   const isSingleTeamCoach = teams.length === 1
 
-  const attendanceCounts = useMemo(
+  const activeEventCounts = useMemo(
     () => ({
       yes: attendance.filter((entry) => entry.status === 'yes').length,
       no: attendance.filter((entry) => entry.status === 'no').length,
@@ -372,7 +371,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
         recurrence,
       )
 
-      setEventValues({ title: '', type: 'training', dateTime: '', location: '', recurring: false, recurrencePattern: 'weekly', recurrenceWeeks: 6 })
+      setEventValues({ title: '', type: 'training', dateTime: '', location: '', recurring: false, recurrencePattern: 'weekly', recurrenceWeeks: 6, opponent: '' })
       setEventLocationMeta({})
       const sessionLabel = recurrence ? `${recurrence.weeks} training sessions` : 'event'
       setSuccessMessage(`${sessionLabel.charAt(0).toUpperCase() + sessionLabel.slice(1)} created. Players have been given a pending attendance record.`)
@@ -695,20 +694,20 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                   <div className="mt-4 grid gap-3 sm:grid-cols-3">
                     <div className="rounded-3xl bg-[#123524] p-4 text-white">
                       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">Going</p>
-                      <p className="mt-2 text-3xl font-semibold">{attendanceCounts.yes}</p>
+                      <p className="mt-2 text-3xl font-semibold">{activeEventCounts.yes}</p>
                     </div>
                     <div className="rounded-3xl bg-[#f18a3f] p-4 text-slate-950">
                       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-900/70">Pending</p>
-                      <p className="mt-2 text-3xl font-semibold">{attendanceCounts.pending}</p>
+                      <p className="mt-2 text-3xl font-semibold">{activeEventCounts.pending}</p>
                     </div>
                     <div className="rounded-3xl bg-slate-950 p-4 text-white">
                       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">Not going</p>
-                      <p className="mt-2 text-3xl font-semibold">{attendanceCounts.no}</p>
+                      <p className="mt-2 text-3xl font-semibold">{activeEventCounts.no}</p>
                     </div>
                   </div>
 
                   {/* Attendance reminder */}
-                  {attendanceCounts.pending > 0 && activeEvent && (
+                  {activeEventCounts.pending > 0 && activeEvent && (
                     <div className="mt-3 flex items-center gap-3">
                       <button
                         type="button"
@@ -726,7 +725,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                         }}
                         className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800 transition hover:bg-amber-100 disabled:opacity-60"
                       >
-                        {sendingReminder ? 'Sending…' : `Remind ${attendanceCounts.pending} pending`}
+                        {sendingReminder ? 'Sending…' : `Remind ${activeEventCounts.pending} pending`}
                       </button>
                       {reminderMsg && (
                         <p className="text-xs font-medium text-slate-500">{reminderMsg}</p>

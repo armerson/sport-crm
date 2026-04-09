@@ -119,7 +119,7 @@ async function completePendingRegistration(user: User, profile: UserProfile): Pr
   const pendingInviteCode = sessionStorage.getItem('pending_invite_code')
   if (pendingInviteCode) {
     sessionStorage.removeItem('pending_invite_code')
-    await supabase.rpc('use_team_invite', { p_code: pendingInviteCode }).catch(() => {/* silent — code may have already been used */})
+    await supabase.rpc('use_team_invite', { p_code: pendingInviteCode }).then(() => undefined, () => undefined)
     changed = true
   }
 
