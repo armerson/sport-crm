@@ -9,19 +9,69 @@ export function subscribeToCoachTeams(
   const client = requireSupabase()
 
   return subscribeToTables(`coach-teams-${coachId}`, ['teams', 'team_coaches', 'player_teams'], async () => {
-    const { data, error } = await client
-      .from('teams')
-      .select('id, name, age_group, photo_url, team_coaches!inner(coach_id), player_teams(player_id)')
-      .eq('team_coaches.coach_id', coachId)
-      .order('age_group', { ascending: true })
-      .order('name', { ascending: true })
+    const { data: links, error: linkErr } = await client
+      .from('team_coaches')
+      .select('team_id')
+      .eq('coach_id', coachId)
 
-    if (error) {
+    if (linkErr) {
       onError('Unable to load coach teams.')
       return
     }
 
-    onData((data ?? []).map((row) => mapTeamRow(row as Record<string, unknown>)))
+    const teamIds = [...new Set((links ?? []).map((r: { team_id: string }) => r.team_id))]
+    if (teamIds.length === 0) {
+      onData([])
+      return
+    }
+
+    const { data: teams, error: teamsErr } = await client
+      .from('teams')
+      .select('id, name, age_group, is_senior, photo_url')
+      .in('id', teamIds)
+      .order('age_group', { ascending: true })
+      .order('name', { ascending: true })
+
+    if (teamsErr) {
+      onError('Unable to load coach teams.')
+      return
+    }
+
+    const { data: tcData, error: tcErr } = await client.from('team_coaches').select('team_id, coach_id').in('team_id', teamIds)
+    if (tcErr) {
+      onError('Unable to load coach teams.')
+      return
+    }
+
+    const { data: ptData, error: ptErr } = await client.from('player_teams').select('team_id, player_id').in('team_id', teamIds)
+    if (ptErr) {
+      onError('Unable to load coach teams.')
+      return
+    }
+
+    const coachesByTeam = new Map<string, string[]>()
+    for (const r of (tcData ?? []) as Array<{ team_id: string; coach_id: string }>) {
+      if (!coachesByTeam.has(r.team_id)) coachesByTeam.set(r.team_id, [])
+      coachesByTeam.get(r.team_id)!.push(r.coach_id)
+    }
+
+    const playersByTeam = new Map<string, string[]>()
+    for (const r of (ptData ?? []) as Array<{ team_id: string; player_id: string }>) {
+      if (!playersByTeam.has(r.team_id)) playersByTeam.set(r.team_id, [])
+      playersByTeam.get(r.team_id)!.push(r.player_id)
+    }
+
+    onData(
+      (teams ?? []).map((team) => {
+        const row = team as Record<string, unknown>
+        const id = String(row.id ?? '')
+        return mapTeamRow({
+          ...row,
+          team_coaches: (coachesByTeam.get(id) ?? []).map((coach_id) => ({ coach_id })),
+          player_teams: (playersByTeam.get(id) ?? []).map((player_id) => ({ player_id })),
+        })
+      }),
+    )
   })
 }
 

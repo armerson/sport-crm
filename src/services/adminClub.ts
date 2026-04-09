@@ -18,18 +18,47 @@ export function subscribeToTeams(
   const client = requireSupabase()
 
   return subscribeToTables('teams-feed', ['teams', 'team_coaches', 'player_teams'], async () => {
-    const { data, error } = await client
+    const { data: teamsData, error: teamsError } = await client
       .from('teams')
-      .select('id, name, age_group, is_senior, photo_url, team_coaches(coach_id), player_teams(player_id)')
+      .select('id, name, age_group, is_senior, photo_url')
       .order('age_group', { ascending: true })
       .order('name', { ascending: true })
 
-    if (error) {
+    if (teamsError) {
       onError('Unable to load teams.')
       return
     }
 
-    onData((data ?? []).map((row) => mapTeamRow(row as Record<string, unknown>)))
+    const { data: tcData, error: tcErr } = await client.from('team_coaches').select('team_id, coach_id')
+    if (tcErr) {
+      onError('Unable to load teams.')
+      return
+    }
+
+    const { data: ptData, error: ptErr } = await client.from('player_teams').select('team_id, player_id')
+    if (ptErr) {
+      onError('Unable to load teams.')
+      return
+    }
+
+    const coachesByTeam = new Map<string, string[]>()
+    for (const r of (tcData ?? []) as Array<{ team_id: string; coach_id: string }>) {
+      if (!coachesByTeam.has(r.team_id)) coachesByTeam.set(r.team_id, [])
+      coachesByTeam.get(r.team_id)!.push(r.coach_id)
+    }
+
+    const playersByTeam = new Map<string, string[]>()
+    for (const r of (ptData ?? []) as Array<{ team_id: string; player_id: string }>) {
+      if (!playersByTeam.has(r.team_id)) playersByTeam.set(r.team_id, [])
+      playersByTeam.get(r.team_id)!.push(r.player_id)
+    }
+
+    onData((teamsData ?? []).map((team) => {
+      const id = (team as { id: string }).id
+      const team_coaches = (coachesByTeam.get(id) ?? []).map((coach_id) => ({ coach_id }))
+      const player_teams = (playersByTeam.get(id) ?? []).map((player_id) => ({ player_id }))
+      return mapTeamRow({ ...team, team_coaches, player_teams } as Record<string, unknown>)
+    }))
   })
 }
 

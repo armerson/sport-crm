@@ -165,11 +165,11 @@ function MemberEditor({
 function MemberRow({
   member,
   teams,
-  onUpdated,
+  onRefetch,
 }: {
   member: MemberProfile
   teams: TeamRecord[]
-  onUpdated: (updated: MemberProfile) => void
+  onRefetch: () => Promise<void>
 }) {
   const [editing, setEditing] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -187,7 +187,7 @@ function MemberRow({
       if (roles.includes('coach')) {
         await syncCoachTeams(member.id, coachTeamIds)
       }
-      onUpdated({ ...member, roles, coachTeams: coachTeamIds })
+      await onRefetch()
       setEditing(false)
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Failed to save. Please try again.'
@@ -272,8 +272,9 @@ function MembersList({ teams }: { teams: TeamRecord[] }) {
     })
   }, [members, search, roleFilter])
 
-  const handleUpdated = useCallback((updated: MemberProfile) => {
-    setMembers((prev) => prev.map((m) => m.id === updated.id ? updated : m))
+  const refetchMembers = useCallback(async () => {
+    const fresh = await fetchAllProfiles()
+    setMembers(fresh)
   }, [])
 
   const FILTERS: { label: string; value: RoleFilter }[] = [
@@ -323,7 +324,7 @@ function MembersList({ teams }: { teams: TeamRecord[] }) {
       ) : (
         <ul className="divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white">
           {filtered.map((m) => (
-            <MemberRow key={m.id} member={m} teams={teams} onUpdated={handleUpdated} />
+            <MemberRow key={m.id} member={m} teams={teams} onRefetch={refetchMembers} />
           ))}
         </ul>
       )}
