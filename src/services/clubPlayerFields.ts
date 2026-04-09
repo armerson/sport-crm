@@ -6,6 +6,22 @@
 import { requireSupabase } from './supabaseHelpers.ts'
 import type { ClubPlayerField, ClubPlayerFieldInput, ClubPlayerFieldType } from '../types/clubPlayerFields.ts'
 
+/** Shown when PostgREST has no `club_player_fields` / `player_field_values` (migration not applied). */
+export const CLUB_PLAYER_FIELDS_SETUP_MESSAGE =
+  'Player registration fields need a one-time database update. Open Supabase → SQL Editor, paste and run the full contents of `supabase/migrations/20260418100000_club_player_registration_fields.sql` from this project (or run `supabase db push` against this project). Wait a minute for the API schema to refresh, then reload this app.'
+
+function mapClubPlayerFieldsSupabaseError(error: { message: string; code?: string }): Error {
+  const msg = error.message ?? ''
+  const code = error.code ?? ''
+  const looksMissing =
+    code === 'PGRST205' ||
+    code === '42P01' ||
+    (msg.includes('club_player_fields') && (msg.includes('schema cache') || msg.includes('Could not find'))) ||
+    (msg.includes('player_field_values') && (msg.includes('schema cache') || msg.includes('Could not find')))
+  if (looksMissing) return new Error(CLUB_PLAYER_FIELDS_SETUP_MESSAGE)
+  return new Error(msg)
+}
+
 function mapFieldRow(row: Record<string, unknown>): ClubPlayerField {
   const opts = row.options
   let options: string[] | null = null
@@ -36,7 +52,7 @@ export async function fetchPublicClubPlayerFields(): Promise<ClubPlayerField[]> 
     .eq('active', true)
     .order('sort_order', { ascending: true })
 
-  if (error) throw new Error(error.message)
+  if (error) throw mapClubPlayerFieldsSupabaseError(error)
   return (data ?? []).map((r) => mapFieldRow(r as Record<string, unknown>))
 }
 
@@ -48,7 +64,7 @@ export async function fetchAdminClubPlayerFields(): Promise<ClubPlayerField[]> {
     .select('id, label, field_type, required, options, placeholder, sort_order, active')
     .order('sort_order', { ascending: true })
 
-  if (error) throw new Error(error.message)
+  if (error) throw mapClubPlayerFieldsSupabaseError(error)
   return (data ?? []).map((r) => mapFieldRow(r as Record<string, unknown>))
 }
 
@@ -72,7 +88,7 @@ export async function insertClubPlayerField(input: ClubPlayerFieldInput): Promis
     active: input.active,
   })
 
-  if (error) throw new Error(error.message)
+  if (error) throw mapClubPlayerFieldsSupabaseError(error)
 }
 
 export async function updateClubPlayerField(fieldId: string, input: ClubPlayerFieldInput): Promise<void> {
@@ -98,13 +114,13 @@ export async function updateClubPlayerField(fieldId: string, input: ClubPlayerFi
     })
     .eq('id', fieldId)
 
-  if (error) throw new Error(error.message)
+  if (error) throw mapClubPlayerFieldsSupabaseError(error)
 }
 
 export async function deleteClubPlayerField(fieldId: string): Promise<void> {
   const client = requireSupabase()
   const { error } = await client.from('club_player_fields').delete().eq('id', fieldId)
-  if (error) throw new Error(error.message)
+  if (error) throw mapClubPlayerFieldsSupabaseError(error)
 }
 
 export async function fetchPlayerFieldValuesMap(playerId: string): Promise<Record<string, string>> {
@@ -114,7 +130,7 @@ export async function fetchPlayerFieldValuesMap(playerId: string): Promise<Recor
     .select('field_id, value')
     .eq('player_id', playerId)
 
-  if (error) throw new Error(error.message)
+  if (error) throw mapClubPlayerFieldsSupabaseError(error)
   const map: Record<string, string> = {}
   for (const row of data ?? []) {
     const r = row as { field_id: string; value: string | null }
@@ -133,5 +149,5 @@ export async function upsertPlayerFieldValues(playerId: string, values: Record<s
   if (rows.length === 0) return
 
   const { error } = await client.from('player_field_values').upsert(rows, { onConflict: 'player_id,field_id' })
-  if (error) throw new Error(error.message)
+  if (error) throw mapClubPlayerFieldsSupabaseError(error)
 }
