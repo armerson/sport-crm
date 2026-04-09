@@ -237,6 +237,20 @@ function ProductsSection() {
                 >
                   Edit
                 </button>
+                {product.active && (product.billingType === 'one_off' || product.billingType === 'membership') ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const url = `${window.location.origin}/pay/camp/${product.id}`
+                      void navigator.clipboard.writeText(url).then(() => {
+                        setSuccessMsg('Guest pay link copied — share with anyone; no club login required.')
+                      })
+                    }}
+                    className="text-xs font-semibold text-[#123524] transition hover:underline"
+                  >
+                    Copy guest pay link
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   onClick={() => void toggleProduct(product.id, !product.active)}

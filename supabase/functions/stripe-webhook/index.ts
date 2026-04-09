@@ -46,6 +46,25 @@ Deno.serve(async (request) => {
 
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session
+
+        // Public guest checkout (camp / one-off) — no club account required
+        if (session.metadata?.crm_guest_checkout === 'true' && session.metadata?.guest_registration_id) {
+          if (session.mode === 'payment' && session.payment_intent) {
+            const gid = session.metadata.guest_registration_id
+            await db
+              .from('guest_checkout_registrations')
+              .update({
+                status: 'paid',
+                stripe_payment_intent_id: session.payment_intent as string,
+                paid_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', gid)
+              .eq('status', 'pending_payment')
+          }
+          break
+        }
+
         const parentId = session.metadata?.crm_parent_id
         if (!parentId) break
 

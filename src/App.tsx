@@ -33,6 +33,16 @@ const ParentRegisterPage = lazy(async () => {
   return { default: module.ParentRegisterPage }
 })
 
+const GuestCampCheckoutPage = lazy(async () => {
+  const module = await import('./pages/GuestCampCheckoutPage.tsx')
+  return { default: module.GuestCampCheckoutPage }
+})
+
+const GuestCampSuccessPage = lazy(async () => {
+  const module = await import('./pages/GuestCampCheckoutPage.tsx')
+  return { default: module.GuestCampSuccessPage }
+})
+
 function RouteFallback() {
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
@@ -57,6 +67,9 @@ function App() {
         <Route path="/register/parent" element={<ParentRegisterPage />} />
         {/* Public registration forms — no auth required */}
         <Route path="/register/:slug" element={<RegisterPage />} />
+        {/* Guest payment for camps / one-off products (no club account) */}
+        <Route path="/pay/camp/:productId" element={<GuestCampCheckoutPage />} />
+        <Route path="/pay/camp/success" element={<GuestCampSuccessPage />} />
         <Route path="/parent" element={<Navigate to="/?view=parent" replace />} />
         {/* Team invite links — public, anyone can land here */}
         <Route path="/join/:code" element={<JoinPage />} />

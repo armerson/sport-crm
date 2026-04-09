@@ -1,0 +1,6 @@
+# Guest camp checkout: browser calls these with the anon key (no logged-in user).
+[functions.get-guest-product]
+verify_jwt = false
+
+[functions.create-guest-checkout-session]
+verify_jwt = false
