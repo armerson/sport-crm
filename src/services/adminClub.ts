@@ -92,17 +92,9 @@ export function subscribeToCoaches(
   const client = requireSupabase()
 
   return subscribeToTables('coach-profiles', ['profiles', 'team_coaches'], async () => {
-    const { data, error } = await client
-      .from('profiles')
-      .select('id, name, email, roles, linked_player_id')
-      .contains('roles', ['coach'])
-      .order('name', { ascending: true })
-
-    if (error) {
-      onError('Unable to load coaches.')
-      return
-    }
-
+    // Load coach-team assignments first, then resolve profile names.
+    // We do NOT filter by roles because the roles update can be silently
+    // blocked by RLS; anyone in team_coaches is a coach for display purposes.
     const { data: tcData, error: tcErr } = await client
       .from('team_coaches')
       .select('coach_id, team_id')
@@ -113,9 +105,36 @@ export function subscribeToCoaches(
     }
 
     const teamsByCoach = new Map<string, string[]>()
+    const coachIds = new Set<string>()
     for (const row of (tcData ?? []) as Array<{ coach_id: string; team_id: string }>) {
+      coachIds.add(row.coach_id)
       if (!teamsByCoach.has(row.coach_id)) teamsByCoach.set(row.coach_id, [])
       teamsByCoach.get(row.coach_id)!.push(row.team_id)
+    }
+
+    // Also include profiles that explicitly carry the coach role (for the dropdown)
+    const { data: roleData } = await client
+      .from('profiles')
+      .select('id, name, email, roles, linked_player_id')
+      .contains('roles', ['coach'])
+      .order('name', { ascending: true })
+
+    const allCoachIds = new Set([...coachIds, ...((roleData ?? []) as Array<{ id: string }>).map((r) => r.id)])
+
+    if (allCoachIds.size === 0) {
+      onData([])
+      return
+    }
+
+    const { data, error } = await client
+      .from('profiles')
+      .select('id, name, email, roles, linked_player_id')
+      .in('id', [...allCoachIds])
+      .order('name', { ascending: true })
+
+    if (error) {
+      onError('Unable to load coaches.')
+      return
     }
 
     onData((data ?? []).map((row) => {

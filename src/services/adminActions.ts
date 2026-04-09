@@ -18,7 +18,8 @@ export async function assignCoachToTeam(teamId: string, coachId: string) {
     throw new Error(coachError?.message ?? 'Profile not found.')
   }
 
-  // Add coach role if not already present
+  // Try to stamp the coach role on their profile (best-effort; RLS may silently
+  // block cross-user updates without an error, so we log but don't hard-fail).
   const roles = Array.isArray((coachProfile as { roles?: string[] }).roles)
     ? (coachProfile as { roles: string[] }).roles
     : []
@@ -27,14 +28,14 @@ export async function assignCoachToTeam(teamId: string, coachId: string) {
       .from('profiles')
       .update({ roles: [...new Set([...roles, 'coach'])] })
       .eq('id', coachId)
-    if (roleErr) throw new Error(roleErr.message)
+    if (roleErr) console.warn('Role update blocked by RLS (non-fatal):', roleErr.message)
   }
 
-  // Insert into team_coaches (ignore duplicate)
+  // The critical write — insert into team_coaches (upsert to ignore duplicates)
   const { error: insertErr } = await client
     .from('team_coaches')
-    .insert({ team_id: teamId, coach_id: coachId })
-  if (insertErr && insertErr.code !== '23505') throw new Error(insertErr.message)
+    .upsert({ team_id: teamId, coach_id: coachId }, { onConflict: 'team_id,coach_id', ignoreDuplicates: true })
+  if (insertErr) throw new Error(insertErr.message)
 
   await writeAuditLog({
     action: 'assign_coach',
