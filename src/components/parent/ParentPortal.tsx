@@ -10,7 +10,7 @@ import { EventComments } from '../events/EventComments.tsx'
 import { fetchPublishedReviewsForPlayer, type PlayerReview } from '../../services/playerReviews.ts'
 import type { UserProfile } from '../../types/auth.ts'
 import type { AttendanceStatus } from '../../types/club.ts'
-import { formatDateTime, groupByWeek } from '../../utils/date.ts'
+import { formatDateTimeRelative, dateBox, shortenAddress, groupByWeek } from '../../utils/date.ts'
 import { EventTypeChip } from '../ui/EventTypeChip.tsx'
 import { SelectField } from '../ui/SelectField.tsx'
 import { TabNav } from '../ui/TabNav.tsx'
@@ -45,6 +45,141 @@ function SectionFallback() {
   )
 }
 
+// ── Compact collapsible parent event card ────────────────────────
+function ParentEventCard({
+  event,
+  team,
+  attendanceRecord,
+  isSubmitting,
+  onAttendanceResponse,
+  result,
+  currentUserId,
+}: {
+  event: import('../../types/club.ts').EventRecord
+  team: import('../../types/club.ts').TeamRecord | undefined
+  attendanceRecord: import('../../types/club.ts').AttendanceRecord | undefined
+  isSubmitting: boolean
+  onAttendanceResponse: (attendanceId: string, status: AttendanceStatus) => void
+  result: import('../../types/club.ts').ResultRecord | undefined
+  currentUserId: string
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const isPast = new Date(event.dateTime) < new Date()
+  const box = dateBox(event.dateTime)
+  const shortAddr = shortenAddress(event.location)
+  const hasDetails = !!(event.location || currentUserId)
+
+  return (
+    <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+      {/* ── Compact always-visible row ── */}
+      <div className="flex min-w-0 items-start gap-3 px-4 py-3">
+        {/* Date box */}
+        <div className={`flex w-10 shrink-0 flex-col items-center rounded-xl py-1.5 ${isPast ? 'bg-slate-100' : 'bg-[#123524]/8'}`}>
+          <span className={`text-[9px] font-bold uppercase tracking-widest ${isPast ? 'text-slate-400' : 'text-[#123524]/70'}`}>{box.month}</span>
+          <span className={`text-lg font-bold leading-tight ${isPast ? 'text-slate-500' : 'text-[#123524]'}`}>{box.day}</span>
+        </div>
+
+        {/* Main content */}
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 items-start justify-between gap-2">
+            <div className="min-w-0">
+              <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                <p className="truncate text-sm font-semibold text-slate-900">{event.title}</p>
+                <EventTypeChip type={event.type} />
+                {result ? (
+                  <span className="rounded-full bg-[#123524] px-2 py-0.5 text-xs font-bold tabular-nums text-white">
+                    {result.homeScore}–{result.awayScore}
+                  </span>
+                ) : null}
+              </div>
+              <p className="mt-0.5 text-xs text-slate-500">{formatDateTimeRelative(event.dateTime)}</p>
+              {team ? <p className="text-xs text-slate-400">{team.name}{team.ageGroup ? ` · ${team.ageGroup}` : ''}</p> : null}
+              {shortAddr ? <p className="truncate text-xs text-slate-400">{shortAddr}</p> : null}
+            </div>
+
+            {/* Past status badge */}
+            {isPast && attendanceRecord && (
+              <span className={`shrink-0 self-start rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                attendanceRecord.status === 'yes' ? 'bg-emerald-100 text-emerald-700' :
+                attendanceRecord.status === 'no' ? 'bg-rose-100 text-rose-700' :
+                'bg-slate-100 text-slate-500'
+              }`}>
+                {attendanceRecord.status === 'yes' ? 'Attended' : attendanceRecord.status === 'no' ? 'Missed' : '–'}
+              </span>
+            )}
+          </div>
+
+          {/* Upcoming attendance buttons */}
+          {!isPast && attendanceRecord && (
+            <div className="mt-2.5 flex gap-2">
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={() => onAttendanceResponse(attendanceRecord.id, attendanceRecord.status === 'yes' ? 'pending' : 'yes')}
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-sm font-bold transition active:scale-95 disabled:opacity-50 ${
+                  attendanceRecord.status === 'yes'
+                    ? 'bg-emerald-500 text-white shadow-sm shadow-emerald-200'
+                    : 'border border-slate-200 bg-slate-50 text-slate-600 hover:border-emerald-300 hover:text-emerald-600'
+                }`}
+              >
+                ✓ Going
+              </button>
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={() => onAttendanceResponse(attendanceRecord.id, attendanceRecord.status === 'no' ? 'pending' : 'no')}
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-sm font-bold transition active:scale-95 disabled:opacity-50 ${
+                  attendanceRecord.status === 'no'
+                    ? 'bg-rose-500 text-white shadow-sm shadow-rose-200'
+                    : 'border border-slate-200 bg-slate-50 text-slate-600 hover:border-rose-300 hover:text-rose-500'
+                }`}
+              >
+                ✕ Can't go
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Expand toggle ── */}
+      {hasDetails && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="flex w-full items-center justify-center gap-1 border-t border-slate-100 py-2 text-xs text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition"
+        >
+          {expanded ? 'Less' : 'Map & comments'}
+          <svg
+            width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}
+            strokeLinecap="round" strokeLinejoin="round"
+            className={`transition-transform ${expanded ? 'rotate-180' : ''}`}
+          >
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </button>
+      )}
+
+      {/* ── Expanded details ── */}
+      {expanded && (
+        <div className="space-y-3 border-t border-slate-100 px-4 pb-4 pt-3">
+          {event.type === 'match' && event.opponent ? (
+            <p className="text-sm text-slate-600">vs <span className="font-semibold">{event.opponent}</span></p>
+          ) : null}
+          {event.location && (
+            <LocationMapCard location={event.location} placeId={event.placeId} lat={event.lat} lng={event.lng} />
+          )}
+          {isPast && event.type === 'match' && currentUserId ? (
+            <MotmVotingCard eventId={event.id} isPastMatch={isPast} teamId={event.teamId} currentUserId={currentUserId} />
+          ) : null}
+          {currentUserId ? (
+            <EventComments eventId={event.id} currentUserId={currentUserId} />
+          ) : null}
+        </div>
+      )}
+    </article>
+  )
+}
+
 export function EventList({
   eventsToShow,
   emptyLabel,
@@ -72,101 +207,34 @@ export function EventList({
     )
   }
 
+  const grouped = groupByWeek(eventsToShow, true)
+
   return (
-    <div className="space-y-4">
-      {eventsToShow.map((event) => {
-        const team = teamById.get(event.teamId)
-        const attendanceRecord = attendanceByEvent.get(event.id)
-        const isPast = new Date(event.dateTime) < new Date()
-        const result = isPast && event.type === 'match' ? resultByEventId.get(event.id) : undefined
-
-        return (
-          <article key={event.id} className="rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-5">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div className="space-y-1.5">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="text-lg font-semibold text-slate-950">{event.title}</h3>
-                  <span className="rounded-full bg-white px-3 py-0.5 text-xs font-semibold uppercase tracking-[0.14em] text-slate-600">
-                    {event.type}
-                  </span>
-                  {result ? (
-                    <span className="rounded-full bg-[#123524] px-3 py-0.5 text-xs font-bold tabular-nums text-white">
-                      {result.homeScore}–{result.awayScore}
-                    </span>
-                  ) : null}
-                  {event.type === 'match' && event.opponent ? (
-                    <span className="text-xs text-slate-500">vs {event.opponent}</span>
-                  ) : null}
-                </div>
-                {team ? (
-                  <p className="text-sm text-slate-500">{team.name}{team.ageGroup ? ` · ${team.ageGroup}` : ''}</p>
-                ) : null}
-                <p className="text-sm text-slate-600">{formatDateTime(event.dateTime)}</p>
-                <p className="text-sm text-slate-600">{event.location}</p>
-                {event.location && (
-                  <div className="mt-2">
-                    <LocationMapCard location={event.location} placeId={event.placeId} lat={event.lat} lng={event.lng} />
-                  </div>
-                )}
-              </div>
-
-              {!isPast && attendanceRecord && (
-                <div className="shrink-0">
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      disabled={isSubmitting}
-                      onClick={() => onAttendanceResponse(attendanceRecord.id, attendanceRecord.status === 'yes' ? 'pending' : 'yes')}
-                      className={`flex flex-1 items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-bold transition active:scale-95 ${
-                        attendanceRecord.status === 'yes'
-                          ? 'bg-emerald-500 text-white shadow-md shadow-emerald-200'
-                          : 'border-2 border-slate-200 bg-white text-slate-600 hover:border-emerald-300 hover:text-emerald-600'
-                      } disabled:opacity-50`}
-                    >
-                      <span>✓</span> Going
-                    </button>
-                    <button
-                      type="button"
-                      disabled={isSubmitting}
-                      onClick={() => onAttendanceResponse(attendanceRecord.id, attendanceRecord.status === 'no' ? 'pending' : 'no')}
-                      className={`flex flex-1 items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-bold transition active:scale-95 ${
-                        attendanceRecord.status === 'no'
-                          ? 'bg-rose-500 text-white shadow-md shadow-rose-200'
-                          : 'border-2 border-slate-200 bg-white text-slate-600 hover:border-rose-300 hover:text-rose-500'
-                      } disabled:opacity-50`}
-                    >
-                      <span>✕</span> Can't go
-                    </button>
-                  </div>
-                </div>
-              )}
-              {isPast && attendanceRecord && (
-                <div className={`shrink-0 self-start rounded-full px-3 py-1 text-xs font-bold ${
-                  attendanceRecord.status === 'yes' ? 'bg-emerald-100 text-emerald-700' :
-                  attendanceRecord.status === 'no' ? 'bg-rose-100 text-rose-700' :
-                  'bg-slate-100 text-slate-500'
-                }`}>
-                  {attendanceRecord.status === 'yes' ? 'Attended' : attendanceRecord.status === 'no' ? 'Missed' : 'No response'}
-                </div>
-              )}
-            </div>
-
-            {/* MOTM voting — past matches only */}
-            {isPast && event.type === 'match' && currentUserId ? (
-              <MotmVotingCard
-                eventId={event.id}
-                isPastMatch={isPast}
-                teamId={event.teamId}
-                currentUserId={currentUserId}
-              />
-            ) : null}
-
-            {currentUserId ? (
-              <EventComments eventId={event.id} currentUserId={currentUserId} />
-            ) : null}
-          </article>
-        )
-      })}
+    <div className="space-y-5">
+      {grouped.map(({ bucket, label, items }) => (
+        <div key={bucket}>
+          <p className={`mb-2 text-[11px] font-bold uppercase tracking-widest ${
+            bucket === 'past' ? 'text-slate-400' : bucket === 'today' ? 'text-[#123524]' : 'text-slate-500'
+          }`}>{label}</p>
+          <div className="space-y-2">
+            {items.map((event) => {
+              const isPast = new Date(event.dateTime) < new Date()
+              return (
+                <ParentEventCard
+                  key={event.id}
+                  event={event}
+                  team={teamById.get(event.teamId)}
+                  attendanceRecord={attendanceByEvent.get(event.id)}
+                  isSubmitting={isSubmitting}
+                  onAttendanceResponse={onAttendanceResponse}
+                  result={isPast && event.type === 'match' ? resultByEventId.get(event.id) : undefined}
+                  currentUserId={currentUserId}
+                />
+              )
+            })}
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
