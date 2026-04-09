@@ -137,8 +137,14 @@ export function DashboardPage() {
     return null
   }
 
-  // Sorted roles to display in consistent order (admin → coach → player → parent).
-  const sortedRoles = ROLE_ORDER.filter((r) => profile.roles.includes(r))
+  // Sorted roles for the switcher. DB `roles` may omit `parent` even when `player_parents`
+  // links exist — still offer Parent (and Player when linked) so multi-hat users can switch.
+  const sortedRoles = ROLE_ORDER.filter((r) => {
+    if (profile.roles.includes(r)) return true
+    if (r === 'parent' && profile.children.length > 0) return true
+    if (r === 'player' && profile.linkedPlayerId) return true
+    return false
+  })
   const hasMultipleRoles = sortedRoles.length > 1
 
   const isAdmin = activeRole === 'admin'
