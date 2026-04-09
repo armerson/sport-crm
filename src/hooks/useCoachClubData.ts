@@ -5,7 +5,6 @@ import {
   castMotmVote,
   coachUpdateAttendance,
   computeMotmTally,
-  confirmEvent,
   createEventWithAttendance,
   deleteEvent,
   deleteEventSeries,
@@ -283,14 +282,6 @@ export function useCoachClubData(coachId: string, selectedTeamId: string, select
         throw submitError
       } finally {
         setIsSubmitting(false)
-      }
-    },
-    confirmEvent: async (eventId: string) => {
-      if (!isSupabaseConfigured) { setError(supabaseConfigError); return }
-      try {
-        await confirmEvent(eventId)
-      } catch (e) {
-        setError(getCoachErrorMessage(e, 'Unable to confirm event.'))
       }
     },
     saveResult: async (eventId: string, input: ResultFormInput) => {

@@ -140,7 +140,6 @@ export async function createEventWithAttendance(
       lng: input.lng ?? null,
       recurrence_group_id: recurrenceGroupId,
       opponent: input.type === 'match' && input.opponent?.trim() ? input.opponent.trim() : null,
-      event_status: input.eventStatus ?? 'availability_request',
     }
   })
 
@@ -183,21 +182,11 @@ export async function updateEvent(eventId: string, input: Partial<EventFormInput
   if (input.lat !== undefined) updates.lat = input.lat ?? null
   if (input.lng !== undefined) updates.lng = input.lng ?? null
   if (input.opponent !== undefined) updates.opponent = input.opponent?.trim() || null
-  if (input.eventStatus !== undefined) updates.event_status = input.eventStatus
 
   const { error } = await client.from('events').update(updates).eq('id', eventId)
   if (error) throw new Error(error.message)
 }
 
-/** Confirm a previously-drafted availability-request event. */
-export async function confirmEvent(eventId: string): Promise<void> {
-  const client = requireSupabase()
-  const { error } = await client
-    .from('events')
-    .update({ event_status: 'confirmed' })
-    .eq('id', eventId)
-  if (error) throw new Error(error.message)
-}
 
 export async function deleteEvent(eventId: string): Promise<void> {
   const client = requireSupabase()

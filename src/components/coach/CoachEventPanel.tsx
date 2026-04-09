@@ -310,7 +310,6 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
     loadingTeams,
     resultByEventId,
     attendanceCounts,
-    confirmEvent,
     saveResult,
     sendAttendanceReminder,
     teams,
@@ -929,26 +928,6 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                 />
               ) : null}
 
-              {/* Confirm event banner — shown while event is an availability request */}
-              {activeEventId && activeEvent?.eventStatus === 'availability_request' && !isPastMatch ? (
-                <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold text-amber-900">Availability request sent</p>
-                      <p className="mt-0.5 text-xs text-amber-700">
-                        {activeEventCounts.yes} going · {activeEventCounts.pending} awaiting · {activeEventCounts.no} can't make it
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => { void confirmEvent(activeEventId) }}
-                      className="shrink-0 rounded-full bg-[#123524] px-4 py-1.5 text-xs font-bold text-white transition hover:bg-[#1a4a33]"
-                    >
-                      Confirm event
-                    </button>
-                  </div>
-                </div>
-              ) : null}
 
               {/* Event comments — visible when an event is selected */}
               {activeEventId ? (
