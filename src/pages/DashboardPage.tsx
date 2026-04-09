@@ -4,6 +4,7 @@ import { BottomNav, ADMIN_BOTTOM_NAV, COACH_BOTTOM_NAV, PARENT_BOTTOM_NAV, PLAYE
 import { InstallBanner } from '../components/ui/InstallBanner.tsx'
 import { NotificationBanner } from '../components/ui/NotificationBanner.tsx'
 import { SettingsPanel } from '../components/settings/SettingsPanel.tsx'
+import { PageSkeleton } from '../components/ui/Skeleton.tsx'
 import { useAuth } from '../hooks/useAuth.ts'
 import { markMessagesRead, useUnreadMessages } from '../hooks/useUnreadMessages.ts'
 import type { UserRole } from '../types/auth.ts'
@@ -60,10 +61,10 @@ const roleContent: Record<UserRole, { title: string; summary: string }> = {
   },
 }
 
-function SectionFallback({ label }: { label: string }) {
+function SectionFallback() {
   return (
     <section className="rounded-[2rem] border border-white/70 bg-white/80 p-6 shadow-lg shadow-slate-900/5 backdrop-blur-sm">
-      <div className="text-sm font-medium text-slate-600">Loading {label}...</div>
+      <PageSkeleton />
     </section>
   )
 }
@@ -288,7 +289,7 @@ export function DashboardPage() {
             <>
               <InstallBanner />
               <NotificationBanner userId={profile.id} />
-              <Suspense fallback={<SectionFallback label="workspace" />}>
+              <Suspense fallback={<SectionFallback />}>
                 {isAdmin ? (
                   <AdminClubPanel activeTab={adminTab} onTabChange={(t) => setAdminTab(t)} />
                 ) : isCoach ? (
@@ -303,6 +304,21 @@ export function DashboardPage() {
           )}
         </div>
       </div>
+
+      {/* ── Coach floating create button (mobile only) ── */}
+      {isCoach && coachTab !== 'create' ? (
+        <button
+          type="button"
+          aria-label="Create event"
+          onClick={() => setCoachTab('create')}
+          className="fixed bottom-[4.5rem] right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-[#123524] text-white shadow-lg shadow-[#123524]/40 transition active:scale-95 hover:bg-[#1a4a33] sm:hidden"
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        </button>
+      ) : null}
 
       {/* ── Mobile bottom navigation ── */}
       <BottomNav items={bottomNavItems} active={activeTab} onChange={handleTabChange} badges={navBadges} />

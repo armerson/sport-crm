@@ -8,7 +8,8 @@ import { PlayerProfileCard } from '../players/PlayerProfileCard.tsx'
 import { PlayerReviewsPanel } from '../reviews/PlayerReviewsPanel.tsx'
 import { InviteButton } from '../shared/InviteButton.tsx'
 import { LocationPicker, LocationMapCard } from '../ui/LocationPicker.tsx'
-import { formatDate, formatDateTime } from '../../utils/date.ts'
+import { formatDate, formatDateTime, formatDateTimeRelative, dateBox, shortenAddress, groupByWeek } from '../../utils/date.ts'
+import { EventTypeChip } from '../ui/EventTypeChip.tsx'
 import { Button } from '../ui/Button.tsx'
 import { ConfirmInline } from '../ui/ConfirmInline.tsx'
 import { SelectField } from '../ui/SelectField.tsx'
@@ -81,6 +82,167 @@ function RecurringBadge() {
   )
 }
 
+// ── Coach event card with overflow menu ──────────────────────────
+function CoachEventCard({
+  event,
+  active,
+  counts,
+  onSelect,
+  onEdit,
+  onDelete,
+  onDeleteSeries,
+}: {
+  event: import('../../types/club.ts').EventRecord
+  active: boolean
+  counts?: { yes: number; pending: number; no: number }
+  onSelect: () => void
+  onEdit: () => void
+  onDelete: () => void
+  onDeleteSeries?: () => void
+}) {
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [confirmSeries, setConfirmSeries] = useState(false)
+  const box = dateBox(event.dateTime)
+  const isPast = new Date(event.dateTime) < new Date()
+  const shortAddr = shortenAddress(event.location)
+  const hasCounts = counts && (counts.yes + counts.pending + counts.no) > 0
+
+  return (
+    <div
+      className={`relative rounded-2xl border transition ${
+        active
+          ? 'border-[#123524] bg-[#123524] text-white'
+          : 'border-slate-200 bg-white text-slate-800 hover:border-slate-300'
+      }`}
+    >
+      {/* Main clickable row */}
+      <button className="w-full px-4 py-3 text-left" onClick={onSelect} type="button">
+        <div className="flex min-w-0 items-start gap-3">
+          {/* Date box */}
+          <div className={`flex w-10 shrink-0 flex-col items-center rounded-xl py-1.5 ${active ? 'bg-white/15' : isPast ? 'bg-slate-100' : 'bg-[#123524]/8'}`}>
+            <span className={`text-[9px] font-bold uppercase tracking-widest ${active ? 'text-white/70' : isPast ? 'text-slate-400' : 'text-[#123524]/70'}`}>{box.month}</span>
+            <span className={`text-lg font-bold leading-tight ${active ? 'text-white' : isPast ? 'text-slate-500' : 'text-[#123524]'}`}>{box.day}</span>
+          </div>
+          {/* Content */}
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <div className="flex min-w-0 items-center gap-1.5 pr-6">
+              <p className="truncate text-sm font-semibold leading-snug">{event.title}</p>
+              {event.recurrenceGroupId ? <RecurringBadge /> : null}
+            </div>
+            <p className={`text-xs ${active ? 'text-white/70' : 'text-slate-500'}`}>
+              {formatDateTimeRelative(event.dateTime)}
+            </p>
+            {shortAddr ? (
+              <p className={`truncate text-xs ${active ? 'text-white/60' : 'text-slate-400'}`}>{shortAddr}</p>
+            ) : null}
+            {/* Availability counts */}
+            {hasCounts && (
+              <div className="mt-1.5 flex items-center gap-2.5">
+                <span className={`flex items-center gap-1 text-xs font-semibold ${active ? 'text-emerald-300' : 'text-emerald-600'}`}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  {counts!.yes}
+                </span>
+                {counts!.pending > 0 && (
+                  <span className={`flex items-center gap-1 text-xs font-semibold ${active ? 'text-amber-300' : 'text-amber-600'}`}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    {counts!.pending}
+                  </span>
+                )}
+                <span className={`flex items-center gap-1 text-xs font-semibold ${active ? 'text-red-300' : 'text-red-500'}`}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  {counts!.no}
+                </span>
+                <EventTypeChip type={event.type} onDark={active} />
+              </div>
+            )}
+            {!hasCounts && (
+              <div className="mt-1"><EventTypeChip type={event.type} onDark={active} /></div>
+            )}
+          </div>
+        </div>
+      </button>
+
+      {/* ··· overflow menu trigger */}
+      <button
+        type="button"
+        aria-label="Event options"
+        onClick={(e) => { e.stopPropagation(); setMenuOpen((v) => !v); setConfirmDelete(false); setConfirmSeries(false) }}
+        className={`absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full transition ${
+          active ? 'text-white/60 hover:bg-white/15 hover:text-white' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'
+        }`}
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="12" cy="5" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="12" cy="19" r="2" />
+        </svg>
+      </button>
+
+      {/* Dropdown menu */}
+      {menuOpen && (
+        <div className={`absolute right-2 top-9 z-20 min-w-[160px] rounded-2xl border py-1 shadow-xl ${active ? 'border-white/20 bg-[#1a4a33]' : 'border-slate-100 bg-white'}`}>
+          <button
+            type="button"
+            onClick={() => { onEdit(); setMenuOpen(false) }}
+            className={`flex w-full items-center gap-2 px-4 py-2 text-sm font-medium ${active ? 'text-white hover:bg-white/10' : 'text-slate-700 hover:bg-slate-50'}`}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Edit
+          </button>
+          {onDeleteSeries && !confirmSeries && (
+            <button
+              type="button"
+              onClick={() => setConfirmSeries(true)}
+              className={`flex w-full items-center gap-2 px-4 py-2 text-sm font-medium ${active ? 'text-amber-300 hover:bg-white/10' : 'text-amber-600 hover:bg-amber-50'}`}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+              Cancel series
+            </button>
+          )}
+          {confirmSeries && (
+            <div className="px-3 py-2 space-y-1">
+              <p className={`text-xs ${active ? 'text-white/70' : 'text-slate-500'}`}>Cancel all future sessions?</p>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => { onDeleteSeries!(); setMenuOpen(false) }} className="flex-1 rounded-lg bg-amber-500 py-1 text-xs font-bold text-white">Yes</button>
+                <button type="button" onClick={() => setConfirmSeries(false)} className={`flex-1 rounded-lg py-1 text-xs font-semibold ${active ? 'bg-white/15 text-white' : 'bg-slate-100 text-slate-600'}`}>No</button>
+              </div>
+            </div>
+          )}
+          {!confirmDelete && (
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(true)}
+              className={`flex w-full items-center gap-2 px-4 py-2 text-sm font-medium ${active ? 'text-red-300 hover:bg-white/10' : 'text-red-500 hover:bg-red-50'}`}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+              Delete
+            </button>
+          )}
+          {confirmDelete && (
+            <div className="px-3 py-2 space-y-1">
+              <p className={`text-xs ${active ? 'text-white/70' : 'text-slate-500'}`}>Delete this event?</p>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => { onDelete(); setMenuOpen(false) }} className="flex-1 rounded-lg bg-red-500 py-1 text-xs font-bold text-white">Delete</button>
+                <button type="button" onClick={() => setConfirmDelete(false)} className={`flex-1 rounded-lg py-1 text-xs font-semibold ${active ? 'bg-white/15 text-white' : 'bg-slate-100 text-slate-600'}`}>Cancel</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Dismiss menu on outside click */}
+      {menuOpen && (
+        <button
+          type="button"
+          aria-hidden
+          className="fixed inset-0 z-10"
+          onClick={() => setMenuOpen(false)}
+          tabIndex={-1}
+        />
+      )}
+    </div>
+  )
+}
+
 export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: CoachEventPanelProps) {
   const setActiveTab = (tab: CoachTab) => {
     if (tab !== 'create') setCreateTeamId('')
@@ -137,6 +299,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
     loadingLineup,
     loadingTeams,
     resultByEventId,
+    attendanceCounts,
     saveResult,
     sendAttendanceReminder,
     teams,
@@ -395,72 +558,36 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                 </div>
               </div>
 
-              <div className="mt-4 space-y-3">
+              <div className="mt-4 space-y-5">
                 {events.length > 0 ? (
-                  events.map((clubEvent) => (
-                    <div
-                      key={clubEvent.id}
-                      className={`rounded-2xl border px-4 py-3 transition ${
-                        activeEventId === clubEvent.id
-                          ? 'border-[#123524] bg-[#123524] text-white'
-                          : 'border-slate-200 bg-slate-100 text-slate-800 hover:border-slate-300 hover:bg-slate-50'
-                      }`}
-                    >
-                      {/* Clickable selection area */}
-                      <button
-                        className="w-full text-left"
-                        onClick={() => setSelectedEventId(clubEvent.id)}
-                        type="button"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex min-w-0 items-center gap-1.5">
-                            <p className="truncate font-semibold">{clubEvent.title}</p>
-                            {clubEvent.recurrenceGroupId ? <RecurringBadge /> : null}
-                          </div>
-                          <span
-                            className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ${
-                              activeEventId === clubEvent.id ? 'bg-white/15 text-white' : 'bg-white text-slate-600 shadow-sm'
-                            }`}
-                          >
-                            {clubEvent.type}
-                          </span>
-                        </div>
-                        <p className={`mt-0.5 text-sm ${activeEventId === clubEvent.id ? 'text-white/75' : 'text-slate-500'}`}>
-                          {formatDateTime(clubEvent.dateTime)}
-                        </p>
-                        <p className={`mt-1 text-sm ${activeEventId === clubEvent.id ? 'text-white/70' : 'text-slate-500'}`}>
-                          {clubEvent.location}
-                        </p>
-                      </button>
-
-                      {/* Actions */}
-                      <div className={`mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 border-t pt-2 ${activeEventId === clubEvent.id ? 'border-white/20' : 'border-slate-200'}`}>
-                        <button
-                          className={`text-xs font-semibold transition ${activeEventId === clubEvent.id ? 'text-white/70 hover:text-white' : 'text-slate-500 hover:text-[#123524]'}`}
-                          onClick={() => startEditingEvent(clubEvent.id)}
-                          type="button"
-                        >
-                          Edit
-                        </button>
-                        {clubEvent.recurrenceGroupId ? (
-                          <ConfirmInline
-                            confirmLabel="Yes, cancel"
-                            label="Cancel series"
-                            onConfirm={() => { void handleDeleteSeries(clubEvent.recurrenceGroupId!, clubEvent.dateTime, clubEvent.id) }}
+                  groupByWeek(events, true).map(({ bucket, label, items: bucketEvents }) => (
+                    <div key={bucket}>
+                      <p className={`mb-2 text-[11px] font-bold uppercase tracking-widest ${bucket === 'past' ? 'text-slate-400' : bucket === 'today' ? 'text-[#123524]' : 'text-slate-500'}`}>
+                        {label}
+                      </p>
+                      <div className="space-y-2">
+                        {bucketEvents.map((clubEvent) => (
+                          <CoachEventCard
+                            key={clubEvent.id}
+                            event={clubEvent}
+                            active={activeEventId === clubEvent.id}
+                            counts={attendanceCounts.get(clubEvent.id)}
+                            onSelect={() => setSelectedEventId(clubEvent.id)}
+                            onEdit={() => startEditingEvent(clubEvent.id)}
+                            onDelete={() => { void handleDeleteEvent(clubEvent.id) }}
+                            onDeleteSeries={clubEvent.recurrenceGroupId
+                              ? () => { void handleDeleteSeries(clubEvent.recurrenceGroupId!, clubEvent.dateTime, clubEvent.id) }
+                              : undefined}
                           />
-                        ) : null}
-                        <ConfirmInline
-                          confirmLabel="Yes, delete"
-                          label="Delete"
-                          onConfirm={() => { void handleDeleteEvent(clubEvent.id) }}
-                        />
+                        ))}
                       </div>
                     </div>
                   ))
                 ) : (
-                  <div className="rounded-2xl border border-dashed border-slate-300 px-4 py-10 text-center">
-                    <p className="text-sm text-slate-500">
-                      {activeTeamId || isSingleTeamCoach ? 'No events yet for this team.' : 'Select a team to see its events.'}
+                  <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-10 text-center">
+                    <p className="text-2xl">📅</p>
+                    <p className="mt-2 text-sm font-medium text-slate-500">
+                      {activeTeamId || isSingleTeamCoach ? 'No events yet for this team.' : 'Select a team to see its schedule.'}
                     </p>
                     {activeTeamId || isSingleTeamCoach ? (
                       <button
@@ -468,7 +595,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                         onClick={() => setActiveTab('create')}
                         type="button"
                       >
-                        Create the first event
+                        Create the first event →
                       </button>
                     ) : null}
                   </div>

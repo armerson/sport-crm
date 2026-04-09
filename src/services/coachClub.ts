@@ -71,6 +71,36 @@ export function subscribeToAttendanceForEvent(
   })
 }
 
+export interface AttendanceCounts { yes: number; pending: number; no: number }
+
+/** Lightweight per-event attendance counts for a whole team — used to show ✓/⚠/✗ badges on cards. */
+export function subscribeToAttendanceCountsForTeam(
+  teamId: string,
+  onData: (counts: Map<string, AttendanceCounts>) => void,
+  onError: (message: string) => void,
+): () => void {
+  const client = requireSupabase()
+
+  return subscribeToTables(`team-att-counts-${teamId}`, ['attendance', 'events'], async () => {
+    const { data, error } = await client
+      .from('attendance')
+      .select('event_id, status, events!inner(team_id)')
+      .eq('events.team_id', teamId)
+
+    if (error) { onError('Unable to load attendance counts.'); return }
+
+    const map = new Map<string, AttendanceCounts>()
+    for (const row of (data ?? []) as Array<{ event_id: string; status: string }>) {
+      if (!map.has(row.event_id)) map.set(row.event_id, { yes: 0, pending: 0, no: 0 })
+      const c = map.get(row.event_id)!
+      if (row.status === 'yes') c.yes++
+      else if (row.status === 'no') c.no++
+      else c.pending++
+    }
+    onData(map)
+  })
+}
+
 export async function createEventWithAttendance(
   input: EventFormInput,
   playerIds: string[],

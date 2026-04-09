@@ -93,6 +93,19 @@ function StarNavIcon({ active }: { active: boolean }) {
   )
 }
 
+function BarChartIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.7} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="18" y="3" width="4" height="18" rx="1" fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.2 : 0} />
+      <rect x="18" y="3" width="4" height="18" rx="1" />
+      <rect x="10" y="8" width="4" height="13" rx="1" fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.2 : 0} />
+      <rect x="10" y="8" width="4" height="13" rx="1" />
+      <rect x="2" y="13" width="4" height="8" rx="1" fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.2 : 0} />
+      <rect x="2" y="13" width="4" height="8" rx="1" />
+    </svg>
+  )
+}
+
 function NewspaperIcon({ active }: { active: boolean }) {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.7} strokeLinecap="round" strokeLinejoin="round">
@@ -116,9 +129,9 @@ export const ADMIN_BOTTOM_NAV: readonly BottomNavItem[] = [
 
 export const COACH_BOTTOM_NAV: readonly BottomNavItem[] = [
   { value: 'schedule', label: 'Schedule', icon: (a) => <CalendarIcon active={a} /> },
-  { value: 'create', label: 'Create', icon: (a) => <PlusIcon active={a} /> },
-  { value: 'feed', label: 'Feed', icon: (a) => <NewspaperIcon active={a} /> },
   { value: 'squad', label: 'Squad', icon: (a) => <ClipboardIcon active={a} /> },
+  { value: 'stats', label: 'Stats', icon: (a) => <BarChartIcon active={a} /> },
+  { value: 'feed', label: 'Feed', icon: (a) => <NewspaperIcon active={a} /> },
   { value: 'messages', label: 'Messages', icon: (a) => <ChatIcon active={a} /> },
 ]
 

@@ -10,6 +10,7 @@ import {
   deleteEventSeries,
   removeLineupPlayer,
   subscribeToAttendanceForEvent,
+  subscribeToAttendanceCountsForTeam,
   subscribeToCoachTeams,
   subscribeToEventsForTeam,
   subscribeToLineupForEvent,
@@ -18,6 +19,7 @@ import {
   updateEvent,
   upsertLineupPlayer,
   upsertResult,
+  type AttendanceCounts,
 } from '../services/coachClub.ts'
 import type { AttendanceRecord, EventFormInput, EventRecord, LineupEntry, MotmTally, MotmVote, RecurrenceOptions, ResultFormInput, ResultRecord, TeamRecord } from '../types/club.ts'
 
@@ -30,6 +32,7 @@ export function useCoachClubData(coachId: string, selectedTeamId: string, select
   const [events, setEvents] = useState<EventRecord[]>([])
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([])
   const [results, setResults] = useState<ResultRecord[]>([])
+  const [attendanceCounts, setAttendanceCounts] = useState<Map<string, AttendanceCounts>>(new Map())
   const [lineup, setLineup] = useState<LineupEntry[]>([])
   const [motmVotes, setMotmVotes] = useState<MotmVote[]>([])
   const [loadingTeams, setLoadingTeams] = useState(true)
@@ -97,14 +100,12 @@ export function useCoachClubData(coachId: string, selectedTeamId: string, select
     return unsubscribe
   }, [activeTeamId])
 
-  // Results subscription — lives alongside the events subscription
+  // Results + attendance-counts subscriptions — live alongside the events subscription
   useEffect(() => {
-    if (!activeTeamId || !isSupabaseConfigured) { setResults([]); return undefined }
-    return subscribeToResultsForTeam(
-      activeTeamId,
-      (next) => setResults(next),
-      () => undefined, // non-critical, silently ignore errors
-    )
+    if (!activeTeamId || !isSupabaseConfigured) { setResults([]); setAttendanceCounts(new Map()); return undefined }
+    const unsub1 = subscribeToResultsForTeam(activeTeamId, (next) => setResults(next), () => undefined)
+    const unsub2 = subscribeToAttendanceCountsForTeam(activeTeamId, (next) => setAttendanceCounts(next), () => undefined)
+    return () => { unsub1(); unsub2() }
   }, [activeTeamId])
 
   useEffect(() => {
@@ -187,6 +188,7 @@ export function useCoachClubData(coachId: string, selectedTeamId: string, select
     attendance,
     results,
     resultByEventId,
+    attendanceCounts,
     lineup,
     motmVotes,
     loadingTeams,
