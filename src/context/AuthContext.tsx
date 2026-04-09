@@ -389,6 +389,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return next
         })
       },
+      refreshProfile: async () => {
+        if (!supabase) return
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+        try {
+          const nextProfile = await loadUserProfile(user)
+          writeCachedProfile(user.id, nextProfile)
+          setProfile(nextProfile)
+        } catch {
+          /* keep existing profile */
+        }
+      },
     }),
     [currentUser, error, loading, profile],
   )

@@ -43,5 +43,7 @@ export interface AuthContextValue {
   signOutUser: () => Promise<void>
   resetPassword: (email: string) => Promise<void>
   updateProfile: (name: string) => Promise<void>
+  /** Reload profile from DB (e.g. after linking a new child). */
+  refreshProfile: () => Promise<void>
   clearError: () => void
 }

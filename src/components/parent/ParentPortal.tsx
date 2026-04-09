@@ -1,5 +1,7 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
+import { useAuth } from '../../hooks/useAuth.ts'
 import { useParentClubData } from '../../hooks/useParentClubData.ts'
+import { registerChildrenForCurrentUser } from '../../services/parentSelfRegister.ts'
 import { FamilyBillingCard } from './FamilyBillingCard.tsx'
 import { PostFeed } from '../posts/PostFeed.tsx'
 import { PlayerProfileCard } from '../players/PlayerProfileCard.tsx'
@@ -12,8 +14,10 @@ import type { UserProfile } from '../../types/auth.ts'
 import type { AttendanceStatus } from '../../types/club.ts'
 import { formatDateTimeRelative, dateBox, shortenAddress, groupByWeek } from '../../utils/date.ts'
 import { EventTypeChip } from '../ui/EventTypeChip.tsx'
+import { Button } from '../ui/Button.tsx'
 import { SelectField } from '../ui/SelectField.tsx'
 import { TabNav } from '../ui/TabNav.tsx'
+import { TextField } from '../ui/TextField.tsx'
 
 const TeamMessagesPanel = lazy(async () => {
   const module = await import('../messages/TeamMessagesPanel.tsx')
@@ -41,6 +45,55 @@ function SectionFallback() {
   return (
     <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-6 text-sm text-slate-500">
       Loading messages...
+    </div>
+  )
+}
+
+/** Add a child as pending registration (linked to the signed-in parent/admin account). */
+function RegisterChildForm({ className = '' }: { className?: string }) {
+  const { refreshProfile } = useAuth()
+  const [name, setName] = useState('')
+  const [dob, setDob] = useState('')
+  const [formError, setFormError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setFormError(null)
+    setSuccess(false)
+    setSubmitting(true)
+    try {
+      await registerChildrenForCurrentUser([{ name, dob }])
+      await refreshProfile()
+      setName('')
+      setDob('')
+      setSuccess(true)
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'Could not register child.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className={className}>
+      <form className="mt-4 space-y-4 text-left" onSubmit={handleSubmit}>
+        <TextField label="Child's full name" onChange={(e) => setName(e.target.value)} placeholder="Alex Smith" value={name} />
+        <TextField label="Date of birth" onChange={(e) => setDob(e.target.value)} type="date" value={dob} />
+        {formError ? <p className="text-sm text-rose-600">{formError}</p> : null}
+        {success ? (
+          <p className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+            Child added. They stay <strong>pending</strong> until a club admin assigns them to a team (Admin → Overview → pending registrations, or Manage → Add player).
+          </p>
+        ) : null}
+        <Button className="w-full sm:w-auto" loading={submitting} type="submit">
+          Register child
+        </Button>
+      </form>
+      <p className="mt-3 text-xs text-slate-400">
+        Same flow as signing up with children — you can also use the club’s public registration link if they sent one.
+      </p>
     </div>
   )
 }
@@ -390,8 +443,9 @@ export function ParentPortal({ profile, activeTab, onTabChange }: ParentPortalPr
               ) : null}
 
               {players.length === 0 && !loadingPlayers ? (
-                <div className="mt-4 rounded-2xl border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-500">
-                  No children linked to your account yet. Contact the club admin to link your child.
+                <div className="mt-4 rounded-2xl border border-dashed border-slate-300 px-4 py-6 text-center text-sm text-slate-600">
+                  <p>No children linked yet. Add your child below, or ask the club to link you to an existing player.</p>
+                  <RegisterChildForm className="mx-auto max-w-md" />
                 </div>
               ) : null}
 
@@ -502,18 +556,26 @@ export function ParentPortal({ profile, activeTab, onTabChange }: ParentPortalPr
           {loadingPlayers ? (
             <div className="text-sm text-slate-400">Loading…</div>
           ) : players.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-500">
-              No children linked to your account yet. Contact the club admin.
+            <div className="rounded-2xl border border-dashed border-slate-300 px-4 py-6 text-sm text-slate-600">
+              <p className="text-center">No children linked yet. Register a child here or ask your club admin to link you.</p>
+              <RegisterChildForm className="mx-auto mt-2 max-w-lg" />
             </div>
           ) : (
-            players.map((child) => (
-              <PlayerProfileCard
-                key={child.id}
-                playerId={child.id}
-                role="parent"
-                currentUserId={profile.id}
-              />
-            ))
+            <>
+              {players.map((child) => (
+                <PlayerProfileCard
+                  key={child.id}
+                  playerId={child.id}
+                  role="parent"
+                  currentUserId={profile.id}
+                />
+              ))}
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-5">
+                <h3 className="text-sm font-semibold text-slate-900">Add another child</h3>
+                <p className="mt-1 text-xs text-slate-500">Creates a pending registration linked to your account.</p>
+                <RegisterChildForm className="mt-2" />
+              </div>
+            </>
           )}
         </section>
       ) : null}
