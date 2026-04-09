@@ -112,29 +112,50 @@ export function subscribeToCoaches(
       teamsByCoach.get(row.coach_id)!.push(row.team_id)
     }
 
-    // Also include profiles that explicitly carry the coach role (for the dropdown)
-    const { data: roleData } = await client
-      .from('profiles')
-      .select('id, name, email, roles, linked_player_id')
-      .contains('roles', ['coach'])
-      .order('name', { ascending: true })
+    // Include coach role, admin role (can be assigned to teams), and team_coaches links
+    const [{ data: coachRoleRows }, { data: adminRoleRows }] = await Promise.all([
+      client.from('profiles').select('id').contains('roles', ['coach']),
+      client.from('profiles').select('id').contains('roles', ['admin']),
+    ])
 
-    const allCoachIds = new Set([...coachIds, ...((roleData ?? []) as Array<{ id: string }>).map((r) => r.id)])
+    const allCoachIds = new Set<string>([
+      ...coachIds,
+      ...((coachRoleRows ?? []) as Array<{ id: string }>).map((r) => r.id),
+      ...((adminRoleRows ?? []) as Array<{ id: string }>).map((r) => r.id),
+    ])
 
     if (allCoachIds.size === 0) {
       onData([])
       return
     }
 
-    const { data, error } = await client
-      .from('profiles')
-      .select('id, name, email, roles, linked_player_id')
-      .in('id', [...allCoachIds])
-      .order('name', { ascending: true })
+    const ids = [...allCoachIds]
+    type CoachProfileRow = {
+      id: string
+      name: string | null
+      email: string | null
+      roles: string[] | null
+      linked_player_id: string | null
+    }
 
-    if (error) {
-      onError('Unable to load coaches.')
-      return
+    const rpcResult = await client.rpc('admin_fetch_profiles_by_ids', { p_ids: ids })
+
+    let data: CoachProfileRow[] | null = null
+    if (!rpcResult.error && Array.isArray(rpcResult.data)) {
+      data = [...(rpcResult.data as CoachProfileRow[])].sort((a, b) =>
+        (a.name ?? '').localeCompare(b.name ?? '', undefined, { sensitivity: 'base' }),
+      )
+    } else {
+      const sel = await client
+        .from('profiles')
+        .select('id, name, email, roles, linked_player_id')
+        .in('id', ids)
+        .order('name', { ascending: true })
+      if (sel.error) {
+        onError('Unable to load coaches.')
+        return
+      }
+      data = sel.data as CoachProfileRow[] | null
     }
 
     onData((data ?? []).map((row) => {

@@ -1,5 +1,15 @@
 import { requireSupabase, writeAuditLog } from './supabaseHelpers.ts'
 
+function rpcMissingOrSchemaError(err: { message?: string; code?: string }): boolean {
+  const m = (err.message ?? '').toLowerCase()
+  return (
+    m.includes('could not find the function') ||
+    m.includes('does not exist') ||
+    m.includes('schema cache') ||
+    err.code === 'PGRST202'
+  )
+}
+
 export async function assignCoachToTeam(teamId: string, coachId: string) {
   const client = requireSupabase()
 
@@ -18,8 +28,28 @@ export async function assignCoachToTeam(teamId: string, coachId: string) {
     throw new Error(coachError?.message ?? 'Profile not found.')
   }
 
-  // Try to stamp the coach role on their profile (best-effort; RLS may silently
-  // block cross-user updates without an error, so we log but don't hard-fail).
+  // Prefer SECURITY DEFINER RPC (bypasses team_coaches RLS). Inline auth in DB migration
+  // uses roles[] so it still works if public.is_admin() is wrong.
+  const { error: rpcErr } = await client.rpc('admin_assign_coach_to_team', {
+    p_team_id: teamId,
+    p_coach_id: coachId,
+  })
+
+  if (!rpcErr) {
+    await writeAuditLog({
+      action: 'assign_coach',
+      targetType: 'team',
+      targetId: teamId,
+      summary: `Assigned ${(coachProfile as { name: string }).name} to ${teamRow.name}.`,
+    })
+    return
+  }
+
+  if (!rpcMissingOrSchemaError(rpcErr)) {
+    throw new Error(rpcErr.message)
+  }
+
+  // Fallback when RPC not deployed: direct table write (requires working RLS is_admin()).
   const roles = Array.isArray((coachProfile as { roles?: string[] }).roles)
     ? (coachProfile as { roles: string[] }).roles
     : []
@@ -31,11 +61,8 @@ export async function assignCoachToTeam(teamId: string, coachId: string) {
     if (roleErr) console.warn('Role update blocked by RLS (non-fatal):', roleErr.message)
   }
 
-  // The critical write — insert into team_coaches (upsert to ignore duplicates)
-  const { error: insertErr } = await client
-    .from('team_coaches')
-    .upsert({ team_id: teamId, coach_id: coachId }, { onConflict: 'team_id,coach_id', ignoreDuplicates: true })
-  if (insertErr) throw new Error(insertErr.message)
+  const { error: insertErr } = await client.from('team_coaches').insert({ team_id: teamId, coach_id: coachId })
+  if (insertErr && insertErr.code !== '23505') throw new Error(insertErr.message)
 
   await writeAuditLog({
     action: 'assign_coach',

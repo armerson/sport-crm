@@ -128,6 +128,13 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
   const [movingPlayerId, setMovingPlayerId] = useState<string | null>(null)
   const [moveDestination, setMoveDestination] = useState('')
   const [localError, setLocalError] = useState<string | null>(null)
+
+  /** Admins-only accounts are not in `coaches` until they have coach role or a team link — still allow self-assign. */
+  const assignableCoaches = useMemo(() => {
+    if (!profile?.roles.includes('admin')) return coaches
+    if (coaches.some((c) => c.id === profile.id)) return coaches
+    return [...coaches, profile]
+  }, [coaches, profile])
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [editingTeamId, setEditingTeamId] = useState<string | null>(null)
   const [editTeamValues, setEditTeamValues] = useState({ name: '', ageGroup: '', isSenior: false })
@@ -970,8 +977,12 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
                     label="Coach"
                     onChange={(event) => setAssignmentValues((current) => ({ ...current, coachId: event.target.value }))}
                     options={[
-                      { label: coaches.length > 0 ? 'Choose a coach' : 'No coach accounts found', value: '' },
-                      ...coaches.map((coach) => ({ label: coach.name, value: coach.id })),
+                      {
+                        label:
+                          assignableCoaches.length > 0 ? 'Choose a coach' : 'No coach accounts found — add staff or use Members',
+                        value: '',
+                      },
+                      ...assignableCoaches.map((coach) => ({ label: coach.name, value: coach.id })),
                     ]}
                     value={assignmentValues.coachId}
                   />
