@@ -13,6 +13,14 @@ import {
   uploadPlayerDocument,
   uploadPlayerPhoto,
 } from '../../services/playerProfiles.ts'
+import {
+  fetchAdminClubPlayerFields,
+  fetchPlayerFieldValuesMap,
+  fetchPublicClubPlayerFields,
+  upsertPlayerFieldValues,
+} from '../../services/clubPlayerFields.ts'
+import { ClubPlayerFieldEditor } from '../shared/ClubPlayerFieldEditor.tsx'
+import type { ClubPlayerField } from '../../types/clubPlayerFields.ts'
 import { formatDate } from '../../utils/date.ts'
 import { ConfirmInline } from '../ui/ConfirmInline.tsx'
 import { SuccessMessage } from '../ui/SuccessMessage.tsx'
@@ -340,6 +348,89 @@ function EmergencyContacts({ playerId, canEdit }: { playerId: string; canEdit: b
   )
 }
 
+// ── Club registration fields (custom per club) ───────────────────────────
+
+function ClubRegistrationFieldsBlock({
+  playerId,
+  role,
+}: {
+  playerId: string
+  role: ProfileViewerRole
+}) {
+  const [fields, setFields] = useState<ClubPlayerField[]>([])
+  const [values, setValues] = useState<Record<string, string>>({})
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState<string | null>(null)
+
+  const canEdit = role === 'admin' || role === 'parent' || role === 'coach'
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const defs =
+          role === 'admin' ? await fetchAdminClubPlayerFields() : await fetchPublicClubPlayerFields()
+        const vals = await fetchPlayerFieldValuesMap(playerId).catch(() => ({}))
+        if (cancelled) return
+        const list = role === 'admin' ? defs : defs.filter((f) => f.active)
+        setFields(list)
+        setValues(vals)
+      } catch {
+        if (!cancelled) setFields([])
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [playerId, role])
+
+  async function save() {
+    setSaving(true)
+    setMsg(null)
+    try {
+      await upsertPlayerFieldValues(playerId, values)
+      setMsg('Saved.')
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : 'Save failed.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) {
+    return <p className="text-sm text-slate-400">Loading club fields…</p>
+  }
+
+  if (fields.length === 0 && Object.keys(values).length === 0) {
+    return <p className="text-sm text-slate-400">No extra registration fields configured for this club.</p>
+  }
+
+  return (
+    <div className="space-y-4">
+      <ClubPlayerFieldEditor
+        disabled={!canEdit}
+        fields={fields}
+        values={values}
+        onChange={(id, v) => setValues((prev) => ({ ...prev, [id]: v }))}
+      />
+      {canEdit ? (
+        <button
+          type="button"
+          disabled={saving}
+          onClick={() => void save()}
+          className="rounded-xl bg-[#123524] px-4 py-2 text-sm font-semibold text-white hover:bg-[#1a4d34] disabled:opacity-50"
+        >
+          {saving ? 'Saving…' : 'Save club fields'}
+        </button>
+      ) : null}
+      {msg ? <p className="text-sm text-slate-600">{msg}</p> : null}
+    </div>
+  )
+}
+
 // ── Identity documents ────────────────────────────────────────────────────
 
 function IdentityDocuments({
@@ -489,7 +580,7 @@ export function PlayerProfileCard({ playerId, role, currentUserId }: PlayerProfi
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
-  const [activeSection, setActiveSection] = useState<'profile' | 'contacts' | 'documents'>('profile')
+  const [activeSection, setActiveSection] = useState<'profile' | 'contacts' | 'registration' | 'documents'>('profile')
 
   useEffect(() => {
     setLoading(true)
@@ -517,6 +608,7 @@ export function PlayerProfileCard({ playerId, role, currentUserId }: PlayerProfi
   const sectionTabs = [
     { label: 'Profile', value: 'profile' as const },
     { label: 'Emergency contacts', value: 'contacts' as const },
+    { label: 'Club fields', value: 'registration' as const },
     ...(perms.canViewDocuments ? [{ label: 'Documents', value: 'documents' as const }] : []),
   ]
 
@@ -609,6 +701,10 @@ export function PlayerProfileCard({ playerId, role, currentUserId }: PlayerProfi
 
         {activeSection === 'contacts' && (
           <EmergencyContacts playerId={playerId} canEdit={perms.canEditContacts} />
+        )}
+
+        {activeSection === 'registration' && (
+          <ClubRegistrationFieldsBlock playerId={playerId} role={role} />
         )}
 
         {activeSection === 'documents' && perms.canViewDocuments && (

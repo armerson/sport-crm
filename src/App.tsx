@@ -28,6 +28,11 @@ const ClubJoinPage = lazy(async () => {
   return { default: module.ClubJoinPage }
 })
 
+const ParentRegisterPage = lazy(async () => {
+  const module = await import('./pages/ParentRegisterPage.tsx')
+  return { default: module.ParentRegisterPage }
+})
+
 function RouteFallback() {
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
@@ -48,8 +53,11 @@ function App() {
         <Route element={<ProtectedRoute />}>
           <Route path="/" element={<DashboardPage />} />
         </Route>
+        {/* Public parent → child registration (multi-step) */}
+        <Route path="/register/parent" element={<ParentRegisterPage />} />
         {/* Public registration forms — no auth required */}
         <Route path="/register/:slug" element={<RegisterPage />} />
+        <Route path="/parent" element={<Navigate to="/?view=parent" replace />} />
         {/* Team invite links — public, anyone can land here */}
         <Route path="/join/:code" element={<JoinPage />} />
         <Route path="/join/club/:code" element={<ClubJoinPage />} />

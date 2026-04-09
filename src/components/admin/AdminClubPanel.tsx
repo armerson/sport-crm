@@ -62,7 +62,12 @@ const GroupsManageSection = lazy(async () => {
   return { default: module.GroupsManageSection }
 })
 
-export type AdminTab = 'overview' | 'manage' | 'members' | 'activity' | 'messages' | 'billing' | 'forms' | 'posts'
+const PlayerRegistrationSection = lazy(async () => {
+  const module = await import('./PlayerRegistrationSection.tsx')
+  return { default: module.PlayerRegistrationSection }
+})
+
+export type AdminTab = 'overview' | 'manage' | 'members' | 'activity' | 'messages' | 'billing' | 'forms' | 'registration' | 'posts'
 type ManageSection = 'import' | 'team' | 'player' | 'coach' | 'parent' | 'staff' | 'groups'
 
 const ADMIN_TABS = [
@@ -71,6 +76,7 @@ const ADMIN_TABS = [
   { label: 'Members', value: 'members' as AdminTab },
   { label: 'Posts', value: 'posts' as AdminTab },
   { label: 'Forms', value: 'forms' as AdminTab },
+  { label: 'Player reg', value: 'registration' as AdminTab },
   { label: 'Billing', value: 'billing' as AdminTab },
   { label: 'Activity', value: 'activity' as AdminTab },
   { label: 'Messages', value: 'messages' as AdminTab },
@@ -1186,6 +1192,12 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
       {activeTab === 'forms' && profile ? (
         <Suspense fallback={<SectionFallback />}>
           <FormsManageSection profile={profile} teams={teams} />
+        </Suspense>
+      ) : null}
+
+      {activeTab === 'registration' ? (
+        <Suspense fallback={<SectionFallback />}>
+          <PlayerRegistrationSection />
         </Suspense>
       ) : null}
 

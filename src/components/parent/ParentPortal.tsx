@@ -2,6 +2,9 @@ import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../../hooks/useAuth.ts'
 import { useParentClubData } from '../../hooks/useParentClubData.ts'
 import { registerChildrenForCurrentUser } from '../../services/parentSelfRegister.ts'
+import { fetchPublicClubPlayerFields } from '../../services/clubPlayerFields.ts'
+import { ClubPlayerFieldEditor } from '../shared/ClubPlayerFieldEditor.tsx'
+import type { ClubPlayerField } from '../../types/clubPlayerFields.ts'
 import { FamilyBillingCard } from './FamilyBillingCard.tsx'
 import { PostFeed } from '../posts/PostFeed.tsx'
 import { PlayerProfileCard } from '../players/PlayerProfileCard.tsx'
@@ -54,20 +57,43 @@ function RegisterChildForm({ className = '' }: { className?: string }) {
   const { refreshProfile } = useAuth()
   const [name, setName] = useState('')
   const [dob, setDob] = useState('')
+  const [custom, setCustom] = useState<Record<string, string>>({})
+  const [fields, setFields] = useState<ClubPlayerField[]>([])
   const [formError, setFormError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    void fetchPublicClubPlayerFields()
+      .then(setFields)
+      .catch(() => setFields([]))
+  }, [])
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setFormError(null)
     setSuccess(false)
+    for (const f of fields) {
+      if (!f.required) continue
+      const v = custom[f.id] ?? ''
+      if (f.fieldType === 'checkbox' && v !== 'true') {
+        setFormError(`Required: ${f.label}`)
+        return
+      }
+      if (f.fieldType !== 'checkbox' && !String(v).trim()) {
+        setFormError(`Required: ${f.label}`)
+        return
+      }
+    }
     setSubmitting(true)
     try {
-      await registerChildrenForCurrentUser([{ name, dob }])
+      await registerChildrenForCurrentUser([
+        { name, dob, custom: Object.keys(custom).length ? custom : undefined },
+      ])
       await refreshProfile()
       setName('')
       setDob('')
+      setCustom({})
       setSuccess(true)
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Could not register child.')
@@ -81,6 +107,9 @@ function RegisterChildForm({ className = '' }: { className?: string }) {
       <form className="mt-4 space-y-4 text-left" onSubmit={handleSubmit}>
         <TextField label="Child's full name" onChange={(e) => setName(e.target.value)} placeholder="Alex Smith" value={name} />
         <TextField label="Date of birth" onChange={(e) => setDob(e.target.value)} type="date" value={dob} />
+        {fields.length > 0 ? (
+          <ClubPlayerFieldEditor fields={fields} values={custom} onChange={(id, v) => setCustom((c) => ({ ...c, [id]: v }))} />
+        ) : null}
         {formError ? <p className="text-sm text-rose-600">{formError}</p> : null}
         {success ? (
           <p className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-900">

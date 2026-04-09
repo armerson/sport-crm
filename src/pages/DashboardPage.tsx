@@ -1,4 +1,5 @@
 import { Suspense, lazy, useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Button } from '../components/ui/Button.tsx'
 import { BottomNav, ADMIN_BOTTOM_NAV, COACH_BOTTOM_NAV, PARENT_BOTTOM_NAV, PLAYER_BOTTOM_NAV } from '../components/ui/BottomNav.tsx'
 import { InstallBanner } from '../components/ui/InstallBanner.tsx'
@@ -114,6 +115,7 @@ function prefetchPanels() {
 
 export function DashboardPage() {
   const { profile, signOutUser } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [showSettings, setShowSettings] = useState(false)
   const [adminTab, setAdminTab] = useState<AdminTab>('overview')
   const [coachTab, setCoachTab] = useState<CoachTab>('schedule')
@@ -146,6 +148,24 @@ export function DashboardPage() {
     return false
   })
   const hasMultipleRoles = sortedRoles.length > 1
+
+  // Deep link: /parent → /?view=parent (see App.tsx)
+  useEffect(() => {
+    const v = searchParams.get('view')
+    if (!v) return
+    if (v === 'parent' && (profile.roles.includes('parent') || profile.children.length > 0)) {
+      setActiveRole('parent')
+    } else if (v === 'coach' && profile.roles.includes('coach')) {
+      setActiveRole('coach')
+    } else if (v === 'admin' && profile.roles.includes('admin')) {
+      setActiveRole('admin')
+    }
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.delete('view')
+      return next
+    }, { replace: true })
+  }, [profile, searchParams, setSearchParams])
 
   const isAdmin = activeRole === 'admin'
   const isCoach = activeRole === 'coach'
