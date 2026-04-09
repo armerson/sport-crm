@@ -10,7 +10,7 @@ export async function assignCoachToTeam(teamId: string, coachId: string) {
 
   const { data: coachProfile, error: coachError } = await client
     .from('profiles')
-    .select('id, name')
+    .select('id, name, roles')
     .eq('id', coachId)
     .single()
 
@@ -18,11 +18,23 @@ export async function assignCoachToTeam(teamId: string, coachId: string) {
     throw new Error(coachError?.message ?? 'Profile not found.')
   }
 
-  const { error: rpcErr } = await client.rpc('admin_assign_coach_to_team', {
-    p_team_id: teamId,
-    p_coach_id: coachId,
-  })
-  if (rpcErr) throw new Error(rpcErr.message)
+  // Add coach role if not already present
+  const roles = Array.isArray((coachProfile as { roles?: string[] }).roles)
+    ? (coachProfile as { roles: string[] }).roles
+    : []
+  if (!roles.includes('coach')) {
+    const { error: roleErr } = await client
+      .from('profiles')
+      .update({ roles: [...new Set([...roles, 'coach'])] })
+      .eq('id', coachId)
+    if (roleErr) throw new Error(roleErr.message)
+  }
+
+  // Insert into team_coaches (ignore duplicate)
+  const { error: insertErr } = await client
+    .from('team_coaches')
+    .insert({ team_id: teamId, coach_id: coachId })
+  if (insertErr && insertErr.code !== '23505') throw new Error(insertErr.message)
 
   await writeAuditLog({
     action: 'assign_coach',
