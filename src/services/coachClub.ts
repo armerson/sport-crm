@@ -81,11 +81,24 @@ export function subscribeToAttendanceCountsForTeam(
 ): () => void {
   const client = requireSupabase()
 
-  return subscribeToTables(`team-att-counts-${teamId}`, ['attendance', 'events'], async () => {
+  // Subscribe to attendance changes only (avoids JOIN and reduces realtime channels)
+  return subscribeToTables(`team-att-counts-${teamId}`, ['attendance'], async () => {
+    // Step 1: get all event IDs for this team
+    const { data: evRows, error: evErr } = await client
+      .from('events')
+      .select('id')
+      .eq('team_id', teamId)
+
+    if (evErr) { onError('Unable to load attendance counts.'); return }
+
+    const eventIds = (evRows ?? []).map((r: { id: string }) => r.id)
+    if (eventIds.length === 0) { onData(new Map()); return }
+
+    // Step 2: get attendance for those events
     const { data, error } = await client
       .from('attendance')
-      .select('event_id, status, events!inner(team_id)')
-      .eq('events.team_id', teamId)
+      .select('event_id, status')
+      .in('event_id', eventIds)
 
     if (error) { onError('Unable to load attendance counts.'); return }
 
