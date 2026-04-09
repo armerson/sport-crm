@@ -18,6 +18,8 @@ import { TextField } from '../ui/TextField.tsx'
 import type { EventType, RecurrencePattern } from '../../types/club.ts'
 
 import { PostFeed } from '../posts/PostFeed.tsx'
+import { MatchStatsPanel } from './MatchStatsPanel.tsx'
+import { fetchSeasonStats } from '../../services/playerMatchStats.ts'
 
 const TeamMessagesPanel = lazy(async () => {
   const module = await import('../messages/TeamMessagesPanel.tsx')
@@ -242,6 +244,14 @@ function CoachEventCard({
   )
 }
 
+/** Tiny side-effect component that fetches season match stats when the Stats tab opens. */
+function StatsFetcher({ teamId, onData }: { teamId: string; onData: (s: import('../../types/club.ts').PlayerMatchStat[]) => void }) {
+  useEffect(() => {
+    fetchSeasonStats(teamId).then(onData).catch(() => undefined)
+  }, [teamId, onData])
+  return null
+}
+
 export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: CoachEventPanelProps) {
   const setActiveTab = (tab: CoachTab) => {
     if (tab !== 'create') setCreateTeamId('')
@@ -276,6 +286,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
   const [resultValues, setResultValues] = useState({ homeScore: '', awayScore: '', notes: '' })
   const [resultError, setResultError] = useState<string | null>(null)
   const [showResultForm, setShowResultForm] = useState(false)
+  const [seasonMatchStats, setSeasonMatchStats] = useState<import('../../types/club.ts').PlayerMatchStat[]>([])
   const [sendingReminder, setSendingReminder] = useState(false)
   const [reminderMsg, setReminderMsg] = useState<string | null>(null)
 
@@ -299,6 +310,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
     loadingTeams,
     resultByEventId,
     attendanceCounts,
+    confirmEvent,
     saveResult,
     sendAttendanceReminder,
     teams,
@@ -906,6 +918,38 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                 />
               ) : null}
 
+              {/* Player match stats — enter goals/assists/cards after a match */}
+              {activeEventId && isPastMatch && activeTeamId ? (
+                <MatchStatsPanel
+                  eventId={activeEventId}
+                  teamId={activeTeamId}
+                  attendingPlayers={attendance
+                    .filter((a) => a.status === 'yes')
+                    .map((a) => ({ id: a.playerId, name: players.find((p) => p.id === a.playerId)?.name ?? 'Player' }))}
+                />
+              ) : null}
+
+              {/* Confirm event banner — shown while event is an availability request */}
+              {activeEventId && activeEvent?.eventStatus === 'availability_request' && !isPastMatch ? (
+                <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-amber-900">Availability request sent</p>
+                      <p className="mt-0.5 text-xs text-amber-700">
+                        {activeEventCounts.yes} going · {activeEventCounts.pending} awaiting · {activeEventCounts.no} can't make it
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { void confirmEvent(activeEventId) }}
+                      className="shrink-0 rounded-full bg-[#123524] px-4 py-1.5 text-xs font-bold text-white transition hover:bg-[#1a4a33]"
+                    >
+                      Confirm event
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
               {/* Event comments — visible when an event is selected */}
               {activeEventId ? (
                 <EventComments eventId={activeEventId} currentUserId={profile.id} isAdmin />
@@ -1166,7 +1210,11 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
         )
       ) : null}
 
-      {/* STATS TAB */}
+      {/* STATS TAB — fetch season match stats when tab is active */}
+      {activeTab === 'stats' && activeTeamId ? (
+        <StatsFetcher teamId={activeTeamId} onData={setSeasonMatchStats} />
+      ) : null}
+
       {activeTab === 'stats' ? (
         <section className="space-y-5">
         {/* Season record */}
@@ -1267,6 +1315,43 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                     })}
                 </div>
               )}
+            </article>
+          )
+        })()}
+
+        {/* Top scorers card */}
+        {(() => {
+          if (seasonMatchStats.length === 0) return null
+          // Aggregate per player
+          const totals = new Map<string, { goals: number; assists: number; playerId: string }>()
+          for (const s of seasonMatchStats) {
+            const prev = totals.get(s.playerId) ?? { goals: 0, assists: 0, playerId: s.playerId }
+            totals.set(s.playerId, { playerId: s.playerId, goals: prev.goals + s.goals, assists: prev.assists + s.assists })
+          }
+          const sorted = [...totals.values()]
+            .filter((t) => t.goals + t.assists > 0)
+            .sort((a, b) => b.goals - a.goals || b.assists - a.assists)
+          if (sorted.length === 0) return null
+          return (
+            <article className="rounded-[1.75rem] border border-white/70 bg-white/85 p-6 shadow-lg shadow-slate-900/5 backdrop-blur-sm">
+              <h2 className="text-xl font-semibold text-slate-950">Top scorers</h2>
+              <p className="mt-0.5 text-sm text-slate-500">Season goals &amp; assists</p>
+              <div className="mt-4 space-y-2">
+                {sorted.map((t, i) => {
+                  const playerName = stats.find((s) => s.playerId === t.playerId)?.playerName
+                    ?? players.find((p) => p.id === t.playerId)?.name ?? 'Player'
+                  return (
+                    <div key={t.playerId} className="flex items-center gap-3 rounded-2xl bg-slate-50 px-4 py-3">
+                      <span className="w-5 text-center text-sm font-bold text-slate-400">{i + 1}</span>
+                      <p className="flex-1 truncate font-medium text-slate-900">{playerName}</p>
+                      <div className="flex items-center gap-3 text-sm">
+                        <span className="font-bold text-slate-900">{t.goals} <span className="font-normal text-slate-400">goals</span></span>
+                        <span className="font-bold text-slate-900">{t.assists} <span className="font-normal text-slate-400">ast</span></span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             </article>
           )
         })()}

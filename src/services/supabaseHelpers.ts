@@ -1,6 +1,6 @@
 import { supabase, supabaseConfigError } from '../lib/supabase.ts'
 import type { UserProfile, UserRole } from '../types/auth.ts'
-import type { AttendanceRecord, AuditLogRecord, EventRecord, GroupRecord, LineupEntry, MessageRecord, MotmVote, PlayerRecord, ResultRecord, TeamRecord } from '../types/club.ts'
+import type { AttendanceRecord, AuditLogRecord, EventRecord, EventStatus, GroupRecord, LineupEntry, MessageRecord, MotmVote, PlayerRecord, ResultRecord, TeamRecord } from '../types/club.ts'
 
 export function requireSupabase() {
   if (!supabase) {
@@ -106,6 +106,7 @@ export function mapEventRow(row: Record<string, unknown>): EventRecord {
     lng: typeof row.lng === 'number' ? row.lng : null,
     recurrenceGroupId: typeof row.recurrence_group_id === 'string' ? row.recurrence_group_id : null,
     opponent: typeof row.opponent === 'string' && row.opponent.trim() ? row.opponent.trim() : null,
+    eventStatus: (row.event_status === 'availability_request' || row.event_status === 'cancelled') ? row.event_status as EventStatus : 'confirmed',
   }
 }
 

@@ -119,7 +119,7 @@ export function subscribeToAllEvents(
   return subscribeToTables('all-events', ['events'], async () => {
     const { data, error } = await client
       .from('events')
-      .select('id, team_id, title, type, date_time, location, recurrence_group_id, opponent')
+      .select('id, team_id, title, type, date_time, location, recurrence_group_id, opponent, event_status')
       .order('date_time', { ascending: true })
 
     if (error) {

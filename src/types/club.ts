@@ -112,6 +112,7 @@ export interface EventRecord {
   recurrenceGroupId: string | null
   /** Opponent name for match events (null for training, other types). */
   opponent: string | null
+  eventStatus: EventStatus
 }
 
 export interface AttendanceRecord {
@@ -131,6 +132,7 @@ export interface EventFormInput {
   lat?: number
   lng?: number
   opponent?: string
+  eventStatus?: EventStatus
 }
 
 // Groups (hierarchical club sections, e.g. Academy → Boys / Girls)
@@ -165,6 +167,19 @@ export interface MessageFormInput {
   senderId: string
   content: string
 }
+
+export interface PlayerMatchStat {
+  id: string
+  eventId: string
+  playerId: string
+  teamId: string
+  goals: number
+  assists: number
+  yellowCards: number
+  redCards: number
+}
+
+export type EventStatus = 'availability_request' | 'confirmed' | 'cancelled'
 
 export interface ResultRecord {
   id: string

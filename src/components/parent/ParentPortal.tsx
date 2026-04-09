@@ -86,6 +86,11 @@ function ParentEventCard({
               <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                 <p className="truncate text-sm font-semibold text-slate-900">{event.title}</p>
                 <EventTypeChip type={event.type} />
+                {event.eventStatus === 'availability_request' && !isPast ? (
+                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700">
+                    Availability request
+                  </span>
+                ) : null}
                 {result ? (
                   <span className="rounded-full bg-[#123524] px-2 py-0.5 text-xs font-bold tabular-nums text-white">
                     {result.homeScore}–{result.awayScore}
@@ -122,7 +127,7 @@ function ParentEventCard({
                     : 'border border-slate-200 bg-slate-50 text-slate-600 hover:border-emerald-300 hover:text-emerald-600'
                 }`}
               >
-                ✓ Going
+                {event.eventStatus === 'availability_request' ? '✓ I can make it' : '✓ Going'}
               </button>
               <button
                 type="button"
@@ -134,7 +139,7 @@ function ParentEventCard({
                     : 'border border-slate-200 bg-slate-50 text-slate-600 hover:border-rose-300 hover:text-rose-500'
                 }`}
               >
-                ✕ Can't go
+                {event.eventStatus === 'availability_request' ? '✕ Can\'t make it' : '✕ Can\'t go'}
               </button>
             </div>
           )}
