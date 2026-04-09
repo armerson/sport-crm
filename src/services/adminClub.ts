@@ -65,7 +65,7 @@ export function subscribeToCoaches(
   return subscribeToTables('coach-profiles', ['profiles', 'team_coaches'], async () => {
     const { data, error } = await client
       .from('profiles')
-      .select('id, name, email, roles, linked_player_id, team_coaches(team_id)')
+      .select('id, name, email, roles, linked_player_id')
       .contains('roles', ['coach'])
       .order('name', { ascending: true })
 
@@ -74,12 +74,29 @@ export function subscribeToCoaches(
       return
     }
 
-    onData((data ?? []).map((row) => mapProfileRow(row as Record<string, unknown>, {
-      teams: Array.isArray((row as Record<string, unknown>).team_coaches)
-        ? ((row as { team_coaches: Array<{ team_id: string }> }).team_coaches.map((entry) => entry.team_id).filter(Boolean))
-        : [],
-      children: [],
-    })))
+    const { data: tcData, error: tcErr } = await client
+      .from('team_coaches')
+      .select('coach_id, team_id')
+
+    if (tcErr) {
+      onError('Unable to load coaches.')
+      return
+    }
+
+    const teamsByCoach = new Map<string, string[]>()
+    for (const row of (tcData ?? []) as Array<{ coach_id: string; team_id: string }>) {
+      if (!teamsByCoach.has(row.coach_id)) teamsByCoach.set(row.coach_id, [])
+      teamsByCoach.get(row.coach_id)!.push(row.team_id)
+    }
+
+    onData((data ?? []).map((row) => {
+      const r = row as Record<string, unknown>
+      const id = String(r.id ?? '')
+      return mapProfileRow(r, {
+        teams: teamsByCoach.get(id) ?? [],
+        children: [],
+      })
+    }))
   })
 }
 

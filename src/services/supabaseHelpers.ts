@@ -23,19 +23,20 @@ export function normalizeRoles(value: unknown): UserRole[] {
   return ['parent']
 }
 
+/** PostgREST embeds: one related row is often a single object, not a one-element array. */
 function normalizeRelationIds<T extends string>(value: unknown, key: string): T[] {
-  return Array.isArray(value)
-    ? value
-        .map((entry) => {
-          if (!entry || typeof entry !== 'object') {
-            return ''
-          }
+  if (value == null) return []
+  const rows = Array.isArray(value) ? value : typeof value === 'object' ? [value] : []
+  return rows
+    .map((entry) => {
+      if (!entry || typeof entry !== 'object') {
+        return ''
+      }
 
-          const relationValue = (entry as Record<string, unknown>)[key]
-          return typeof relationValue === 'string' ? relationValue : ''
-        })
-        .filter((entry): entry is T => Boolean(entry))
-    : []
+      const relationValue = (entry as Record<string, unknown>)[key]
+      return typeof relationValue === 'string' ? relationValue : ''
+    })
+    .filter((entry): entry is T => Boolean(entry))
 }
 
 export function mapProfileRow(row: Record<string, unknown>, relations?: { teams?: string[]; children?: string[] }): UserProfile {

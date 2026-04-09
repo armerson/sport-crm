@@ -22,29 +22,47 @@ export interface DuplicateGroup {
 
 // ── Fetch ─────────────────────────────────────────────────────────
 
+/** PostgREST sometimes returns a single embedded row as an object instead of a one-element array. */
+function embeddedRows<T extends Record<string, unknown>>(value: unknown): T[] {
+  if (value == null) return []
+  if (Array.isArray(value)) return value as T[]
+  if (typeof value === 'object') return [value as T]
+  return []
+}
+
 /** Fetch every profile in the club with coach-team and parent-child relations. */
 export async function fetchAllProfiles(): Promise<MemberProfile[]> {
   const client = requireSupabase()
+
   const { data, error } = await client
     .from('profiles')
-    .select('id, name, email, roles, team_coaches(team_id), player_parents(player_id)')
+    .select('id, name, email, roles, player_parents(player_id)')
     .order('name', { ascending: true })
 
   if (error) throw new Error(error.message)
 
+  const { data: tcData, error: tcErr } = await client
+    .from('team_coaches')
+    .select('coach_id, team_id')
+
+  if (tcErr) throw new Error(tcErr.message)
+
+  const teamsByCoach = new Map<string, string[]>()
+  for (const row of (tcData ?? []) as Array<{ coach_id: string; team_id: string }>) {
+    if (!teamsByCoach.has(row.coach_id)) teamsByCoach.set(row.coach_id, [])
+    teamsByCoach.get(row.coach_id)!.push(row.team_id)
+  }
+
   return (data ?? []).map((row) => {
     const r = row as Record<string, unknown>
+    const id = String(r.id ?? '')
     return {
-      id:            String(r.id ?? ''),
+      id,
       name:          typeof r.name === 'string' && r.name.trim() ? r.name : 'Club member',
       email:         typeof r.email === 'string' ? r.email : '',
       roles:         Array.isArray(r.roles) ? (r.roles as UserRole[]) : [],
-      coachTeams:    Array.isArray(r.team_coaches)
-        ? (r.team_coaches as Array<{ team_id: string }>).map((t) => t.team_id)
-        : [],
-      childPlayerIds: Array.isArray(r.player_parents)
-        ? (r.player_parents as Array<{ player_id: string }>).map((p) => p.player_id)
-        : [],
+      coachTeams:    teamsByCoach.get(id) ?? [],
+      childPlayerIds: embeddedRows<{ player_id: string }>(r.player_parents).map((p) => p.player_id),
     }
   })
 }
@@ -99,9 +117,9 @@ export async function updateProfileRoles(profileId: string, roles: UserRole[]): 
     .eq('id', profileId)
   if (error) throw new Error(error.message)
 
-  // If coach role removed, clean up team_coaches via the sync RPC with an empty list
   if (!roles.includes('coach')) {
-    await client.rpc('sync_coach_teams', { p_coach_id: profileId, p_team_ids: [] })
+    const { error: delErr } = await client.from('team_coaches').delete().eq('coach_id', profileId)
+    if (delErr) throw new Error(delErr.message)
   }
 }
 

@@ -190,7 +190,9 @@ function MemberRow({
       onUpdated({ ...member, roles, coachTeams: coachTeamIds })
       setEditing(false)
     } catch (e) {
-      setSaveError(e instanceof Error ? e.message : 'Failed to save. Please try again.')
+      const msg = e instanceof Error ? e.message : 'Failed to save. Please try again.'
+      setSaveError(msg)
+      throw e
     } finally {
       setSaving(false)
     }
