@@ -30,7 +30,7 @@ function Spinner() {
 export function ClubJoinPage() {
   const { code = '' } = useParams<{ code: string }>()
   const navigate = useNavigate()
-  const { signUp, signIn, session } = useAuth()
+  const { signUp, signIn, currentUser } = useAuth()
 
   const [info, setInfo] = useState<ClubInviteInfo | null>(null)
   const [inviteError, setInviteError] = useState<string | null>(null)
@@ -52,11 +52,11 @@ export function ClubJoinPage() {
 
   // After auth, use the invite and redirect
   useEffect(() => {
-    if (!session || !info) return
+    if (!currentUser || !info) return
     useClubInvite(code)
       .then(() => navigate('/dashboard', { replace: true }))
       .catch(() => navigate('/dashboard', { replace: true }))
-  }, [session, info, code, navigate])
+  }, [currentUser, info, code, navigate])
 
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault()
@@ -65,7 +65,7 @@ export function ClubJoinPage() {
     setSubmitting(true)
     try {
       sessionStorage.setItem('pending_club_invite_code', code)
-      await signUp(email, password, name.trim(), info!.role === 'coach' ? ['coach'] : ['admin'])
+      await signUp({ email, password, name: name.trim(), roles: info!.role === 'coach' ? ['coach'] : ['admin'] })
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Sign up failed.')
       sessionStorage.removeItem('pending_club_invite_code')
@@ -80,7 +80,7 @@ export function ClubJoinPage() {
     setSubmitting(true)
     try {
       sessionStorage.setItem('pending_club_invite_code', code)
-      await signIn(email, password)
+      await signIn({ email, password })
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Sign in failed.')
       sessionStorage.removeItem('pending_club_invite_code')
