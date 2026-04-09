@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, useMemo, useState } from 'react'
 import type { BillingTab } from './AdminBillingPanel.tsx'
 import { Button } from '../ui/Button.tsx'
 import { AdminDashboardStats } from './AdminDashboardStats.tsx'
@@ -107,18 +107,9 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
   const {
     addPlayer, approvePendingPlayer, assignCoach, coaches, createGroup, createTeam, deleteGroup, deleteTeam,
     error, events, groups, isConfigured, isSubmitting, loading, linkParent, movePlayer, parents,
-    pendingRegistrations, provisionUser, rejectPendingRegistration, removePlayer, teams, triggerLoadContacts,
+    pendingRegistrations, provisionUser, rejectPendingRegistration, removePlayer, teams,
     unlinkParent, updateGroup, updateTeam,
   } = useAdminClubData()
-
-  // Trigger contacts load the first time the Manage tab is opened (stable ref avoids re-running)
-  const contactsTriggered = useRef(false)
-  useEffect(() => {
-    if ((activeTab === 'manage') && !contactsTriggered.current) {
-      contactsTriggered.current = true
-      triggerLoadContacts()
-    }
-  }, [activeTab, triggerLoadContacts])
 
   const { logs: auditLogs, loading: loadingAuditLogs, error: auditLogError } = useAuditLogs()
   const [manageSection, setManageSection] = useState<ManageSection>('import')

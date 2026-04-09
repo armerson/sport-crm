@@ -44,6 +44,8 @@ export function AdminDashboardStats({ teams, events, coaches, parents }: AdminDa
   const now = new Date()
   const weekLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
   const totalPlayers = teams.reduce((sum, t) => sum + t.playerCount, 0)
+  const coachesAssignedAcrossTeams = new Set(teams.flatMap((t) => t.coaches)).size
+  const coachStatCount = Math.max(coaches.length, coachesAssignedAcrossTeams)
   const eventsThisWeek = events.filter((e) => {
     const d = new Date(e.dateTime)
     return d >= now && d <= weekLater
@@ -56,7 +58,7 @@ export function AdminDashboardStats({ teams, events, coaches, parents }: AdminDa
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
       <StatCard value={totalPlayers} label="Players" variant="green" />
       <StatCard value={teams.length} label="Teams" />
-      <StatCard value={coaches.length} label="Coaches" />
+      <StatCard value={coachStatCount} label="Coaches" />
       <StatCard value={parents.length} label="Parents" />
       <StatCard
         value={eventsThisWeek > 0 ? eventsThisWeek : '0'}

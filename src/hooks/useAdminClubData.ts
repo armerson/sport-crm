@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { isSupabaseConfigured, supabaseConfigError } from '../lib/supabase.ts'
 import {
   approvePendingPlayerToTeam,
@@ -44,9 +44,8 @@ export function useAdminClubData() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  // Coaches + parents are deferred: only fetched when the Manage tab is first opened.
-  // This removes them from the initial loading barrier so Overview appears faster.
-  const [loadContacts, setLoadContacts] = useState(false)
+  // Coaches + parents must load with admin — Overview uses coach names and dashboard stats.
+  const [loadContacts, setLoadContacts] = useState(true)
 
   // Core data — always loaded, controls the loading spinner
   useEffect(() => {
@@ -113,6 +112,8 @@ export function useAdminClubData() {
     }
   }, [loadContacts])
 
+  const triggerLoadContacts = useCallback(() => setLoadContacts(true), [])
+
   return {
     teams,
     coaches,
@@ -124,7 +125,7 @@ export function useAdminClubData() {
     error,
     isConfigured: isSupabaseConfigured,
     isSubmitting,
-    triggerLoadContacts: () => setLoadContacts(true),
+    triggerLoadContacts,
     createTeam: async (input: TeamFormInput) => {
       if (!isSupabaseConfigured) {
         setError(supabaseConfigError)
