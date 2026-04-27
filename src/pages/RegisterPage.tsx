@@ -100,7 +100,7 @@ export function RegisterPage() {
   const { currentUser: user, loading: authLoading } = useAuth()
 
   const [form, setForm] = useState<(RegistrationForm & { fields: FormField[] }) | null>(null)
-  const [club, setClub] = useState<ClubSettings>({ name: 'My Club', logoUrl: null })
+  const [club, setClub] = useState<ClubSettings>({ name: 'My Club', logoUrl: null, primaryColor: '#123524' })
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [values, setValues] = useState<Record<string, string>>({})

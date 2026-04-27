@@ -7,10 +7,6 @@ export interface LocationValue {
   lng: number | null
 }
 
-// ── Google Maps API key (optional) ────────────────────────────────────────────
-// If set, Google Places Autocomplete is used instead of Nominatim.
-const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined
-
 interface NominatimResult {
   place_id: number
   display_name: string
@@ -18,10 +14,6 @@ interface NominatimResult {
   lon: string
 }
 
-interface GooglePrediction {
-  description: string
-  place_id: string
-}
 
 interface LocationPickerProps {
   value: string
@@ -51,26 +43,7 @@ function useDebounce<T>(value: T, delay: number): T {
   return debounced
 }
 
-// ── Google Places helpers ─────────────────────────────────────────────────────
-
-async function googleAutocomplete(query: string): Promise<GooglePrediction[]> {
-  if (!GOOGLE_API_KEY) return []
-  const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&key=${GOOGLE_API_KEY}&language=en`
-  // Can't hit this directly from browser (CORS). Use the JS SDK approach via a proxy or
-  // the Places JS API widget. For a no-backend setup we fall back to Nominatim.
-  // This branch is kept for completeness if a proxy/Edge Function is wired later.
-  void url
-  return []
-}
-
-async function googleGeocode(placeId: string): Promise<{ lat: number; lng: number } | null> {
-  if (!GOOGLE_API_KEY) return null
-  const url = `https://maps.googleapis.com/maps/api/geocode/json?place_id=${encodeURIComponent(placeId)}&key=${GOOGLE_API_KEY}`
-  void url
-  return null
-}
-
-// ── Nominatim fallback ────────────────────────────────────────────────────────
+// ── Nominatim search ─────────────────────────────────────────────────────────
 
 async function nominatimSearch(query: string): Promise<NominatimResult[]> {
   const res = await fetch(

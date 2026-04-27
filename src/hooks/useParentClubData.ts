@@ -180,7 +180,7 @@ export function useParentClubData(childIds: string[]) {
           const event = events.find((e) => e.id === record.eventId)
           const player = players.find((p) => p.id === record.playerId)
           if (event && player) {
-            const statusLabel = status === 'confirmed' ? '✅ Going' : status === 'declined' ? '❌ Not going' : '🤔 Maybe'
+            const statusLabel = status === 'yes' ? '✅ Going' : status === 'no' ? '❌ Not going' : '🤔 Maybe'
             void fetchCoachIdsForTeam(event.teamId).then((coachIds) => {
               if (coachIds.length > 0) {
                 void sendPushToUsers(

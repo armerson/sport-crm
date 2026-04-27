@@ -170,7 +170,7 @@ export function MatchDayCard({
         <div className="relative mt-5">
           <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-white/50">Your RSVP</p>
           <div className="flex gap-2">
-            {(['confirmed', 'declined', 'maybe'] as AttendanceStatus[]).map((s) => (
+            {(['yes', 'no', 'pending'] as AttendanceStatus[]).map((s) => (
               <button
                 key={s}
                 type="button"
@@ -179,7 +179,7 @@ export function MatchDayCard({
                   rsvpStatus === s ? 'bg-white text-[#123524] shadow-md' : 'bg-white/15 text-white hover:bg-white/25'
                 }`}
               >
-                {s === 'confirmed' ? '✓ Going' : s === 'declined' ? '✕ No' : '? Maybe'}
+                {s === 'yes' ? '✓ Going' : s === 'no' ? '✕ No' : '? Maybe'}
               </button>
             ))}
           </div>

@@ -13,7 +13,7 @@ export function GuestCampCheckoutPage() {
   const [searchParams] = useSearchParams()
   const cancelled = searchParams.get('cancelled') === '1'
 
-  const [club, setClub] = useState<ClubSettings>({ name: 'My Club', logoUrl: null })
+  const [club, setClub] = useState<ClubSettings>({ name: 'My Club', logoUrl: null, primaryColor: '#123524' })
   const [product, setProduct] = useState<GuestProductInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
@@ -200,7 +200,7 @@ export function GuestCampCheckoutPage() {
 }
 
 export function GuestCampSuccessPage() {
-  const [club, setClub] = useState<ClubSettings>({ name: 'My Club', logoUrl: null })
+  const [club, setClub] = useState<ClubSettings>({ name: 'My Club', logoUrl: null, primaryColor: '#123524' })
 
   useEffect(() => {
     void fetchClubSettings().then(setClub)

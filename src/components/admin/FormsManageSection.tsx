@@ -86,7 +86,7 @@ export function FormsManageSection({ profile, teams }: FormsManageSectionProps) 
   const [subFields, setSubFields] = useState<FormField[]>([])
 
   // Club settings state
-  const [clubInput, setClubInput] = useState<ClubSettings>({ name: '', logoUrl: null })
+  const [clubInput, setClubInput] = useState<ClubSettings>({ name: '', logoUrl: null, primaryColor: '#123524' })
 
   useEffect(() => {
     void loadForms()
