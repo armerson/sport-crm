@@ -13,6 +13,13 @@
     <title>Club CRM</title>
   </head>
   <body>
+    <!-- Apply cached brand colour before React mounts to prevent flash -->
+    <script>
+      try {
+        var c = localStorage.getItem('club-primary-color')
+        if (c) document.documentElement.style.setProperty('--club-color', c)
+      } catch (_) {}
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

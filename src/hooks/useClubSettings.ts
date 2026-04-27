@@ -19,6 +19,7 @@ export function useClubSettings() {
       cached = s
       setSettings(s)
       applyColorVar(s.primaryColor)
+      try { localStorage.setItem('club-primary-color', s.primaryColor) } catch (_) {}
     }).finally(() => setLoading(false))
   }, [])
 
@@ -35,6 +36,7 @@ export function useClubSettings() {
       cached = next
       setSettings(next)
       applyColorVar(next.primaryColor)
+      try { localStorage.setItem('club-primary-color', next.primaryColor) } catch (_) {}
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save settings.')
       throw err
