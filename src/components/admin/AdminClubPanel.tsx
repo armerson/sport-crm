@@ -469,8 +469,6 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
             </div>
           )}
 
-          <AdminDashboardStats teams={teams} events={events} coaches={coaches} parents={parents} />
-
           {/* ── Club branding ── */}
           <article className="rounded-[1.75rem] border border-white/70 bg-white/85 p-5 shadow-lg shadow-slate-900/5 backdrop-blur-sm">
             <h3 className="text-lg font-semibold text-slate-900">Club branding</h3>
@@ -548,6 +546,8 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
               Save branding
             </Button>
           </article>
+
+          <AdminDashboardStats teams={teams} events={events} coaches={coaches} parents={parents} />
 
           {pendingRegistrations.length > 0 ? (
             <article className="rounded-[1.75rem] border border-amber-200 bg-amber-50/80 p-5 shadow-lg shadow-slate-900/5">
