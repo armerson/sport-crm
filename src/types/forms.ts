@@ -64,6 +64,7 @@ export interface FormResponse {
 export interface ClubSettings {
   name: string
   logoUrl: string | null
+  primaryColor: string
 }
 
 export interface FormInput {

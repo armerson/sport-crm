@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTeamMessages } from '../../hooks/useTeamMessages.ts'
 import { AnnouncementsPanel } from './AnnouncementsPanel.tsx'
 import type { UserProfile } from '../../types/auth.ts'
@@ -28,6 +28,13 @@ export function TeamMessagesPanel({ profile }: TeamMessagesPanelProps) {
     sendMessage,
     teams,
   } = useTeamMessages(profile, selectedTarget)
+
+  // Restore draft from localStorage when the active target changes
+  useEffect(() => {
+    if (!activeTarget) return
+    const saved = localStorage.getItem(`msg-draft-${activeTarget}`)
+    setDraft(saved ?? '')
+  }, [activeTarget])
 
   const isAdmin = profile.roles.includes('admin')
   const isCoachOrParent = !isAdmin
@@ -68,6 +75,7 @@ export function TeamMessagesPanel({ profile }: TeamMessagesPanelProps) {
     try {
       await sendMessage(activeTarget, draft.trim())
       setDraft('')
+      localStorage.removeItem(`msg-draft-${activeTarget}`)
     } catch {
       // Hook exposes a user-facing error.
     }
@@ -223,7 +231,16 @@ export function TeamMessagesPanel({ profile }: TeamMessagesPanelProps) {
               <textarea
                 id="team-message-draft"
                 className="min-h-36 w-full rounded-2xl border border-white/60 bg-white/90 px-4 py-3 text-base text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[#f18a3f] focus:ring-4 focus:ring-[#f18a3f]/15"
-                onChange={(e) => setDraft(e.target.value)}
+                onChange={(e) => {
+                  setDraft(e.target.value)
+                  if (activeTarget) {
+                    if (e.target.value) {
+                      localStorage.setItem(`msg-draft-${activeTarget}`, e.target.value)
+                    } else {
+                      localStorage.removeItem(`msg-draft-${activeTarget}`)
+                    }
+                  }
+                }}
                 placeholder={canSend ? 'Write your message…' : 'Select a destination to send a message…'}
                 value={draft}
               />

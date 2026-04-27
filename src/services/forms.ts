@@ -33,19 +33,36 @@ function mapForm(row: Record<string, unknown>): RegistrationForm {
   }
 }
 
+const DEFAULT_SETTINGS: ClubSettings = { name: 'My Club', logoUrl: null, primaryColor: '#123524' }
+
 export async function fetchClubSettings(): Promise<ClubSettings> {
   const client = supabase
-  if (!client) return { name: 'My Club', logoUrl: null }
-  const { data } = await client.from('club_settings').select('name, logo_url').eq('id', 1).maybeSingle()
-  return { name: (data?.name as string) ?? 'My Club', logoUrl: (data?.logo_url as string | null) ?? null }
+  if (!client) return DEFAULT_SETTINGS
+  const { data } = await client.from('club_settings').select('name, logo_url, primary_color').eq('id', 1).maybeSingle()
+  if (!data) return DEFAULT_SETTINGS
+  return {
+    name: (data.name as string) ?? 'My Club',
+    logoUrl: (data.logo_url as string | null) ?? null,
+    primaryColor: (data.primary_color as string | null) ?? '#123524',
+  }
 }
 
 export async function saveClubSettings(settings: ClubSettings): Promise<void> {
   const client = requireSupabase()
   const { error } = await client
     .from('club_settings')
-    .upsert({ id: 1, name: settings.name, logo_url: settings.logoUrl, updated_at: new Date().toISOString() })
+    .upsert({ id: 1, name: settings.name, logo_url: settings.logoUrl, primary_color: settings.primaryColor, updated_at: new Date().toISOString() })
   if (error) throw new Error(error.message)
+}
+
+export async function uploadClubLogo(file: File): Promise<string> {
+  const client = requireSupabase()
+  const ext = file.name.split('.').pop() ?? 'png'
+  const path = `club-logo.${ext}`
+  const { error } = await client.storage.from('club-assets').upload(path, file, { upsert: true, contentType: file.type })
+  if (error) throw new Error(error.message)
+  const { data: urlData } = client.storage.from('club-assets').getPublicUrl(path)
+  return urlData.publicUrl
 }
 
 function mapField(row: Record<string, unknown>): FormField {

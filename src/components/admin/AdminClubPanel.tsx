@@ -9,6 +9,7 @@ import { TabNav } from '../ui/TabNav.tsx'
 import { TextField } from '../ui/TextField.tsx'
 import { useAdminClubData } from '../../hooks/useAdminClubData.ts'
 import { useAuditLogs } from '../../hooks/useAuditLogs.ts'
+import { useClubSettings } from '../../hooks/useClubSettings.ts'
 import { useTeamPlayers } from '../../hooks/useTeamPlayers.ts'
 import { useAuth } from '../../hooks/useAuth.ts'
 import { formatDate, formatDateTime } from '../../utils/date.ts'
@@ -147,6 +148,30 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
   const [uploadingPhotoForTeam, setUploadingPhotoForTeam] = useState<string | null>(null)
 
   const isSingleTeamClub = teams.length === 1
+
+  // Club branding
+  const { settings: clubSettings, saving: savingBranding, save: saveBranding } = useClubSettings()
+  const [brandingName, setBrandingName] = useState('')
+  const [brandingColor, setBrandingColor] = useState('')
+  const [brandingLogoFile, setBrandingLogoFile] = useState<File | null>(null)
+  const [brandingSuccess, setBrandingSuccess] = useState(false)
+
+  // Onboarding checklist
+  const [onboardingDismissed, setOnboardingDismissed] = useState(
+    () => localStorage.getItem('admin-onboarding-dismissed') === '1',
+  )
+  function dismissOnboarding() {
+    localStorage.setItem('admin-onboarding-dismissed', '1')
+    setOnboardingDismissed(true)
+  }
+  const onboardingSteps = [
+    { label: 'Create your first team', done: teams.length > 0, tab: 'manage' as AdminTab },
+    { label: 'Assign a coach to a team', done: coaches.length > 0, tab: 'manage' as AdminTab },
+    { label: 'Invite a parent', done: parents.length > 0, tab: 'manage' as AdminTab },
+    { label: 'Create an event', done: events.length > 0, tab: 'manage' as AdminTab },
+  ]
+  const onboardingComplete = onboardingSteps.every((s) => s.done)
+  const showOnboarding = !loading && !onboardingDismissed && !onboardingComplete
 
   // Needs-attention items
   const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0)
@@ -344,6 +369,63 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
             </div>
           </div>
 
+          {/* ── Onboarding checklist ── */}
+          {showOnboarding ? (
+            <div className="rounded-[1.5rem] border border-emerald-200 bg-emerald-50 p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-bold text-emerald-900">🚀 Getting started</p>
+                  <p className="mt-0.5 text-xs text-emerald-700">Complete these steps to get your club up and running.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={dismissOnboarding}
+                  className="shrink-0 rounded-full p-1 text-emerald-500 transition hover:bg-emerald-100 hover:text-emerald-800"
+                  aria-label="Dismiss checklist"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
+                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
+              <ul className="mt-4 space-y-2">
+                {onboardingSteps.map((step) => (
+                  <li key={step.label}>
+                    <button
+                      type="button"
+                      onClick={() => !step.done && setActiveTab(step.tab)}
+                      className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition ${
+                        step.done
+                          ? 'cursor-default text-emerald-700'
+                          : 'text-emerald-900 hover:bg-emerald-100 active:scale-[0.99]'
+                      }`}
+                    >
+                      <span
+                        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold ${
+                          step.done
+                            ? 'border-emerald-500 bg-emerald-500 text-white'
+                            : 'border-emerald-400 text-emerald-400'
+                        }`}
+                      >
+                        {step.done ? (
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        ) : null}
+                      </span>
+                      <span className={step.done ? 'line-through opacity-60' : ''}>{step.label}</span>
+                      {!step.done ? (
+                        <svg className="ml-auto shrink-0 text-emerald-400" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
+                          <polyline points="9 18 15 12 9 6" />
+                        </svg>
+                      ) : null}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
           {/* ── Needs attention ── */}
           {(pendingRegistrations.length > 0 || eventsToday.length > 0) && (
             <div className="space-y-2">
@@ -388,6 +470,84 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
           )}
 
           <AdminDashboardStats teams={teams} events={events} coaches={coaches} parents={parents} />
+
+          {/* ── Club branding ── */}
+          <article className="rounded-[1.75rem] border border-white/70 bg-white/85 p-5 shadow-lg shadow-slate-900/5 backdrop-blur-sm">
+            <h3 className="text-lg font-semibold text-slate-900">Club branding</h3>
+            <p className="mt-1 text-sm text-slate-500">Your club name, badge, and colour appear in the app header for all users.</p>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              {/* Club name */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700" htmlFor="branding-name">Club name</label>
+                <input
+                  id="branding-name"
+                  type="text"
+                  defaultValue={clubSettings.name}
+                  onChange={(e) => setBrandingName(e.target.value)}
+                  className="mt-1.5 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#f18a3f] focus:ring-4 focus:ring-[#f18a3f]/15"
+                  placeholder="My Club FC"
+                />
+              </div>
+              {/* Primary colour */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700" htmlFor="branding-color">Primary colour</label>
+                <div className="mt-1.5 flex items-center gap-3">
+                  <input
+                    id="branding-color"
+                    type="color"
+                    defaultValue={clubSettings.primaryColor}
+                    onChange={(e) => setBrandingColor(e.target.value)}
+                    className="h-10 w-14 cursor-pointer rounded-xl border border-slate-200 bg-white p-1"
+                  />
+                  <span className="text-sm text-slate-500">
+                    {brandingColor || clubSettings.primaryColor}
+                  </span>
+                </div>
+              </div>
+              {/* Logo upload */}
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-slate-700">Club badge / logo</label>
+                <div className="mt-1.5 flex items-center gap-4">
+                  {(clubSettings.logoUrl) ? (
+                    <img src={clubSettings.logoUrl} alt="Club badge" className="h-14 w-14 rounded-xl object-cover ring-2 ring-slate-200" />
+                  ) : (
+                    <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-slate-100 text-2xl">🏆</div>
+                  )}
+                  <label className="cursor-pointer rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+                    {brandingLogoFile ? brandingLogoFile.name : 'Choose image'}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="sr-only"
+                      onChange={(e) => setBrandingLogoFile(e.target.files?.[0] ?? null)}
+                    />
+                  </label>
+                </div>
+              </div>
+            </div>
+            {brandingSuccess ? (
+              <p className="mt-3 text-sm font-semibold text-emerald-600">✓ Branding saved!</p>
+            ) : null}
+            <Button
+              className="mt-4"
+              loading={savingBranding}
+              onClick={async () => {
+                setBrandingSuccess(false)
+                await saveBranding(
+                  {
+                    name: brandingName || clubSettings.name,
+                    primaryColor: brandingColor || clubSettings.primaryColor,
+                  },
+                  brandingLogoFile ?? undefined,
+                )
+                setBrandingLogoFile(null)
+                setBrandingSuccess(true)
+                setTimeout(() => setBrandingSuccess(false), 3000)
+              }}
+            >
+              Save branding
+            </Button>
+          </article>
 
           {pendingRegistrations.length > 0 ? (
             <article className="rounded-[1.75rem] border border-amber-200 bg-amber-50/80 p-5 shadow-lg shadow-slate-900/5">

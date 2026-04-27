@@ -8,6 +8,8 @@ import { PlayerProfileCard } from '../players/PlayerProfileCard.tsx'
 import { PlayerReviewsPanel } from '../reviews/PlayerReviewsPanel.tsx'
 import { InviteButton } from '../shared/InviteButton.tsx'
 import { LocationPicker, LocationMapCard } from '../ui/LocationPicker.tsx'
+import { UndoToast } from '../ui/UndoToast.tsx'
+import { MatchDayCard } from '../shared/MatchDayCard.tsx'
 import { formatDate, formatDateTimeRelative, dateBox, shortenAddress, groupByWeek } from '../../utils/date.ts'
 import { EventTypeChip } from '../ui/EventTypeChip.tsx'
 import { Button } from '../ui/Button.tsx'
@@ -261,6 +263,10 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
   const [selectedEventId, setSelectedEventId] = useState('')
   const [squadViewPlayerId, setSquadViewPlayerId] = useState<string | null>(null)
   const [localError, setLocalError] = useState<string | null>(null)
+  type PendingDelete =
+    | { kind: 'single'; eventId: string }
+    | { kind: 'series'; recurrenceGroupId: string; fromDateTime: string; eventId: string }
+  const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [editingEventId, setEditingEventId] = useState<string | null>(null)
   const [createTeamId, setCreateTeamId] = useState('')
@@ -429,21 +435,28 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
     }
   }
 
-  async function handleDeleteEvent(eventId: string) {
-    try {
-      await deleteEvent(eventId)
-      if (selectedEventId === eventId) setSelectedEventId('')
-    } catch {
-      // Hook exposes a user-facing error.
-    }
+  function handleDeleteEvent(eventId: string) {
+    if (selectedEventId === eventId) setSelectedEventId('')
+    setPendingDelete({ kind: 'single', eventId })
   }
 
-  async function handleDeleteSeries(recurrenceGroupId: string, fromDateTime: string, eventId: string) {
+  function handleDeleteSeries(recurrenceGroupId: string, fromDateTime: string, eventId: string) {
+    if (selectedEventId === eventId) setSelectedEventId('')
+    setPendingDelete({ kind: 'series', recurrenceGroupId, fromDateTime, eventId })
+  }
+
+  async function commitPendingDelete() {
+    if (!pendingDelete) return
     try {
-      await deleteEventSeries(recurrenceGroupId, fromDateTime)
-      if (selectedEventId === eventId) setSelectedEventId('')
+      if (pendingDelete.kind === 'single') {
+        await deleteEvent(pendingDelete.eventId)
+      } else {
+        await deleteEventSeries(pendingDelete.recurrenceGroupId, pendingDelete.fromDateTime)
+      }
     } catch {
       // Hook exposes a user-facing error.
+    } finally {
+      setPendingDelete(null)
     }
   }
 
@@ -497,6 +510,31 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
       {/* SCHEDULE TAB */}
       {activeTab === 'schedule' ? (
         <section className="space-y-5">
+          {/* ── Match day hero card ── */}
+          {(() => {
+            const todayStart = new Date(); todayStart.setHours(0,0,0,0)
+            const todayEnd   = new Date(); todayEnd.setHours(23,59,59,999)
+            const todayEvent = events.find((e) => {
+              const d = new Date(e.dateTime)
+              return d >= todayStart && d <= todayEnd
+            })
+            if (!todayEvent) return null
+            const result = resultByEventId.get(todayEvent.id)
+            const teamName = (selectedTeam ?? (isSingleTeamCoach ? teams[0] : null))?.name
+            return (
+              <MatchDayCard
+                event={todayEvent}
+                teamName={teamName}
+                isCoach
+                homeScore={result?.homeScore ?? 0}
+                awayScore={result?.awayScore ?? 0}
+                onScoreChange={(home, away) => {
+                  void saveResult(todayEvent.id, { homeScore: home, awayScore: away, notes: result?.notes ?? '' })
+                }}
+              />
+            )
+          })()}
+
           {!isSingleTeamCoach ? (
             <div className="max-w-sm">
               <SelectField
@@ -584,9 +622,9 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                             counts={attendanceCounts.get(clubEvent.id)}
                             onSelect={() => setSelectedEventId(clubEvent.id)}
                             onEdit={() => startEditingEvent(clubEvent.id)}
-                            onDelete={() => { void handleDeleteEvent(clubEvent.id) }}
+                            onDelete={() => handleDeleteEvent(clubEvent.id)}
                             onDeleteSeries={clubEvent.recurrenceGroupId
-                              ? () => { void handleDeleteSeries(clubEvent.recurrenceGroupId!, clubEvent.dateTime, clubEvent.id) }
+                              ? () => handleDeleteSeries(clubEvent.recurrenceGroupId!, clubEvent.dateTime, clubEvent.id)
                               : undefined}
                           />
                         ))}
@@ -1484,6 +1522,17 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
         <Suspense fallback={<SectionFallback />}>
           <TeamMessagesPanel profile={profile} />
         </Suspense>
+      ) : null}
+
+      {pendingDelete ? (
+        <UndoToast
+          message={pendingDelete.kind === 'series' ? 'Series deleted' : 'Event deleted'}
+          onUndo={() => {
+            if (pendingDelete.kind === 'single') setSelectedEventId(pendingDelete.eventId)
+            setPendingDelete(null)
+          }}
+          onConfirm={() => { void commitPendingDelete() }}
+        />
       ) : null}
     </section>
   )

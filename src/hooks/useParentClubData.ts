@@ -8,7 +8,19 @@ import {
   subscribeToTeamsByIds,
   updateAttendanceResponse,
 } from '../services/parentClub.ts'
+import { sendPushToUsers } from '../lib/pushNotifications.ts'
+import { requireSupabase } from '../services/supabaseHelpers.ts'
 import type { AttendanceRecord, AttendanceStatus, EventRecord, PlayerRecord, ResultRecord, TeamRecord } from '../types/club.ts'
+
+async function fetchCoachIdsForTeam(teamId: string): Promise<string[]> {
+  try {
+    const client = requireSupabase()
+    const { data } = await client.from('team_coaches').select('coach_id').eq('team_id', teamId)
+    return (data ?? []).map((r) => r.coach_id as string)
+  } catch {
+    return []
+  }
+}
 
 /** Stable key when `profile.children` gets a new array reference with the same ids. */
 function sortedChildIdsKey(ids: string[]) {
@@ -161,6 +173,26 @@ export function useParentClubData(childIds: string[]) {
 
       try {
         await updateAttendanceResponse(attendanceId, status)
+
+        // Fire-and-forget: notify coaches of the RSVP change
+        const record = attendance.find((a) => a.id === attendanceId)
+        if (record) {
+          const event = events.find((e) => e.id === record.eventId)
+          const player = players.find((p) => p.id === record.playerId)
+          if (event && player) {
+            const statusLabel = status === 'confirmed' ? '✅ Going' : status === 'declined' ? '❌ Not going' : '🤔 Maybe'
+            void fetchCoachIdsForTeam(event.teamId).then((coachIds) => {
+              if (coachIds.length > 0) {
+                void sendPushToUsers(
+                  coachIds,
+                  `RSVP: ${player.name}`,
+                  `${statusLabel} for ${event.title}`,
+                  '/',
+                )
+              }
+            })
+          }
+        }
       } catch (submitError) {
         setError(getParentErrorMessage(submitError, 'Unable to update attendance response.'))
         throw submitError

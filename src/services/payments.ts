@@ -181,13 +181,28 @@ export async function fetchPlayerProductsForParent(playerIds: string[]): Promise
   return (data ?? []).map((row) => mapPlayerProductRow(row as Record<string, unknown>))
 }
 
-export async function assignProduct(playerId: string, productId: string, assignedBy: string): Promise<void> {
+export async function assignProduct(
+  playerId: string,
+  productId: string,
+  assignedBy: string,
+  endsAt?: string | null,
+): Promise<void> {
   const client = requireSupabase()
   const { error } = await client.from('player_products').insert({
     player_id: playerId,
     product_id: productId,
     assigned_by: assignedBy,
+    ends_at: endsAt ?? null,
   })
+  if (error) throw new Error(error.message)
+}
+
+export async function updateAssignmentEnds(assignmentId: string, endsAt: string | null): Promise<void> {
+  const client = requireSupabase()
+  const { error } = await client
+    .from('player_products')
+    .update({ ends_at: endsAt })
+    .eq('id', assignmentId)
   if (error) throw new Error(error.message)
 }
 

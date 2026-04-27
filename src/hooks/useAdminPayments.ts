@@ -9,6 +9,7 @@ import {
   fetchProducts,
   removeAssignment,
   setProductActive,
+  updateAssignmentEnds,
   updatePricingRule,
   updateProduct,
 } from '../services/payments.ts'
@@ -163,15 +164,44 @@ export function useAdminPayments() {
 
   // ── Assignment actions ────────────────────────────────────────────────────
 
-  async function assign(playerId: string, productId: string, adminId: string): Promise<void> {
+  /** Assigns a product to a player. Pass `durationMonths` to set a fixed end date. */
+  async function assign(playerId: string, productId: string, adminId: string, durationMonths?: number): Promise<void> {
     if (!isConfigured) { setError(supabaseConfigError); return }
     setIsSubmitting(true)
     setError(null)
     try {
-      await assignProduct(playerId, productId, adminId)
+      let endsAt: string | null = null
+      if (durationMonths && durationMonths > 0) {
+        const end = new Date()
+        end.setMonth(end.getMonth() + durationMonths)
+        endsAt = end.toISOString()
+      }
+      await assignProduct(playerId, productId, adminId, endsAt)
       await loadAssignments()
     } catch (err) {
       setError(getError(err, 'Failed to assign product.'))
+      throw err
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  /** Updates the end date on an existing assignment. Pass null to make it ongoing. */
+  async function editAssignment(assignmentId: string, durationMonths: number | null): Promise<void> {
+    if (!isConfigured) { setError(supabaseConfigError); return }
+    setIsSubmitting(true)
+    setError(null)
+    try {
+      let endsAt: string | null = null
+      if (durationMonths && durationMonths > 0) {
+        const end = new Date()
+        end.setMonth(end.getMonth() + durationMonths)
+        endsAt = end.toISOString()
+      }
+      await updateAssignmentEnds(assignmentId, endsAt)
+      await loadAssignments()
+    } catch (err) {
+      setError(getError(err, 'Failed to update subscription duration.'))
       throw err
     } finally {
       setIsSubmitting(false)
@@ -214,6 +244,7 @@ export function useAdminPayments() {
     toggleProduct,
     saveRule,
     assign,
+    editAssignment,
     unassign,
     refreshFamilies,
   }

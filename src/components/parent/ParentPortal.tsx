@@ -1,6 +1,7 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../../hooks/useAuth.ts'
 import { useParentClubData } from '../../hooks/useParentClubData.ts'
+import { linkParentByCode } from '../../services/parentClub.ts'
 import { registerChildrenForCurrentUser } from '../../services/parentSelfRegister.ts'
 import { fetchPublicClubPlayerFields } from '../../services/clubPlayerFields.ts'
 import { ClubPlayerFieldEditor } from '../shared/ClubPlayerFieldEditor.tsx'
@@ -10,6 +11,7 @@ import { PostFeed } from '../posts/PostFeed.tsx'
 import { PlayerProfileCard } from '../players/PlayerProfileCard.tsx'
 import { ReviewCard } from '../reviews/ReviewCard.tsx'
 import { LocationMapCard } from '../ui/LocationPicker.tsx'
+import { MatchDayCard } from '../shared/MatchDayCard.tsx'
 import { MotmVotingCard } from '../shared/MotmVotingCard.tsx'
 import { EventComments } from '../events/EventComments.tsx'
 import { fetchPublishedReviewsForPlayer, type PlayerReview } from '../../services/playerReviews.ts'
@@ -49,6 +51,66 @@ function SectionFallback() {
     <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-6 text-sm text-slate-500">
       Loading messages...
     </div>
+  )
+}
+
+/** Link to an existing player using an 8-character registration code. */
+function LinkByCodeForm({ className = '', onLinked }: { className?: string; onLinked?: () => void }) {
+  const { refreshProfile } = useAuth()
+  const [code, setCode] = useState('')
+  const [formError, setFormError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setFormError(null)
+    if (code.trim().length < 6) {
+      setFormError('Enter the 8-character code shown in the club admin panel.')
+      return
+    }
+    setSubmitting(true)
+    try {
+      await linkParentByCode(code.trim())
+      setSuccess(true)
+      setCode('')
+      await refreshProfile()
+      onLinked?.()
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'Invalid code. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className={`space-y-3 ${className}`}>
+      <p className="text-sm font-semibold text-slate-700">Have a registration code?</p>
+      <p className="text-xs text-slate-500">
+        Your club admin can give you an 8-character code for your child's player profile.
+      </p>
+      {formError ? (
+        <p className="rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-700">{formError}</p>
+      ) : null}
+      {success ? (
+        <p className="rounded-xl bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">
+          ✓ Linked successfully!
+        </p>
+      ) : null}
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={code}
+          onChange={(e) => setCode(e.target.value.toUpperCase())}
+          maxLength={8}
+          placeholder="e.g. AB12CD34"
+          className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm uppercase tracking-widest text-slate-900 outline-none transition focus:border-[#f18a3f] focus:ring-2 focus:ring-[#f18a3f]/20"
+        />
+        <Button type="submit" loading={submitting} disabled={code.trim().length < 6}>
+          Link
+        </Button>
+      </div>
+    </form>
   )
 }
 
@@ -452,6 +514,29 @@ export function ParentPortal({ profile, activeTab, onTabChange }: ParentPortalPr
       {/* SCHEDULE TAB */}
       {activeTab === 'schedule' ? (
         <section className="space-y-5">
+          {/* ── Match day hero card ── */}
+          {(() => {
+            const todayStart = new Date(); todayStart.setHours(0,0,0,0)
+            const todayEnd   = new Date(); todayEnd.setHours(23,59,59,999)
+            const todayEvent = events.find((e) => {
+              const d = new Date(e.dateTime)
+              return d >= todayStart && d <= todayEnd
+            })
+            if (!todayEvent) return null
+            const childAttendance = attendance.filter(
+              (a) => a.eventId === todayEvent.id && a.playerId === activeChildId,
+            )
+            const teamName = teams.find((t) => t.id === todayEvent.teamId)?.name
+            return (
+              <MatchDayCard
+                event={todayEvent}
+                teamName={teamName}
+                attendance={childAttendance}
+                onAttendanceChange={(id, status) => { void updateAttendance(id, status) }}
+              />
+            )
+          })()}
+
           <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
             <article className="rounded-[1.75rem] border border-white/70 bg-white/85 p-5 shadow-lg shadow-slate-900/5 backdrop-blur-sm">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -480,8 +565,10 @@ export function ParentPortal({ profile, activeTab, onTabChange }: ParentPortalPr
               ) : null}
 
               {players.length === 0 && !loadingPlayers ? (
-                <div className="mt-4 rounded-2xl border border-dashed border-slate-300 px-4 py-6 text-center text-sm text-slate-600">
-                  <p>No children linked yet. Add your child below, or ask the club to link you to an existing player.</p>
+                <div className="mt-4 space-y-4 rounded-2xl border border-dashed border-slate-300 px-4 py-6 text-sm text-slate-600">
+                  <p className="text-center">No children linked yet. Add your child below, or link with a registration code from your club.</p>
+                  <LinkByCodeForm className="mx-auto max-w-md" />
+                  <hr className="border-slate-200" />
                   <RegisterChildForm className="mx-auto max-w-md" />
                 </div>
               ) : null}
@@ -593,8 +680,10 @@ export function ParentPortal({ profile, activeTab, onTabChange }: ParentPortalPr
           {loadingPlayers ? (
             <div className="text-sm text-slate-400">Loading…</div>
           ) : players.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-300 px-4 py-6 text-sm text-slate-600">
-              <p className="text-center">No children linked yet. Register a child here or ask your club admin to link you.</p>
+            <div className="space-y-4 rounded-2xl border border-dashed border-slate-300 px-4 py-6 text-sm text-slate-600">
+              <p className="text-center">No children linked yet. Register a child or enter a registration code from your club.</p>
+              <LinkByCodeForm className="mx-auto max-w-lg" />
+              <hr className="border-slate-200" />
               <RegisterChildForm className="mx-auto mt-2 max-w-lg" />
             </div>
           ) : (

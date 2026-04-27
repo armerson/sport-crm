@@ -153,3 +153,30 @@ export async function updateAttendanceResponse(
     throw new Error(error.message)
   }
 }
+
+/**
+ * Link the currently logged-in parent to a player using a registration code.
+ * Calls the `link_parent_by_code` Postgres RPC defined in the migration.
+ * Returns the linked player's id.
+ */
+export async function linkParentByCode(code: string): Promise<string> {
+  const client = requireSupabase()
+  const { data, error } = await client.rpc('link_parent_by_code', { p_code: code.trim().toUpperCase() })
+  if (error) throw new Error(error.message)
+  return data as string
+}
+
+/**
+ * Fetch the registration code for a specific player.
+ * Admin-only — RLS blocks coaches and parents.
+ */
+export async function fetchPlayerRegistrationCode(playerId: string): Promise<string | null> {
+  const client = requireSupabase()
+  const { data, error } = await client
+    .from('players')
+    .select('registration_code')
+    .eq('id', playerId)
+    .maybeSingle()
+  if (error) return null
+  return (data as { registration_code: string | null } | null)?.registration_code ?? null
+}

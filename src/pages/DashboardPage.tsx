@@ -4,10 +4,12 @@ import { Button } from '../components/ui/Button.tsx'
 import { BottomNav, ADMIN_BOTTOM_NAV, COACH_BOTTOM_NAV, PARENT_BOTTOM_NAV, PLAYER_BOTTOM_NAV } from '../components/ui/BottomNav.tsx'
 import { InstallBanner } from '../components/ui/InstallBanner.tsx'
 import { NotificationBanner } from '../components/ui/NotificationBanner.tsx'
+import { NotificationBell } from '../components/ui/NotificationBell.tsx'
 import { SettingsPanel } from '../components/settings/SettingsPanel.tsx'
 import { PageSkeleton } from '../components/ui/Skeleton.tsx'
 import { useAuth } from '../hooks/useAuth.ts'
 import { markMessagesRead, useUnreadMessages } from '../hooks/useUnreadMessages.ts'
+import { useClubSettings } from '../hooks/useClubSettings.ts'
 import type { UserRole } from '../types/auth.ts'
 import type { AdminTab } from '../components/admin/AdminClubPanel.tsx'
 import type { CoachTab } from '../components/coach/CoachEventPanel.tsx'
@@ -127,6 +129,9 @@ export function DashboardPage() {
     if (profile) prefetchPanels()
   }, [profile])
 
+  // Club branding — name, logo, primary colour
+  const { settings: clubSettings } = useClubSettings()
+
   // Unread messages badge — uses the profile's own team memberships
   const hasUnreadMessages = useUnreadMessages(profile?.id ?? '', profile?.teams ?? [])
 
@@ -203,16 +208,20 @@ export function DashboardPage() {
   return (
     <main className="min-h-screen overflow-x-hidden pb-20 sm:pb-0">
       {/* ── Mobile header ── */}
-      <header className="flex items-center justify-between bg-[#123524] px-4 py-3 sm:hidden">
+      <header className="flex items-center justify-between px-4 py-3 sm:hidden" style={{ backgroundColor: clubSettings.primaryColor }}>
         <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/15">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
-              <circle cx="12" cy="12" r="10" fill="none" stroke="white" strokeWidth="2" />
-              <polygon points="12,6 15,10 13,10 13,18 11,18 11,10 9,10" fill="white" />
-            </svg>
-          </div>
+          {clubSettings.logoUrl ? (
+            <img src={clubSettings.logoUrl} alt={clubSettings.name} className="h-8 w-8 rounded-xl object-cover" />
+          ) : (
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/15">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+                <circle cx="12" cy="12" r="10" fill="none" stroke="white" strokeWidth="2" />
+                <polygon points="12,6 15,10 13,10 13,18 11,18 11,10 9,10" fill="white" />
+              </svg>
+            </div>
+          )}
           <div>
-            <p className="text-sm font-bold text-white">Club CRM</p>
+            <p className="text-sm font-bold text-white">{clubSettings.name}</p>
             <p className="text-[10px] text-white/60">{activeContent.title}</p>
           </div>
         </div>
@@ -239,6 +248,13 @@ export function DashboardPage() {
             </span>
             <span className="max-w-[80px] truncate text-xs font-medium text-white">{profile.name.split(' ')[0]}</span>
           </div>
+          <NotificationBell
+            hasUnread={hasUnreadMessages}
+            onClick={() => {
+              markMessagesRead(profile.id)
+              handleTabChange('messages')
+            }}
+          />
           <button
             type="button"
             onClick={() => setShowSettings(true)}
@@ -261,9 +277,15 @@ export function DashboardPage() {
       {/* ── Desktop header ── */}
       <div className="hidden px-6 py-6 sm:block lg:px-8">
         <div className="mx-auto max-w-6xl">
-          <header className="overflow-hidden rounded-[2rem] bg-[#123524] p-6 text-white shadow-2xl shadow-[#123524]/20 sm:p-8">
+          <header className="overflow-hidden rounded-[2rem] p-6 text-white shadow-2xl sm:p-8" style={{ backgroundColor: clubSettings.primaryColor, boxShadow: `0 25px 50px -12px ${clubSettings.primaryColor}33` }}>
             <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
               <div className="space-y-2">
+                <div className="flex items-center gap-3">
+                  {clubSettings.logoUrl ? (
+                    <img src={clubSettings.logoUrl} alt={clubSettings.name} className="h-10 w-10 rounded-xl object-cover ring-2 ring-white/30" />
+                  ) : null}
+                  <span className="text-xs font-semibold uppercase tracking-widest text-white/50">{clubSettings.name}</span>
+                </div>
                 <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{activeContent.title}</h1>
                 <p className="max-w-2xl text-sm leading-6 text-white/80 sm:text-base">{activeContent.summary}</p>
                 {hasMultipleRoles ? (
@@ -294,6 +316,14 @@ export function DashboardPage() {
                   </p>
                 </div>
                 <div className="flex w-full gap-2">
+                  <NotificationBell
+                    hasUnread={hasUnreadMessages}
+                    onClick={() => {
+                      markMessagesRead(profile.id)
+                      handleTabChange('messages')
+                    }}
+                    className="h-9 w-9"
+                  />
                   <Button className="flex-1" onClick={() => setShowSettings(true)} variant="secondary">
                     Settings
                   </Button>

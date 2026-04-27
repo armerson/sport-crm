@@ -456,13 +456,27 @@ function PricingRulesSection() {
 
 // ── Assign section ──────────────────────────────────────────────────────────
 
+function formatEndsAt(endsAt: string | null): string {
+  if (!endsAt) return 'Ongoing'
+  const d = new Date(endsAt)
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
 function AssignSection() {
   const { profile } = useAuth()
-  const { products, assignments, isSubmitting, assign, unassign } = useAdminPayments()
+  const { products, assignments, isSubmitting, assign, editAssignment, unassign } = useAdminPayments()
   const [allPlayers, setAllPlayers] = useState<SimplePlayer[]>([])
   const [playerSearch, setPlayerSearch] = useState('')
   const [selectedPlayerId, setSelectedPlayerId] = useState('')
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
+
+  // Inline "assign" form state — productId → months override string
+  const [pendingAssignId, setPendingAssignId] = useState<string | null>(null)
+  const [assignMonths, setAssignMonths] = useState('')
+
+  // Inline "edit duration" form state
+  const [editingAssignmentId, setEditingAssignmentId] = useState<string | null>(null)
+  const [editMonths, setEditMonths] = useState('')
 
   useEffect(() => {
     void fetchAllPlayers().then(setAllPlayers).catch(() => {/* non-critical */})
@@ -479,14 +493,44 @@ function AssignSection() {
   const assignedProductIds = new Set(playerAssignments.map((a) => a.productId))
   const activeProducts = products.filter((p) => p.active)
 
-  async function handleAssign(productId: string) {
-    await assign(selectedPlayerId, productId, profile!.id)
+  function openAssign(product: (typeof activeProducts)[0]) {
+    setPendingAssignId(product.id)
+    // Pre-fill with the product's own duration if it has one
+    setAssignMonths(product.durationMonths ? String(product.durationMonths) : '')
+  }
+
+  async function handleConfirmAssign() {
+    if (!pendingAssignId) return
+    const months = parseInt(assignMonths) || undefined
+    await assign(selectedPlayerId, pendingAssignId, profile!.id, months)
     setSuccessMsg('Product assigned.')
+    setPendingAssignId(null)
+    setAssignMonths('')
   }
 
   async function handleUnassign(productId: string) {
     await unassign(selectedPlayerId, productId)
     setSuccessMsg('Product removed.')
+    setEditingAssignmentId(null)
+  }
+
+  function openEditAssignment(a: (typeof playerAssignments)[0]) {
+    setEditingAssignmentId(a.id)
+    // Show remaining months if there's an end date, otherwise blank
+    if (a.endsAt) {
+      const months = Math.ceil((new Date(a.endsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24 * 30.44))
+      setEditMonths(String(Math.max(1, months)))
+    } else {
+      setEditMonths('')
+    }
+  }
+
+  async function handleSaveEditMonths(assignmentId: string) {
+    const months = parseInt(editMonths) || null
+    await editAssignment(assignmentId, months)
+    setSuccessMsg(months ? `Duration updated to ${months} month${months !== 1 ? 's' : ''} from today.` : 'Set to ongoing (no end date).')
+    setEditingAssignmentId(null)
+    setEditMonths('')
   }
 
   return (
@@ -501,7 +545,9 @@ function AssignSection() {
             type="text"
             placeholder="Search players…"
             value={playerSearch}
-            onChange={(e) => setPlayerSearch(e.target.value)}
+            onChange={(e) => {
+              setPlayerSearch(e.target.value)
+            }}
             className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#123524]/30"
           />
           <div className="max-h-72 overflow-y-auto rounded-2xl border border-slate-200 bg-white divide-y divide-slate-100">
@@ -514,7 +560,11 @@ function AssignSection() {
                   <button
                     key={player.id}
                     type="button"
-                    onClick={() => setSelectedPlayerId(player.id)}
+                    onClick={() => {
+                      setSelectedPlayerId(player.id)
+                      setPendingAssignId(null)
+                      setEditingAssignmentId(null)
+                    }}
                     className={`w-full px-4 py-3 text-left transition ${
                       selectedPlayerId === player.id ? 'bg-[#123524]/5 font-semibold text-[#123524]' : 'hover:bg-slate-50'
                     }`}
@@ -545,30 +595,140 @@ function AssignSection() {
                 <div className="divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white">
                   {activeProducts.map((product) => {
                     const isAssigned = assignedProductIds.has(product.id)
+                    const assignment = playerAssignments.find((a) => a.productId === product.id)
+                    const isMonthly = product.billingType === 'monthly'
+                    const isPendingThis = pendingAssignId === product.id
+                    const isEditingThis = assignment && editingAssignmentId === assignment.id
+
                     return (
-                      <div key={product.id} className="flex items-center justify-between gap-4 px-4 py-3.5">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-medium text-slate-900">{product.name}</p>
-                            <BillingTypeBadge type={product.billingType} durationMonths={product.durationMonths} />
+                      <div key={product.id} className="px-4 py-3.5">
+                        {/* Product row */}
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-medium text-slate-900">{product.name}</p>
+                              <BillingTypeBadge type={product.billingType} durationMonths={product.durationMonths} />
+                            </div>
+                            <div className="flex items-center gap-3 mt-0.5">
+                              <p className="text-xs text-slate-500">
+                                {formatPence(product.pricePence)}{isMonthly ? '/mo' : ''}
+                              </p>
+                              {/* Show end date for assigned monthly products */}
+                              {isAssigned && isMonthly && assignment && !isEditingThis && (
+                                <span className="text-xs text-slate-400">
+                                  Ends: <span className={assignment.endsAt ? 'text-amber-600 font-medium' : 'text-slate-500'}>
+                                    {formatEndsAt(assignment.endsAt)}
+                                  </span>
+                                </span>
+                              )}
+                            </div>
                           </div>
-                          <p className="text-xs text-slate-500">{formatPence(product.pricePence)}{product.billingType === 'monthly' ? '/mo' : ''}</p>
+
+                          <div className="flex shrink-0 items-center gap-3">
+                            {isAssigned ? (
+                              <>
+                                {/* Edit duration button — monthly only */}
+                                {isMonthly && assignment && !isEditingThis && (
+                                  <button
+                                    type="button"
+                                    onClick={() => openEditAssignment(assignment)}
+                                    className="text-xs font-semibold text-slate-500 transition hover:text-slate-800"
+                                  >
+                                    Edit months
+                                  </button>
+                                )}
+                                <ConfirmInline
+                                  onConfirm={() => void handleUnassign(product.id)}
+                                  label="Remove"
+                                  disabled={isSubmitting}
+                                />
+                              </>
+                            ) : isPendingThis ? null : (
+                              <button
+                                type="button"
+                                disabled={isSubmitting}
+                                onClick={() => (isMonthly ? openAssign(product) : void (async () => {
+                                  await assign(selectedPlayerId, product.id, profile!.id)
+                                  setSuccessMsg('Product assigned.')
+                                })())}
+                                className="text-xs font-semibold text-[#123524] transition hover:underline disabled:opacity-40"
+                              >
+                                Assign
+                              </button>
+                            )}
+                          </div>
                         </div>
-                        {isAssigned ? (
-                          <ConfirmInline
-                            onConfirm={() => void handleUnassign(product.id)}
-                            label="Remove"
-                            disabled={isSubmitting}
-                          />
-                        ) : (
-                          <button
-                            type="button"
-                            disabled={isSubmitting}
-                            onClick={() => void handleAssign(product.id)}
-                            className="text-xs font-semibold text-[#123524] transition hover:underline disabled:opacity-40"
-                          >
-                            Assign
-                          </button>
+
+                        {/* Inline assign form — monthly products only */}
+                        {isPendingThis && (
+                          <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-3">
+                            <p className="text-xs font-semibold text-slate-600">How many months should this subscription run?</p>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                min="1"
+                                max="60"
+                                value={assignMonths}
+                                onChange={(e) => setAssignMonths(e.target.value)}
+                                placeholder="Leave blank for ongoing"
+                                className="w-36 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#123524]/30"
+                              />
+                              <span className="text-xs text-slate-500">months</span>
+                            </div>
+                            {assignMonths && parseInt(assignMonths) > 0 && (
+                              <p className="text-xs text-slate-400">
+                                Will end on{' '}
+                                {(() => {
+                                  const d = new Date()
+                                  d.setMonth(d.getMonth() + parseInt(assignMonths))
+                                  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+                                })()}
+                              </p>
+                            )}
+                            <div className="flex gap-2">
+                              <Button variant="primary" disabled={isSubmitting} onClick={() => void handleConfirmAssign()}>
+                                {isSubmitting ? 'Assigning…' : 'Confirm assign'}
+                              </Button>
+                              <Button variant="secondary" onClick={() => setPendingAssignId(null)}>Cancel</Button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Inline edit duration form */}
+                        {isEditingThis && assignment && (
+                          <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-3">
+                            <p className="text-xs font-semibold text-slate-600">Update subscription duration from today</p>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                min="1"
+                                max="60"
+                                value={editMonths}
+                                onChange={(e) => setEditMonths(e.target.value)}
+                                placeholder="Leave blank for ongoing"
+                                className="w-36 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#123524]/30"
+                              />
+                              <span className="text-xs text-slate-500">months</span>
+                            </div>
+                            {editMonths && parseInt(editMonths) > 0 ? (
+                              <p className="text-xs text-slate-400">
+                                New end date:{' '}
+                                {(() => {
+                                  const d = new Date()
+                                  d.setMonth(d.getMonth() + parseInt(editMonths))
+                                  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+                                })()}
+                              </p>
+                            ) : (
+                              <p className="text-xs text-slate-400">Leave blank to set as ongoing (no end date)</p>
+                            )}
+                            <div className="flex gap-2">
+                              <Button variant="primary" disabled={isSubmitting} onClick={() => void handleSaveEditMonths(assignment.id)}>
+                                {isSubmitting ? 'Saving…' : 'Save duration'}
+                              </Button>
+                              <Button variant="secondary" onClick={() => setEditingAssignmentId(null)}>Cancel</Button>
+                            </div>
+                          </div>
                         )}
                       </div>
                     )

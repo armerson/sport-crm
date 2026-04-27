@@ -13,6 +13,7 @@ import {
   uploadPlayerDocument,
   uploadPlayerPhoto,
 } from '../../services/playerProfiles.ts'
+import { fetchPlayerRegistrationCode } from '../../services/parentClub.ts'
 import {
   fetchAdminClubPlayerFields,
   fetchPlayerFieldValuesMap,
@@ -581,6 +582,8 @@ export function PlayerProfileCard({ playerId, role, currentUserId }: PlayerProfi
   const [editing, setEditing] = useState(false)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
   const [activeSection, setActiveSection] = useState<'profile' | 'contacts' | 'registration' | 'documents'>('profile')
+  const [registrationCode, setRegistrationCode] = useState<string | null>(null)
+  const [codeCopied, setCodeCopied] = useState(false)
 
   useEffect(() => {
     setLoading(true)
@@ -588,6 +591,20 @@ export function PlayerProfileCard({ playerId, role, currentUserId }: PlayerProfi
       .then(setPlayer)
       .finally(() => setLoading(false))
   }, [playerId])
+
+  // Admins only: fetch the registration code
+  useEffect(() => {
+    if (role !== 'admin') return
+    void fetchPlayerRegistrationCode(playerId).then(setRegistrationCode)
+  }, [playerId, role])
+
+  function copyCode() {
+    if (!registrationCode) return
+    void navigator.clipboard.writeText(registrationCode).then(() => {
+      setCodeCopied(true)
+      setTimeout(() => setCodeCopied(false), 2000)
+    })
+  }
 
   if (loading) {
     return (
@@ -635,6 +652,22 @@ export function PlayerProfileCard({ playerId, role, currentUserId }: PlayerProfi
             {player.nationality && <span>{player.nationality}</span>}
           </div>
           {player.bio && <p className="mt-2 text-sm text-slate-600 italic max-w-md">{player.bio}</p>}
+          {role === 'admin' && registrationCode ? (
+            <div className="mt-2 flex items-center gap-2">
+              <span className="text-xs text-slate-500">Registration code:</span>
+              <span className="rounded-lg bg-slate-100 px-2.5 py-1 font-mono text-sm font-bold tracking-widest text-slate-800">
+                {registrationCode}
+              </span>
+              <button
+                type="button"
+                onClick={copyCode}
+                className="rounded-lg px-2 py-1 text-xs font-semibold text-[#123524] transition hover:bg-slate-100"
+                title="Copy to clipboard"
+              >
+                {codeCopied ? '✓ Copied' : 'Copy'}
+              </button>
+            </div>
+          ) : null}
         </div>
         {perms.canEditSportsProfile && !editing && (
           <button type="button" onClick={() => setEditing(true)} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50">
