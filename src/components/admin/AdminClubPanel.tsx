@@ -149,6 +149,9 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
   const [repositioningTeamId, setRepositioningTeamId] = useState<string | null>(null)
   const [draftFocus, setDraftFocus] = useState<{ x: number; y: number }>({ x: 50, y: 50 })
   const [savingFocus, setSavingFocus] = useState(false)
+  // Optimistic overrides so changes show instantly without waiting for subscription round-trip
+  const [photoFocusOverrides, setPhotoFocusOverrides] = useState<Record<string, { x: number; y: number }>>({})
+  const [photoUrlOverrides, setPhotoUrlOverrides] = useState<Record<string, string>>({})
 
   const isSingleTeamClub = teams.length === 1
 
@@ -192,7 +195,12 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
   const { players: linkablePlayers, loading: loadingLinkablePlayers } = useTeamPlayers(resolvedLinkTeamId)
 
   const activeError = localError ?? error
-  const teamCards = useMemo(() => teams, [teams])
+  const teamCards = useMemo(() => teams.map((t) => ({
+    ...t,
+    photoUrl: photoUrlOverrides[t.id] ?? t.photoUrl,
+    photoFocusX: photoFocusOverrides[t.id]?.x ?? t.photoFocusX,
+    photoFocusY: photoFocusOverrides[t.id]?.y ?? t.photoFocusY,
+  })), [teams, photoUrlOverrides, photoFocusOverrides])
   const PLAYER_PAGE = 8
 
   const filteredParents = useMemo(() => {
@@ -865,15 +873,18 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
                             type="button"
                             disabled={savingFocus}
                             onClick={async () => {
+                              // Optimistic update — apply immediately so UI reflects change without waiting for subscription
+                              setPhotoFocusOverrides((prev) => ({ ...prev, [team.id]: draftFocus }))
+                              setRepositioningTeamId(null)
                               setSavingFocus(true)
                               try {
                                 await saveTeamPhotoFocus(team.id, draftFocus.x, draftFocus.y)
-                                showSuccess('Photo position saved.')
                               } catch {
+                                // Revert on failure
+                                setPhotoFocusOverrides((prev) => { const next = { ...prev }; delete next[team.id]; return next })
                                 showSuccess('Failed to save position.')
                               } finally {
                                 setSavingFocus(false)
-                                setRepositioningTeamId(null)
                               }
                             }}
                             className="rounded-xl bg-[#123524] px-3 py-1 text-xs font-semibold text-white shadow disabled:opacity-50"
@@ -907,11 +918,18 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
                               onChange={async (e) => {
                                 const file = e.target.files?.[0]
                                 if (!file) return
+                                // Optimistic preview using local object URL
+                                const previewUrl = URL.createObjectURL(file)
+                                setPhotoUrlOverrides((prev) => ({ ...prev, [team.id]: previewUrl }))
                                 setUploadingPhotoForTeam(team.id)
                                 try {
-                                  await uploadTeamPhoto(team.id, file)
+                                  const url = await uploadTeamPhoto(team.id, file)
+                                  // Replace preview with real CDN URL immediately
+                                  setPhotoUrlOverrides((prev) => ({ ...prev, [team.id]: url }))
                                   showSuccess(`Photo updated for ${team.name}.`)
                                 } catch {
+                                  // Revert preview on failure
+                                  setPhotoUrlOverrides((prev) => { const next = { ...prev }; delete next[team.id]; return next })
                                   showSuccess('Photo upload failed.')
                                 } finally {
                                   setUploadingPhotoForTeam(null)
