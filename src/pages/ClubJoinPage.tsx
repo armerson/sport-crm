@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { getClubInviteInfo, useClubInvite, type ClubInviteInfo } from '../services/teamInvites.ts'
+import { applyClubInvite, getClubInviteInfo, type ClubInviteInfo } from '../services/teamInvites.ts'
 import { useAuth } from '../hooks/useAuth.ts'
 
 function Field({ label, type = 'text', value, onChange, placeholder, autoComplete }: {
@@ -53,7 +53,7 @@ export function ClubJoinPage() {
   // After auth, use the invite and redirect
   useEffect(() => {
     if (!currentUser || !info) return
-    useClubInvite(code)
+    applyClubInvite(code)
       .then(() => navigate('/dashboard', { replace: true }))
       .catch(() => navigate('/dashboard', { replace: true }))
   }, [currentUser, info, code, navigate])

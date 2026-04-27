@@ -38,7 +38,7 @@ export async function createTeamInvite(teamId: string, role: 'parent' | 'coach')
 }
 
 /** Called after authentication to process a pending invite code. */
-export async function useTeamInvite(code: string): Promise<void> {
+export async function applyTeamInvite(code: string): Promise<void> {
   const client = requireSupabase()
   const { error } = await client.rpc('use_team_invite', { p_code: code })
   if (error) throw new Error(error.message)
@@ -67,8 +67,12 @@ export async function createClubInvite(role: 'coach' | 'admin'): Promise<string>
   return data as string
 }
 
-export async function useClubInvite(code: string): Promise<void> {
+export async function applyClubInvite(code: string): Promise<void> {
   const client = requireSupabase()
   const { error } = await client.rpc('use_club_invite', { p_code: code })
   if (error) throw new Error(error.message)
 }
+
+// Backwards-compatible aliases. Avoid these names in new code to prevent React hook lint confusion.
+export const useTeamInvite = applyTeamInvite
+export const useClubInvite = applyClubInvite
