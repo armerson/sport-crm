@@ -20,7 +20,7 @@ export function subscribeToTeams(
   return subscribeToTables('teams-feed', ['teams', 'team_coaches', 'player_teams'], async () => {
     const { data: teamsData, error: teamsError } = await client
       .from('teams')
-      .select('id, name, age_group, is_senior, photo_url')
+      .select('id, name, age_group, is_senior, photo_url, photo_focus_x, photo_focus_y')
       .order('age_group', { ascending: true })
       .order('name', { ascending: true })
 
@@ -334,6 +334,15 @@ export async function uploadTeamPhoto(teamId: string, file: File): Promise<strin
 
   if (updateError) throw new Error(updateError.message)
   return url
+}
+
+export async function saveTeamPhotoFocus(teamId: string, focusX: number, focusY: number): Promise<void> {
+  const client = requireSupabase()
+  const { error } = await client
+    .from('teams')
+    .update({ photo_focus_x: Math.round(focusX), photo_focus_y: Math.round(focusY) })
+    .eq('id', teamId)
+  if (error) throw new Error(error.message)
 }
 
 export async function deleteTeam(teamId: string) {

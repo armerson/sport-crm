@@ -14,7 +14,7 @@ import { useTeamPlayers } from '../../hooks/useTeamPlayers.ts'
 import { useAuth } from '../../hooks/useAuth.ts'
 import { formatDate, formatDateTime } from '../../utils/date.ts'
 import type { ProvisionableRole } from '../../services/provisioning.ts'
-import { uploadTeamPhoto } from '../../services/adminClub.ts'
+import { uploadTeamPhoto, saveTeamPhotoFocus } from '../../services/adminClub.ts'
 import { InviteButton } from '../shared/InviteButton.tsx'
 
 // Heavy tab panels — only loaded when their tab is first opened
@@ -146,6 +146,9 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
   const [editingTeamId, setEditingTeamId] = useState<string | null>(null)
   const [editTeamValues, setEditTeamValues] = useState({ name: '', ageGroup: '', isSenior: false })
   const [uploadingPhotoForTeam, setUploadingPhotoForTeam] = useState<string | null>(null)
+  const [repositioningTeamId, setRepositioningTeamId] = useState<string | null>(null)
+  const [draftFocus, setDraftFocus] = useState<{ x: number; y: number }>({ x: 50, y: 50 })
+  const [savingFocus, setSavingFocus] = useState(false)
 
   const isSingleTeamClub = teams.length === 1
 
@@ -790,9 +793,56 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
                 {teamCards.map((team) => (
                   <article key={team.id} className="overflow-hidden rounded-[1.75rem] border border-white/70 bg-white/85 shadow-lg shadow-slate-900/5 backdrop-blur-sm">
                     {/* Team photo header */}
-                    <div className="relative">
+                    <div className="relative select-none">
                       {team.photoUrl ? (
-                        <img src={team.photoUrl} alt={`${team.name} photo`} className="h-36 w-full object-cover" />
+                        repositioningTeamId === team.id ? (
+                          /* ── Reposition mode ── */
+                          <div
+                            className="relative h-44 w-full cursor-grab touch-none overflow-hidden active:cursor-grabbing"
+                            onPointerDown={(e) => {
+                              const el = e.currentTarget
+                              el.setPointerCapture(e.pointerId)
+                              const rect = el.getBoundingClientRect()
+                              const startClientY = e.clientY
+                              const startFocusY = draftFocus.y
+                              const startClientX = e.clientX
+                              const startFocusX = draftFocus.x
+                              const onMove = (me: PointerEvent) => {
+                                const dy = ((me.clientY - startClientY) / rect.height) * 100
+                                const dx = ((me.clientX - startClientX) / rect.width) * 100
+                                setDraftFocus({
+                                  x: Math.max(0, Math.min(100, startFocusX - dx)),
+                                  y: Math.max(0, Math.min(100, startFocusY - dy)),
+                                })
+                              }
+                              el.addEventListener('pointermove', onMove)
+                              el.addEventListener('pointerup', () => el.removeEventListener('pointermove', onMove), { once: true })
+                            }}
+                          >
+                            <img
+                              src={team.photoUrl}
+                              alt={`${team.name} photo`}
+                              className="h-full w-full object-cover"
+                              style={{ objectPosition: `${draftFocus.x}% ${draftFocus.y}%` }}
+                              draggable={false}
+                            />
+                            {/* crosshair indicator */}
+                            <div
+                              className="pointer-events-none absolute h-8 w-8 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-md"
+                              style={{ left: `${draftFocus.x}%`, top: `${draftFocus.y}%`, boxShadow: '0 0 0 1px rgba(0,0,0,0.4)' }}
+                            />
+                            <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent py-3 text-center text-xs font-semibold text-white">
+                              Drag to reposition
+                            </div>
+                          </div>
+                        ) : (
+                          <img
+                            src={team.photoUrl}
+                            alt={`${team.name} photo`}
+                            className="h-36 w-full object-cover"
+                            style={{ objectPosition: `${team.photoFocusX}% ${team.photoFocusY}%` }}
+                          />
+                        )
                       ) : (
                         <div className="flex h-24 w-full items-center justify-center bg-gradient-to-br from-slate-200 to-slate-100">
                           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -800,30 +850,78 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
                           </svg>
                         </div>
                       )}
-                      <label className={`absolute bottom-2 right-2 flex cursor-pointer items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-semibold shadow transition ${uploadingPhotoForTeam === team.id ? 'bg-white/60 text-slate-400' : 'bg-white/90 text-slate-700 hover:bg-white'}`}>
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                        {uploadingPhotoForTeam === team.id ? 'Uploading…' : team.photoUrl ? 'Change photo' : 'Add photo'}
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="sr-only"
-                          disabled={uploadingPhotoForTeam === team.id}
-                          onChange={async (e) => {
-                            const file = e.target.files?.[0]
-                            if (!file) return
-                            setUploadingPhotoForTeam(team.id)
-                            try {
-                              await uploadTeamPhoto(team.id, file)
-                              showSuccess(`Photo updated for ${team.name}.`)
-                            } catch {
-                              showSuccess('Photo upload failed.')
-                            } finally {
-                              setUploadingPhotoForTeam(null)
-                              e.target.value = ''
-                            }
-                          }}
-                        />
-                      </label>
+
+                      {/* Photo action buttons */}
+                      {repositioningTeamId === team.id ? (
+                        <div className="absolute bottom-2 right-2 flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => { setRepositioningTeamId(null) }}
+                            className="rounded-xl bg-white/90 px-3 py-1 text-xs font-semibold text-slate-600 shadow hover:bg-white"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            disabled={savingFocus}
+                            onClick={async () => {
+                              setSavingFocus(true)
+                              try {
+                                await saveTeamPhotoFocus(team.id, draftFocus.x, draftFocus.y)
+                                showSuccess('Photo position saved.')
+                              } catch {
+                                showSuccess('Failed to save position.')
+                              } finally {
+                                setSavingFocus(false)
+                                setRepositioningTeamId(null)
+                              }
+                            }}
+                            className="rounded-xl bg-[#123524] px-3 py-1 text-xs font-semibold text-white shadow disabled:opacity-50"
+                          >
+                            {savingFocus ? 'Saving…' : 'Done'}
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="absolute bottom-2 right-2 flex gap-2">
+                          {team.photoUrl ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setDraftFocus({ x: team.photoFocusX, y: team.photoFocusY })
+                                setRepositioningTeamId(team.id)
+                              }}
+                              className="flex items-center gap-1.5 rounded-xl bg-white/90 px-2.5 py-1 text-xs font-semibold text-slate-700 shadow hover:bg-white"
+                            >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+                              Reposition
+                            </button>
+                          ) : null}
+                          <label className={`flex cursor-pointer items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-semibold shadow transition ${uploadingPhotoForTeam === team.id ? 'bg-white/60 text-slate-400' : 'bg-white/90 text-slate-700 hover:bg-white'}`}>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                            {uploadingPhotoForTeam === team.id ? 'Uploading…' : team.photoUrl ? 'Change' : 'Add photo'}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="sr-only"
+                              disabled={uploadingPhotoForTeam === team.id}
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0]
+                                if (!file) return
+                                setUploadingPhotoForTeam(team.id)
+                                try {
+                                  await uploadTeamPhoto(team.id, file)
+                                  showSuccess(`Photo updated for ${team.name}.`)
+                                } catch {
+                                  showSuccess('Photo upload failed.')
+                                } finally {
+                                  setUploadingPhotoForTeam(null)
+                                  e.target.value = ''
+                                }
+                              }}
+                            />
+                          </label>
+                        </div>
+                      )}
                     </div>
 
                     <div className="p-5">

@@ -9,6 +9,9 @@ export interface TeamRecord {
   playerCount: number
   coachCount: number
   photoUrl: string | null
+  /** Focal point 0–100 for object-position when cropping the team photo */
+  photoFocusX: number
+  photoFocusY: number
 }
 
 export type PlayerDocumentType = 'birth_certificate' | 'passport' | 'other'

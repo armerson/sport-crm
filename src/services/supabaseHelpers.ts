@@ -65,6 +65,8 @@ export function mapTeamRow(row: Record<string, unknown>): TeamRecord {
     playerCount: players.length,
     coachCount: coaches.length,
     photoUrl: typeof row.photo_url === 'string' ? row.photo_url : null,
+    photoFocusX: typeof row.photo_focus_x === 'number' ? row.photo_focus_x : 50,
+    photoFocusY: typeof row.photo_focus_y === 'number' ? row.photo_focus_y : 50,
   }
 }
 
