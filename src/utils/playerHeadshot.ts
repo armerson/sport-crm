@@ -1,4 +1,4 @@
-import removeBackground from '@imgly/background-removal'
+import { removeBackground } from '@imgly/background-removal'
 
 const CANVAS_SIZE = 800    // square output px
 const BADGE_OPACITY = 0.18 // badge ghost behind player
