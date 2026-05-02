@@ -93,6 +93,13 @@ export function mapPlayerRow(row: Record<string, unknown>): PlayerRecord {
     bio: typeof row.bio === 'string' ? row.bio : null,
     medicalNotes: typeof row.medical_notes === 'string' ? row.medical_notes : null,
     updatedAt: typeof row.updated_at === 'string' ? row.updated_at : null,
+    passportNumber: typeof row.passport_number === 'string' ? row.passport_number : null,
+    countryOfBirth: typeof row.country_of_birth === 'string' ? row.country_of_birth : null,
+    nationalId: typeof row.national_id === 'string' ? row.national_id : null,
+    gender: typeof row.gender === 'string' ? row.gender : null,
+    fatherName: typeof row.father_name === 'string' ? row.father_name : null,
+    motherName: typeof row.mother_name === 'string' ? row.mother_name : null,
+    email: typeof row.email === 'string' ? row.email : null,
   }
 }
 
