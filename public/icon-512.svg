@@ -1,13 +1,26 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="96" fill="#123524"/>
-  <circle cx="256" cy="230" r="112" fill="none" stroke="white" stroke-width="14"/>
-  <polygon points="256,122 292,150 280,186 232,186 220,150" fill="white" opacity="0.9"/>
-  <line x1="256" y1="122" x2="220" y2="150" stroke="white" stroke-width="7" opacity="0.5"/>
-  <line x1="256" y1="122" x2="292" y2="150" stroke="white" stroke-width="7" opacity="0.5"/>
-  <line x1="220" y1="150" x2="192" y2="174" stroke="white" stroke-width="7" opacity="0.5"/>
-  <line x1="292" y1="150" x2="320" y2="174" stroke="white" stroke-width="7" opacity="0.5"/>
-  <line x1="220" y1="186" x2="192" y2="214" stroke="white" stroke-width="7" opacity="0.5"/>
-  <line x1="280" y1="186" x2="320" y2="214" stroke="white" stroke-width="7" opacity="0.5"/>
-  <rect x="72" y="388" width="368" height="72" rx="20" fill="rgba(255,255,255,0.15)"/>
-  <text x="256" y="435" text-anchor="middle" font-family="system-ui, sans-serif" font-size="34" font-weight="700" letter-spacing="5" fill="white" opacity="0.9">CLUB CRM</text>
+  <!-- Dark navy background -->
+  <rect width="512" height="512" rx="96" fill="#0d1b2a"/>
+
+  <!-- C arc (white) -->
+  <path d="M 234 68 A 150 150 0 1 0 234 378 L 234 340 A 112 112 0 1 1 234 106 Z" fill="white"/>
+
+  <!-- Football in C gap -->
+  <circle cx="256" cy="223" r="72" fill="#0d1b2a" stroke="white" stroke-width="7"/>
+  <polygon points="256,168 288,190 278,224 234,224 224,190" fill="white" opacity="0.9"/>
+  <line x1="256" y1="168" x2="224" y2="190" stroke="#0d1b2a" stroke-width="4"/>
+  <line x1="256" y1="168" x2="288" y2="190" stroke="#0d1b2a" stroke-width="4"/>
+  <line x1="224" y1="190" x2="196" y2="214" stroke="#0d1b2a" stroke-width="4"/>
+  <line x1="288" y1="190" x2="316" y2="214" stroke="#0d1b2a" stroke-width="4"/>
+  <line x1="234" y1="224" x2="196" y2="242" stroke="#0d1b2a" stroke-width="4"/>
+  <line x1="278" y1="224" x2="316" y2="242" stroke="#0d1b2a" stroke-width="4"/>
+
+  <!-- S letterform (blue) -->
+  <text x="354" y="246" font-family="Arial Black, Impact, sans-serif" font-size="155" font-weight="900" fill="#1565ff" dominant-baseline="middle">S</text>
+
+  <!-- ClubOS label -->
+  <text x="256" y="448" text-anchor="middle" font-family="system-ui, Arial, sans-serif" font-size="42" font-weight="700" letter-spacing="5" fill="white">ClubOS</text>
+
+  <!-- Tagline -->
+  <text x="256" y="482" text-anchor="middle" font-family="system-ui, Arial, sans-serif" font-size="16" font-weight="400" letter-spacing="3" fill="#1565ff" opacity="0.8">RUN YOUR CLUB. GROW TOGETHER.</text>
 </svg>
