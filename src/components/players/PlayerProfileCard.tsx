@@ -102,11 +102,18 @@ function PlayerAvatar({
     <div className="flex flex-col items-center gap-2">
       <div className="relative">
         {player.photoUrl ? (
+          <a
+            href={player.photoUrl}
+            download={`${player.name.replace(/\s+/g, '_')}_photo.jpg`}
+            title="Download photo"
+            className="block"
+          >
           <img
             src={player.photoUrl}
             alt={player.name}
             className="h-24 w-24 rounded-full object-cover shadow-md ring-2 ring-white sm:h-28 sm:w-28"
           />
+          </a>
         ) : (
           <div className="flex h-24 w-24 items-center justify-center rounded-full bg-[#1565ff]/10 text-3xl font-bold text-[#1565ff] shadow-md ring-2 ring-white sm:h-28 sm:w-28">
             {player.name.charAt(0)}
@@ -484,6 +491,23 @@ function IdentityDocuments({
     }
   }
 
+  async function handleDownload(doc: PlayerDocument) {
+    try {
+      const url = await getDocumentSignedUrl(doc.storagePath, 60)
+      const res = await fetch(url)
+      const blob = await res.blob()
+      const ext = doc.storagePath.split('.').pop() ?? 'pdf'
+      const filename = `${doc.label ?? doc.type}_${playerId.slice(0, 8)}.${ext}`
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(blob)
+      a.download = filename
+      a.click()
+      URL.revokeObjectURL(a.href)
+    } catch {
+      setError('Failed to download document. Please try again.')
+    }
+  }
+
   async function handleVerify(docId: string) {
     await markDocumentVerified(docId, currentUserId)
     setDocuments(await fetchPlayerDocuments(playerId))
@@ -555,6 +579,9 @@ function IdentityDocuments({
               <div className="flex items-center gap-3">
                 <button type="button" onClick={() => void handleView(doc)} className="text-xs font-semibold text-[#1565ff] hover:underline">
                   View
+                </button>
+                <button type="button" onClick={() => void handleDownload(doc)} className="text-xs font-semibold text-slate-500 hover:text-slate-800 hover:underline">
+                  Download
                 </button>
                 {permissions.canVerifyDocuments && !doc.verified && (
                   <button type="button" onClick={() => void handleVerify(doc.id)} className="text-xs font-semibold text-emerald-600 hover:underline">
