@@ -1659,18 +1659,23 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                   className="rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-[#1565ff]/30 hover:shadow-md"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#1565ff]/10 text-lg font-bold text-[#1565ff]">
-                      {player.jerseyNumber != null ? (
-                        <span className="text-base font-extrabold tabular-nums">{player.jerseyNumber}</span>
+                    <div className="relative h-11 w-11 shrink-0">
+                      {player.photoUrl ? (
+                        <img src={player.photoUrl} alt={player.name} className="h-11 w-11 rounded-full object-cover" />
                       ) : (
-                        <span>{player.name.charAt(0)}</span>
+                        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#1565ff]/10 text-lg font-bold text-[#1565ff]">
+                          {player.name.charAt(0)}
+                        </div>
+                      )}
+                      {player.jerseyNumber != null && (
+                        <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#1565ff] text-[10px] font-extrabold text-white ring-2 ring-white">
+                          {player.jerseyNumber}
+                        </span>
                       )}
                     </div>
                     <div className="min-w-0">
                       <p className="truncate font-semibold text-slate-900">{player.name}</p>
-                      <p className="text-xs text-slate-500">
-                        {player.jerseyNumber != null ? `#${player.jerseyNumber} · ` : ''}{formatDate(player.dob)}
-                      </p>
+                      <p className="text-xs text-slate-500">{formatDate(player.dob)}</p>
                     </div>
                   </div>
                   <p className="mt-2 text-right text-xs font-semibold text-[#1565ff]">View profile →</p>
