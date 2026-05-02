@@ -60,6 +60,13 @@ export interface PlayerRecord {
   bio: string | null
   medicalNotes: string | null
   updatedAt: string | null
+  // IFA COMET registration fields
+  passportNumber: string | null
+  countryOfBirth: string | null
+  nationalId: string | null
+  gender: string | null
+  fatherName: string | null
+  motherName: string | null
 }
 
 export interface PlayerProfileInput {
@@ -69,6 +76,13 @@ export interface PlayerProfileInput {
   jerseyNumber: string
   bio: string
   medicalNotes: string
+  // IFA COMET registration fields
+  passportNumber: string
+  countryOfBirth: string
+  nationalId: string
+  gender: string
+  fatherName: string
+  motherName: string
 }
 
 export interface EmergencyContactInput {

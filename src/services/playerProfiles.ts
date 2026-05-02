@@ -28,6 +28,12 @@ function mapPlayerRow(row: Record<string, unknown>): PlayerRecord {
     bio: (row.bio as string | null) ?? null,
     medicalNotes: (row.medical_notes as string | null) ?? null,
     updatedAt: (row.updated_at as string | null) ?? null,
+    passportNumber: (row.passport_number as string | null) ?? null,
+    countryOfBirth: (row.country_of_birth as string | null) ?? null,
+    nationalId: (row.national_id as string | null) ?? null,
+    gender: (row.gender as string | null) ?? null,
+    fatherName: (row.father_name as string | null) ?? null,
+    motherName: (row.mother_name as string | null) ?? null,
   }
 }
 
@@ -85,6 +91,12 @@ export async function updatePlayerProfile(playerId: string, input: PlayerProfile
       jersey_number: input.jerseyNumber ? parseInt(input.jerseyNumber) : null,
       bio: input.bio || null,
       medical_notes: input.medicalNotes || null,
+      passport_number: input.passportNumber || null,
+      country_of_birth: input.countryOfBirth || null,
+      national_id: input.nationalId || null,
+      gender: input.gender || null,
+      father_name: input.fatherName || null,
+      mother_name: input.motherName || null,
       updated_at: new Date().toISOString(),
     })
     .eq('id', playerId)
