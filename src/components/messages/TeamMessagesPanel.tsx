@@ -129,11 +129,12 @@ export function TeamMessagesPanel({ profile }: TeamMessagesPanelProps) {
           <label className="block text-sm font-medium text-slate-700" htmlFor="msg-target-select">Send to</label>
           <select
             id="msg-target-select"
-            className="mt-1.5 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#f18a3f] focus:ring-4 focus:ring-[#f18a3f]/15"
+            disabled={loadingTeams}
+            className="mt-1.5 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#f18a3f] focus:ring-4 focus:ring-[#f18a3f]/15 disabled:cursor-wait disabled:opacity-60"
             value={selectedTarget}
             onChange={(e) => setSelectedTarget(e.target.value)}
           >
-            <option value="">{loadingTeams ? 'Loading…' : 'Choose destination'}</option>
+            <option value="">{loadingTeams ? 'Loading destinations…' : 'Choose destination'}</option>
             <option value="club">📣  Whole Club</option>
             {groups.length > 0 ? (
               <>

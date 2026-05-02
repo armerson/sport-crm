@@ -3,9 +3,27 @@ import { fetchClubSettings, saveClubSettings, uploadClubLogo } from '../services
 import type { ClubSettings } from '../types/forms.ts'
 
 const DEFAULT: ClubSettings = { name: 'My Club', logoUrl: null, primaryColor: '#1565ff', instagramTagline: '', instagramHashtags: '' }
+const STORAGE_KEY = 'clubos_settings'
+
+function readStoredSettings(): ClubSettings | null {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY)
+    if (!raw) return null
+    return JSON.parse(raw) as ClubSettings
+  } catch { return null }
+}
+
+function writeStoredSettings(s: ClubSettings) {
+  try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(s)) } catch { /* ignore */ }
+}
 
 /** Module-level cache so multiple consumers don't re-fetch on every mount. */
-let cached: ClubSettings | null = null
+let cached: ClubSettings | null = readStoredSettings()
+
+// Apply color immediately from cache so there's no flash on reload
+if (cached?.primaryColor) {
+  document.documentElement.style.setProperty('--club-color', cached.primaryColor)
+}
 
 export function useClubSettings() {
   const [settings, setSettings] = useState<ClubSettings>(cached ?? DEFAULT)
@@ -14,12 +32,12 @@ export function useClubSettings() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (cached) { setSettings(cached); setLoading(false); return }
+    // Always re-fetch in the background to pick up changes made in another tab
     void fetchClubSettings().then((s) => {
       cached = s
       setSettings(s)
       applyColorVar(s.primaryColor)
-      try { localStorage.setItem('club-primary-color', s.primaryColor) } catch (_) {}
+      writeStoredSettings(s)
     }).finally(() => setLoading(false))
   }, [])
 
@@ -36,7 +54,7 @@ export function useClubSettings() {
       cached = next
       setSettings(next)
       applyColorVar(next.primaryColor)
-      try { localStorage.setItem('club-primary-color', next.primaryColor) } catch (_) {}
+      writeStoredSettings(next)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save settings.')
       throw err
