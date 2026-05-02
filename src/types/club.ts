@@ -67,6 +67,7 @@ export interface PlayerRecord {
   gender: string | null
   fatherName: string | null
   motherName: string | null
+  email: string | null
 }
 
 export interface PlayerProfileInput {
@@ -83,6 +84,7 @@ export interface PlayerProfileInput {
   gender: string
   fatherName: string
   motherName: string
+  email: string
 }
 
 export interface EmergencyContactInput {
