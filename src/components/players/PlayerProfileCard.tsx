@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import JSZip from 'jszip'
 import {
   addEmergencyContact,
   deleteEmergencyContact,
@@ -170,6 +171,12 @@ function ProfileEditForm({
     jerseyNumber: player.jerseyNumber?.toString() ?? '',
     bio: player.bio ?? '',
     medicalNotes: player.medicalNotes ?? '',
+    passportNumber: player.passportNumber ?? '',
+    countryOfBirth: player.countryOfBirth ?? '',
+    nationalId: player.nationalId ?? '',
+    gender: player.gender ?? '',
+    fatherName: player.fatherName ?? '',
+    motherName: player.motherName ?? '',
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -187,6 +194,12 @@ function ProfileEditForm({
         jerseyNumber: form.jerseyNumber ? parseInt(form.jerseyNumber) : null,
         bio: form.bio || null,
         medicalNotes: form.medicalNotes || null,
+        passportNumber: form.passportNumber || null,
+        countryOfBirth: form.countryOfBirth || null,
+        nationalId: form.nationalId || null,
+        gender: form.gender || null,
+        fatherName: form.fatherName || null,
+        motherName: form.motherName || null,
       })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save.')
@@ -240,6 +253,42 @@ function ProfileEditForm({
         <label className="block text-xs font-semibold text-rose-500 uppercase tracking-wide">Medical notes</label>
         <textarea value={form.medicalNotes} onChange={(e) => setForm((f) => ({ ...f, medicalNotes: e.target.value }))} rows={2} placeholder="Allergies, conditions, medication, injury history..." className={`${inputCls} resize-none border-rose-200 focus:ring-rose-400/30`} />
         <p className="text-xs text-slate-400">Visible to admin and coaches only.</p>
+      </div>
+
+      {/* IFA COMET registration fields */}
+      <div className="rounded-2xl border border-[#1565ff]/20 bg-[#1565ff]/5 p-4 space-y-4">
+        <p className="text-xs font-bold uppercase tracking-wider text-[#1565ff]">IFA COMET Registration</p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1">
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide">Gender</label>
+            <select value={form.gender} onChange={(e) => setForm((f) => ({ ...f, gender: e.target.value }))} className={inputCls}>
+              <option value="">Not set</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div className="space-y-1">
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide">Passport number</label>
+            <input type="text" value={form.passportNumber} onChange={(e) => setForm((f) => ({ ...f, passportNumber: e.target.value }))} placeholder="e.g. P1234567" className={inputCls} />
+          </div>
+          <div className="space-y-1">
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide">National ID</label>
+            <input type="text" value={form.nationalId} onChange={(e) => setForm((f) => ({ ...f, nationalId: e.target.value }))} placeholder="PPS number" className={inputCls} />
+          </div>
+          <div className="space-y-1">
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide">Country of birth</label>
+            <input type="text" value={form.countryOfBirth} onChange={(e) => setForm((f) => ({ ...f, countryOfBirth: e.target.value }))} placeholder="e.g. Ireland" className={inputCls} />
+          </div>
+          <div className="space-y-1">
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide">Father's name</label>
+            <input type="text" value={form.fatherName} onChange={(e) => setForm((f) => ({ ...f, fatherName: e.target.value }))} placeholder="First name" className={inputCls} />
+          </div>
+          <div className="space-y-1">
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide">Mother's name</label>
+            <input type="text" value={form.motherName} onChange={(e) => setForm((f) => ({ ...f, motherName: e.target.value }))} placeholder="First name" className={inputCls} />
+          </div>
+        </div>
       </div>
 
       <div className="flex gap-3">
@@ -611,6 +660,83 @@ export function PlayerProfileCard({ playerId, role, currentUserId }: PlayerProfi
   const [activeSection, setActiveSection] = useState<'profile' | 'contacts' | 'registration' | 'documents'>('profile')
   const [registrationCode, setRegistrationCode] = useState<string | null>(null)
   const [codeCopied, setCodeCopied] = useState(false)
+  const [exporting, setExporting] = useState(false)
+
+  async function handleCometExport() {
+    if (!player) return
+    setExporting(true)
+    try {
+      const zip = new JSZip()
+      const folder = zip.folder(player.name.replace(/\s+/g, '_')) ?? zip
+
+      // 1. Text summary sheet
+      const contacts = await fetchEmergencyContacts(playerId)
+      const primaryContact = contacts.find((c) => c.isPrimary) ?? contacts[0] ?? null
+      const nameParts = player.name.trim().split(' ')
+      const firstName = nameParts[0] ?? ''
+      const familyName = nameParts.slice(1).join(' ')
+      const dob = player.dob ? new Date(player.dob).toLocaleDateString('en-GB') : ''
+      const summary = [
+        '=== IFA COMET Registration Data ===',
+        '',
+        `Family name:      ${familyName}`,
+        `First name:       ${firstName}`,
+        `Date of birth:    ${dob}`,
+        `Gender:           ${player.gender ?? ''}`,
+        `Nationality:      ${player.nationality ?? ''}`,
+        `Country of birth: ${player.countryOfBirth ?? ''}`,
+        `Passport #:       ${player.passportNumber ?? ''}`,
+        `National ID:      ${player.nationalId ?? ''}`,
+        `Father name:      ${player.fatherName ?? ''}`,
+        `Mother name:      ${player.motherName ?? ''}`,
+        `Position:         ${player.position ?? ''}`,
+        '',
+        '=== Parent / Guardian ===',
+        `Name:             ${primaryContact?.name ?? ''}`,
+        `Relationship:     ${primaryContact?.relationship ?? ''}`,
+        `Phone:            ${primaryContact?.phone ?? ''}`,
+        `Email:            ${primaryContact?.email ?? ''}`,
+        '',
+        `Exported: ${new Date().toLocaleString('en-GB')}`,
+      ].join('\n')
+      folder.file('comet_data.txt', summary)
+
+      // 2. Player photo
+      if (player.photoUrl) {
+        try {
+          const photoRes = await fetch(player.photoUrl)
+          const photoBlob = await photoRes.arrayBuffer()
+          const ext = player.photoUrl.split('?')[0].split('.').pop() ?? 'jpg'
+          folder.file(`photo.${ext}`, photoBlob)
+        } catch { /* skip if inaccessible */ }
+      }
+
+      // 3. Identity documents
+      const docs = await fetchPlayerDocuments(playerId)
+      for (const doc of docs) {
+        try {
+          const url = await getDocumentSignedUrl(doc.storagePath, 120)
+          const res = await fetch(url)
+          const buf = await res.arrayBuffer()
+          const ext = doc.storagePath.split('.').pop() ?? 'pdf'
+          const name = `${doc.label ?? doc.type}.${ext}`
+          folder.file(name, buf)
+        } catch { /* skip failed docs */ }
+      }
+
+      // 4. Generate and download ZIP
+      const blob = await zip.generateAsync({ type: 'blob' })
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(blob)
+      a.download = `${player.name.replace(/\s+/g, '_')}_COMET.zip`
+      a.click()
+      URL.revokeObjectURL(a.href)
+    } catch {
+      // silent — user can retry
+    } finally {
+      setExporting(false)
+    }
+  }
 
   useEffect(() => {
     setLoading(true)
@@ -696,11 +822,23 @@ export function PlayerProfileCard({ playerId, role, currentUserId }: PlayerProfi
             </div>
           ) : null}
         </div>
-        {perms.canEditSportsProfile && !editing && (
-          <button type="button" onClick={() => setEditing(true)} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50">
-            Edit profile
-          </button>
-        )}
+        <div className="flex flex-col gap-2">
+          {perms.canEditSportsProfile && !editing && (
+            <button type="button" onClick={() => setEditing(true)} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50">
+              Edit profile
+            </button>
+          )}
+          {role === 'admin' && (
+            <button
+              type="button"
+              disabled={exporting}
+              onClick={() => void handleCometExport()}
+              className="rounded-xl border border-[#1565ff]/30 bg-[#1565ff]/5 px-4 py-2 text-sm font-semibold text-[#1565ff] transition hover:bg-[#1565ff]/10 disabled:opacity-60"
+            >
+              {exporting ? 'Exporting…' : '⬇ COMET export'}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Section tabs */}
