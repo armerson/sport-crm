@@ -62,6 +62,28 @@ export function subscribeToTeams(
   })
 }
 
+/** Subscribe to ALL players in the club (across every team). */
+export function subscribeToAllPlayers(
+  onData: (players: PlayerRecord[]) => void,
+  onError: (message: string) => void,
+): () => void {
+  const client = requireSupabase()
+
+  return subscribeToTables('all-players', ['players', 'player_teams'], async () => {
+    const { data, error } = await client
+      .from('players')
+      .select('*, player_parents(parent_id), player_teams(team_id)')
+      .order('name', { ascending: true })
+
+    if (error) {
+      onError('Unable to load players.')
+      return
+    }
+
+    onData((data ?? []).map((row) => mapPlayerRow(row as Record<string, unknown>)))
+  })
+}
+
 export function subscribeToPlayers(
   teamId: string,
   onData: (players: PlayerRecord[]) => void,
