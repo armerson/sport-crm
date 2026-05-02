@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import JSZip from 'jszip'
+import { fetchClubSettings } from '../../services/forms.ts'
+import { makeHeadshot } from '../../utils/playerHeadshot.ts'
 import {
   addEmergencyContact,
   deleteEmergencyContact,
@@ -74,23 +76,41 @@ function PlayerAvatar({
   player,
   canUpload,
   onPhotoChange,
+  badgeUrl,
+  primaryColor,
 }: {
   player: PlayerRecord
   canUpload: boolean
   onPhotoChange: (url: string) => void
+  badgeUrl: string | null
+  primaryColor: string
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
+  const [processing, setProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    if (file.size > 5 * 1024 * 1024) { setError('Photo must be under 5 MB.'); return }
-    setUploading(true)
+    if (file.size > 10 * 1024 * 1024) { setError('Photo must be under 10 MB.'); return }
     setError(null)
+
+    // Step 1 — AI background removal + badge composite
+    setProcessing(true)
+    let processedFile: File
     try {
-      const url = await uploadPlayerPhoto(player.id, file)
+      processedFile = await makeHeadshot(file, { badgeUrl, primaryColor })
+    } catch {
+      processedFile = file // fallback to original
+    } finally {
+      setProcessing(false)
+    }
+
+    // Step 2 — Upload to Supabase Storage
+    setUploading(true)
+    try {
+      const url = await uploadPlayerPhoto(player.id, processedFile)
       onPhotoChange(url)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed.')
@@ -124,11 +144,11 @@ function PlayerAvatar({
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
-            disabled={uploading}
+            disabled={uploading || processing}
             className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-[#1565ff] text-white shadow transition hover:bg-[#0d4ed8] disabled:opacity-60"
-            aria-label="Upload photo"
+            aria-label={processing ? 'Processing photo…' : uploading ? 'Uploading…' : 'Upload photo'}
           >
-            {uploading ? (
+            {(uploading || processing) ? (
               <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                 <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4" />
               </svg>
@@ -142,6 +162,8 @@ function PlayerAvatar({
         )}
       </div>
       <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={(e) => void handleFile(e)} />
+      {processing && <p className="text-xs text-[#1565ff]">Removing background…</p>}
+      {uploading && !processing && <p className="text-xs text-slate-500">Uploading…</p>}
       {error && <p className="text-xs text-rose-600">{error}</p>}
     </div>
   )
@@ -661,6 +683,8 @@ export function PlayerProfileCard({ playerId, role, currentUserId }: PlayerProfi
   const [registrationCode, setRegistrationCode] = useState<string | null>(null)
   const [codeCopied, setCodeCopied] = useState(false)
   const [exporting, setExporting] = useState(false)
+  const [clubBadgeUrl, setClubBadgeUrl] = useState<string | null>(null)
+  const [clubPrimaryColor, setClubPrimaryColor] = useState('#0d1b2a')
 
   async function handleCometExport() {
     if (!player) return
@@ -745,6 +769,14 @@ export function PlayerProfileCard({ playerId, role, currentUserId }: PlayerProfi
       .finally(() => setLoading(false))
   }, [playerId])
 
+  // Fetch club settings for headshot badge compositing
+  useEffect(() => {
+    void fetchClubSettings().then((s) => {
+      if (s.logoUrl) setClubBadgeUrl(s.logoUrl)
+      if (s.primaryColor) setClubPrimaryColor(s.primaryColor)
+    })
+  }, [])
+
   // Admins only: fetch the registration code
   useEffect(() => {
     if (role !== 'admin') return
@@ -790,6 +822,8 @@ export function PlayerProfileCard({ playerId, role, currentUserId }: PlayerProfi
           player={player}
           canUpload={perms.canEditSportsProfile}
           onPhotoChange={(url) => setPlayer((p) => p ? { ...p, photoUrl: url } : p)}
+          badgeUrl={clubBadgeUrl}
+          primaryColor={clubPrimaryColor}
         />
         <div className="flex-1 text-center sm:text-left">
           <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
