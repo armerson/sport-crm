@@ -52,7 +52,7 @@ interface Permissions {
 function permissionsFor(role: ProfileViewerRole): Permissions {
   const isSelf = role === 'player'
   return {
-    canEditSportsProfile:  role === 'admin' || isSelf,
+    canEditSportsProfile:  role === 'admin' || role === 'parent' || isSelf,
     canEditContacts:       role === 'admin' || role === 'parent' || isSelf,
     canUploadDocuments:    role === 'admin' || role === 'parent' || isSelf,
     canVerifyDocuments:    role === 'admin',
