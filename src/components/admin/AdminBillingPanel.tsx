@@ -251,13 +251,21 @@ function ProductsSection() {
                     Copy guest pay link
                   </button>
                 ) : null}
-                <button
-                  type="button"
-                  onClick={() => void toggleProduct(product.id, !product.active)}
-                  className={`text-xs font-semibold transition ${product.active ? 'text-rose-500 hover:text-rose-700' : 'text-emerald-600 hover:text-emerald-800'}`}
-                >
-                  {product.active ? 'Deactivate' : 'Activate'}
-                </button>
+                {product.active ? (
+                  <ConfirmInline
+                    label="Deactivate"
+                    confirmLabel="Yes, deactivate"
+                    onConfirm={() => void toggleProduct(product.id, false)}
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => void toggleProduct(product.id, true)}
+                    className="text-xs font-semibold text-emerald-600 transition hover:text-emerald-800"
+                  >
+                    Activate
+                  </button>
+                )}
               </div>
             </div>
           ))}
