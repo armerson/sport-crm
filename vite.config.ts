@@ -19,6 +19,10 @@ export default defineConfig({
       strategies: 'injectManifest',
       srcDir: 'src',
       filename: 'sw.ts',
+      // Exclude large ONNX/WASM files from SW precache — they're fetched on demand
+      injectManifest: {
+        globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
+      },
       manifest: {
         name: 'ClubOS',
         short_name: 'ClubOS',
