@@ -21,7 +21,7 @@ import type { EventType, RecurrencePattern } from '../../types/club.ts'
 
 import { PostFeed } from '../posts/PostFeed.tsx'
 import { MatchStatsPanel } from './MatchStatsPanel.tsx'
-import { fetchSeasonStats } from '../../services/playerMatchStats.ts'
+import { fetchMatchStats, fetchSeasonStats } from '../../services/playerMatchStats.ts'
 import { createPost, uploadPostImage } from '../../services/posts.ts'
 import { subscribeToTables } from '../../services/supabaseHelpers.ts'
 import { setMotmWinner } from '../../services/coachClub.ts'

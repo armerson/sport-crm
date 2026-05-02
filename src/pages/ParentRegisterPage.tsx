@@ -23,7 +23,7 @@ export function ParentRegisterPage() {
   const navigate = useNavigate()
   const { currentUser, profile, signUp, refreshProfile, loading: authLoading } = useAuth()
   const [step, setStep] = useState<Step>('account')
-  const [club, setClub] = useState<ClubSettings>({ name: 'My Club', logoUrl: null, primaryColor: '#1565ff' })
+  const [club, setClub] = useState<ClubSettings>({ name: 'My Club', logoUrl: null, primaryColor: '#1565ff', instagramTagline: '', instagramHashtags: '' })
   const [fields, setFields] = useState<ClubPlayerField[]>([])
   const [loadingMeta, setLoadingMeta] = useState(true)
 
