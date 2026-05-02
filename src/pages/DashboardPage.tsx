@@ -116,7 +116,7 @@ function prefetchPanels() {
 }
 
 export function DashboardPage() {
-  const { profile, signOutUser } = useAuth()
+  const { profile, loading: authLoading, error: authError, signOutUser } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const [showSettings, setShowSettings] = useState(false)
   const [adminTab, setAdminTab] = useState<AdminTab>('overview')
@@ -159,8 +159,32 @@ export function DashboardPage() {
     }, { replace: true })
   }, [profile, searchParams, setSearchParams])
 
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-gradient-to-br from-slate-50 to-slate-100 px-4">
+        <svg className="h-10 w-10 animate-spin text-[#1565ff]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+          <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+        </svg>
+        <p className="text-sm font-medium text-slate-500">Loading club workspace…</p>
+      </div>
+    )
+  }
+
   if (!profile) {
-    return null
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-gradient-to-br from-slate-50 to-slate-100 px-4 text-center">
+        <p className="text-base font-semibold text-slate-800">
+          {authError ?? 'Your profile could not be loaded.'}
+        </p>
+        <p className="text-sm text-slate-500">Try refreshing the page. If the problem persists, contact your club admin.</p>
+        <button
+          onClick={() => void signOutUser()}
+          className="mt-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
+        >
+          Sign out and try again
+        </button>
+      </div>
+    )
   }
 
   // Sorted roles for the switcher. DB `roles` may omit `parent` even when `player_parents`
