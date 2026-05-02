@@ -23,9 +23,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
  */
 async function removeBg(file: File): Promise<Blob> {
   return removeBackground(file, {
-    // Use the 'medium' quality model — good balance of speed vs quality
-    model: 'medium',
-    // Output as PNG so transparency is preserved
+    model: 'isnet_fp16',  // good balance of quality and speed
     output: { format: 'image/png', quality: 1 },
   })
 }
