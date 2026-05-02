@@ -103,7 +103,7 @@ function PostCard({ post, profile, onLikeToggle }: PostCardProps) {
         {/* Header */}
         <div className="mb-3 flex items-start justify-between gap-2">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#123524] text-xs font-bold text-white">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#1565ff] text-xs font-bold text-white">
               {(post.authorName ?? 'C').charAt(0).toUpperCase()}
             </div>
             <div>
@@ -139,7 +139,7 @@ function PostCard({ post, profile, onLikeToggle }: PostCardProps) {
           <button
             type="button"
             onClick={() => void handleShowComments()}
-            className="flex items-center gap-1.5 text-sm font-semibold text-slate-400 transition hover:text-[#123524]"
+            className="flex items-center gap-1.5 text-sm font-semibold text-slate-400 transition hover:text-[#1565ff]"
           >
             <ChatIcon />
             {post.commentCount > 0 ? post.commentCount : null}
@@ -190,7 +190,7 @@ function PostCard({ post, profile, onLikeToggle }: PostCardProps) {
           <form onSubmit={handleAddComment} className="flex items-end gap-2">
             <textarea
               ref={textareaRef}
-              className="flex-1 resize-none rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#123524]/20"
+              className="flex-1 resize-none rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1565ff]/20"
               rows={1}
               placeholder="Write a comment…"
               value={commentText}
@@ -205,7 +205,7 @@ function PostCard({ post, profile, onLikeToggle }: PostCardProps) {
             <button
               type="submit"
               disabled={!commentText.trim() || posting}
-              className="rounded-xl bg-[#123524] px-3 py-2 text-xs font-bold text-white disabled:opacity-40"
+              className="rounded-xl bg-[#1565ff] px-3 py-2 text-xs font-bold text-white disabled:opacity-40"
             >
               Post
             </button>

@@ -113,7 +113,7 @@ export function LocationPicker({ value, onChange, placeholder = 'Search for a lo
     onChange({ address: newValue, placeId: null, lat: null, lng: null })
   }
 
-  const inputCls = `w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#123524]/30 ${className}`
+  const inputCls = `w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1565ff]/30 ${className}`
   const showMap = lat !== null && lng !== null && value
 
   return (
@@ -167,7 +167,7 @@ export function LocationPicker({ value, onChange, placeholder = 'Search for a lo
               href={googleMapsUrl(lat!, lng!)}
               target="_blank"
               rel="noopener noreferrer"
-              className="shrink-0 text-xs font-semibold text-[#123524] hover:underline"
+              className="shrink-0 text-xs font-semibold text-[#1565ff] hover:underline"
             >
               Open in Maps ↗
             </a>
@@ -219,7 +219,7 @@ export function LocationMapCard({
           }
           target="_blank"
           rel="noopener noreferrer"
-          className="shrink-0 text-xs font-semibold text-[#123524] hover:underline"
+          className="shrink-0 text-xs font-semibold text-[#1565ff] hover:underline"
         >
           Directions ↗
         </a>

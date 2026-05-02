@@ -69,7 +69,7 @@ export function EventComments({ eventId, currentUserId, isAdmin = false }: Event
       <button
         type="button"
         onClick={() => { setOpen((o) => !o); setTimeout(() => textareaRef.current?.focus(), 100) }}
-        className="flex items-center gap-1.5 text-sm font-medium text-slate-500 transition hover:text-[#123524]"
+        className="flex items-center gap-1.5 text-sm font-medium text-slate-500 transition hover:text-[#1565ff]"
       >
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
@@ -93,7 +93,7 @@ export function EventComments({ eventId, currentUserId, isAdmin = false }: Event
 
           {comments.map((c) => (
             <div key={c.id} className="flex gap-3">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#123524]/10 text-xs font-bold text-[#123524]">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#1565ff]/10 text-xs font-bold text-[#1565ff]">
                 {c.authorName.charAt(0).toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
@@ -129,12 +129,12 @@ export function EventComments({ eventId, currentUserId, isAdmin = false }: Event
               placeholder="Add a comment…"
               rows={1}
               maxLength={1000}
-              className="min-w-0 flex-1 resize-none rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#123524]/30"
+              className="min-w-0 flex-1 resize-none rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1565ff]/30"
             />
             <button
               type="submit"
               disabled={submitting || !body.trim()}
-              className="shrink-0 rounded-xl bg-[#123524] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#1a4a33] disabled:opacity-40"
+              className="shrink-0 rounded-xl bg-[#1565ff] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0d4ed8] disabled:opacity-40"
             >
               {submitting ? '…' : 'Post'}
             </button>

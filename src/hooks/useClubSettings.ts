@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { fetchClubSettings, saveClubSettings, uploadClubLogo } from '../services/forms.ts'
 import type { ClubSettings } from '../types/forms.ts'
 
-const DEFAULT: ClubSettings = { name: 'My Club', logoUrl: null, primaryColor: '#123524' }
+const DEFAULT: ClubSettings = { name: 'My Club', logoUrl: null, primaryColor: '#1565ff', instagramTagline: '', instagramHashtags: '' }
 
 /** Module-level cache so multiple consumers don't re-fetch on every mount. */
 let cached: ClubSettings | null = null

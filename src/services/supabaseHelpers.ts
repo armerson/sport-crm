@@ -150,6 +150,7 @@ export function mapResultRow(row: Record<string, unknown>): ResultRecord {
     homeScore: typeof row.home_score === 'number' ? row.home_score : 0,
     awayScore: typeof row.away_score === 'number' ? row.away_score : 0,
     notes: typeof row.notes === 'string' ? row.notes : '',
+    motmWinnerId: typeof row.motm_winner_id === 'string' ? row.motm_winner_id : null,
   }
 }
 

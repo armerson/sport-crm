@@ -218,9 +218,9 @@ function ParentEventCard({
       {/* ── Compact always-visible row ── */}
       <div className="flex min-w-0 items-start gap-3 px-4 py-3">
         {/* Date box */}
-        <div className={`flex w-10 shrink-0 flex-col items-center rounded-xl py-1.5 ${isPast ? 'bg-slate-100' : 'bg-[#123524]/8'}`}>
-          <span className={`text-[9px] font-bold uppercase tracking-widest ${isPast ? 'text-slate-400' : 'text-[#123524]/70'}`}>{box.month}</span>
-          <span className={`text-lg font-bold leading-tight ${isPast ? 'text-slate-500' : 'text-[#123524]'}`}>{box.day}</span>
+        <div className={`flex w-10 shrink-0 flex-col items-center rounded-xl py-1.5 ${isPast ? 'bg-slate-100' : 'bg-[#1565ff]/8'}`}>
+          <span className={`text-[9px] font-bold uppercase tracking-widest ${isPast ? 'text-slate-400' : 'text-[#1565ff]/70'}`}>{box.month}</span>
+          <span className={`text-lg font-bold leading-tight ${isPast ? 'text-slate-500' : 'text-[#1565ff]'}`}>{box.day}</span>
         </div>
 
         {/* Main content */}
@@ -231,7 +231,7 @@ function ParentEventCard({
                 <p className="truncate text-sm font-semibold text-slate-900">{event.title}</p>
                 <EventTypeChip type={event.type} />
                 {result ? (
-                  <span className="rounded-full bg-[#123524] px-2 py-0.5 text-xs font-bold tabular-nums text-white">
+                  <span className="rounded-full bg-[#1565ff] px-2 py-0.5 text-xs font-bold tabular-nums text-white">
                     {result.homeScore}–{result.awayScore}
                   </span>
                 ) : null}
@@ -358,7 +358,7 @@ export function EventList({
       {grouped.map(({ bucket, label, items }) => (
         <div key={bucket}>
           <p className={`mb-2 text-[11px] font-bold uppercase tracking-widest ${
-            bucket === 'past' ? 'text-slate-400' : bucket === 'today' ? 'text-[#123524]' : 'text-slate-500'
+            bucket === 'past' ? 'text-slate-400' : bucket === 'today' ? 'text-[#1565ff]' : 'text-slate-500'
           }`}>{label}</p>
           <div className="space-y-2">
             {items.map((event) => {
@@ -579,7 +579,7 @@ export function ParentPortal({ profile, activeTab, onTabChange }: ParentPortalPr
                   <div className="mt-2 flex flex-wrap gap-2">
                     {activeChild.teams.length > 0 ? (
                       activeChild.teams.map((teamId) => (
-                        <span key={teamId} className="rounded-full bg-[#123524] px-3 py-1 text-xs font-semibold text-white">
+                        <span key={teamId} className="rounded-full bg-[#1565ff] px-3 py-1 text-xs font-semibold text-white">
                           {teamById.get(teamId)?.name ?? 'Team'}
                         </span>
                       ))
@@ -595,7 +595,7 @@ export function ParentPortal({ profile, activeTab, onTabChange }: ParentPortalPr
               <h2 className="text-2xl font-semibold tracking-tight text-slate-950">Attendance summary</h2>
               {childAttendanceCounts ? (
                 <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-3xl bg-[#123524] p-4 text-white">
+                  <div className="rounded-3xl bg-[#1565ff] p-4 text-white">
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">Going</p>
                     <p className="mt-2 text-3xl font-semibold">{childAttendanceCounts.yes}</p>
                   </div>

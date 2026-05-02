@@ -23,7 +23,7 @@ export function NotificationBell({ hasUnread, onClick, className = '' }: Notific
       {hasUnread ? (
         <span
           aria-hidden="true"
-          className="absolute right-1 top-1 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-[#f18a3f] ring-2 ring-[#123524]"
+          className="absolute right-1 top-1 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-[#f18a3f] ring-2 ring-[#1565ff]"
         />
       ) : null}
     </button>

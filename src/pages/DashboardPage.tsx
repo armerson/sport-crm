@@ -234,7 +234,7 @@ export function DashboardPage() {
                   type="button"
                   onClick={() => setActiveRole(role)}
                   className={`rounded-full px-2.5 py-1 text-[10px] font-semibold capitalize transition ${
-                    activeRole === role ? 'bg-white text-[#123524]' : 'text-white/70 hover:text-white'
+                    activeRole === role ? 'bg-white text-[#1565ff]' : 'text-white/70 hover:text-white'
                   }`}
                 >
                   {ROLE_LABELS[role]}
@@ -297,7 +297,7 @@ export function DashboardPage() {
                         onClick={() => setActiveRole(role)}
                         className={`rounded-full px-3.5 py-1.5 text-xs font-semibold capitalize transition ${
                           activeRole === role
-                            ? 'bg-white text-[#123524]'
+                            ? 'bg-white text-[#1565ff]'
                             : 'border border-white/30 text-white/70 hover:border-white/60 hover:text-white'
                         }`}
                       >
@@ -368,7 +368,7 @@ export function DashboardPage() {
           type="button"
           aria-label="Create event"
           onClick={() => setCoachTab('create')}
-          className="fixed bottom-[4.5rem] right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-[#123524] text-white shadow-lg shadow-[#123524]/40 transition active:scale-95 hover:bg-[#1a4a33] sm:hidden"
+          className="fixed bottom-[4.5rem] right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-[#1565ff] text-white shadow-lg shadow-[#1565ff]/40 transition active:scale-95 hover:bg-[#0d4ed8] sm:hidden"
         >
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
             <line x1="12" y1="5" x2="12" y2="19" />

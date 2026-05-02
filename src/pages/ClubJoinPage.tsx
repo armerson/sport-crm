@@ -13,7 +13,7 @@ function Field({ label, type = 'text', value, onChange, placeholder, autoComplet
       <input
         type={type} value={value} onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder} autoComplete={autoComplete}
-        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-[#123524] focus:ring-2 focus:ring-[#123524]/15"
+        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-[#1565ff] focus:ring-2 focus:ring-[#1565ff]/15"
       />
     </label>
   )
@@ -21,7 +21,7 @@ function Field({ label, type = 'text', value, onChange, placeholder, autoComplet
 
 function Spinner() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#123524] to-[#1e4d36]">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#1565ff] to-[#1e4d36]">
       <div className="h-8 w-8 animate-spin rounded-full border-4 border-white/30 border-t-white" />
     </div>
   )
@@ -93,7 +93,7 @@ export function ClubJoinPage() {
 
   if (inviteError) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#123524] to-[#1e4d36] p-4">
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#1565ff] to-[#1e4d36] p-4">
         <div className="w-full max-w-sm rounded-3xl bg-white p-8 text-center shadow-2xl">
           <p className="text-4xl">⛔</p>
           <h1 className="mt-4 text-xl font-bold text-slate-900">Invalid link</h1>
@@ -106,7 +106,7 @@ export function ClubJoinPage() {
   const roleLabel = info!.role === 'admin' ? 'Admin' : 'Coach'
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#123524] to-[#1e4d36] p-4">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#1565ff] to-[#1e4d36] p-4">
       <div className="w-full max-w-sm space-y-6">
         {/* Header */}
         <div className="rounded-3xl bg-white/10 px-6 py-5 text-center backdrop-blur-sm">
@@ -155,7 +155,7 @@ export function ClubJoinPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full rounded-xl bg-[#123524] py-3 text-sm font-bold text-white transition hover:bg-[#1a4a33] disabled:opacity-60 active:scale-[0.98]"
+                className="w-full rounded-xl bg-[#1565ff] py-3 text-sm font-bold text-white transition hover:bg-[#0d4ed8] disabled:opacity-60 active:scale-[0.98]"
               >
                 {submitting ? 'Creating account…' : `Join as ${roleLabel}`}
               </button>
@@ -168,7 +168,7 @@ export function ClubJoinPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full rounded-xl bg-[#123524] py-3 text-sm font-bold text-white transition hover:bg-[#1a4a33] disabled:opacity-60 active:scale-[0.98]"
+                className="w-full rounded-xl bg-[#1565ff] py-3 text-sm font-bold text-white transition hover:bg-[#0d4ed8] disabled:opacity-60 active:scale-[0.98]"
               >
                 {submitting ? 'Signing in…' : 'Sign in & accept invite'}
               </button>

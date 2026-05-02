@@ -18,7 +18,7 @@ function Field({ label, type = 'text', value, onChange, placeholder, autoComplet
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         autoComplete={autoComplete}
-        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-[#123524] focus:ring-2 focus:ring-[#123524]/15"
+        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-[#1565ff] focus:ring-2 focus:ring-[#1565ff]/15"
       />
     </label>
   )
@@ -26,7 +26,7 @@ function Field({ label, type = 'text', value, onChange, placeholder, autoComplet
 
 function Spinner() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#123524] to-[#1e4d36]">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#1565ff] to-[#1e4d36]">
       <div className="h-8 w-8 animate-spin rounded-full border-4 border-white/30 border-t-white" />
     </div>
   )
@@ -47,8 +47,8 @@ function TeamHero({ info }: { info: InviteInfo }) {
           </div>
         </>
       ) : (
-        <div className="flex h-24 items-center gap-4 rounded-2xl bg-[#123524]/10 px-5">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#123524] text-2xl font-bold text-white">
+        <div className="flex h-24 items-center gap-4 rounded-2xl bg-[#1565ff]/10 px-5">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#1565ff] text-2xl font-bold text-white">
             {info.teamName.charAt(0)}
           </div>
           <div>
@@ -128,17 +128,17 @@ function ParentSignupForm({ info, onSuccess }: { info: InviteInfo; onSuccess: ()
               value={child.name}
               onChange={(e) => setChild(i, 'name', e.target.value)}
               placeholder="Child's full name"
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#123524] focus:ring-1 focus:ring-[#123524]/20"
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#1565ff] focus:ring-1 focus:ring-[#1565ff]/20"
             />
             <input
               type="date"
               value={child.dob}
               onChange={(e) => setChild(i, 'dob', e.target.value)}
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#123524] focus:ring-1 focus:ring-[#123524]/20"
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#1565ff] focus:ring-1 focus:ring-[#1565ff]/20"
             />
           </div>
         ))}
-        <button type="button" onClick={addChild} className="text-xs font-semibold text-[#123524] hover:underline">
+        <button type="button" onClick={addChild} className="text-xs font-semibold text-[#1565ff] hover:underline">
           + Add another child
         </button>
       </div>
@@ -148,7 +148,7 @@ function ParentSignupForm({ info, onSuccess }: { info: InviteInfo; onSuccess: ()
       <button
         type="submit"
         disabled={submitting}
-        className="w-full rounded-xl bg-[#123524] py-3 text-sm font-bold text-white transition disabled:opacity-50 hover:bg-[#1a4a33] active:scale-[0.98]"
+        className="w-full rounded-xl bg-[#1565ff] py-3 text-sm font-bold text-white transition disabled:opacity-50 hover:bg-[#0d4ed8] active:scale-[0.98]"
       >
         {submitting ? 'Creating account…' : 'Create account & join team'}
       </button>
@@ -196,7 +196,7 @@ function CoachSignupForm({ info, onSuccess }: { info: InviteInfo; onSuccess: () 
       <button
         type="submit"
         disabled={submitting}
-        className="w-full rounded-xl bg-[#123524] py-3 text-sm font-bold text-white transition disabled:opacity-50 hover:bg-[#1a4a33] active:scale-[0.98]"
+        className="w-full rounded-xl bg-[#1565ff] py-3 text-sm font-bold text-white transition disabled:opacity-50 hover:bg-[#0d4ed8] active:scale-[0.98]"
       >
         {submitting ? 'Creating account…' : 'Create account & join team'}
       </button>
@@ -238,7 +238,7 @@ function SignInForm({ info, onSuccess }: { info: InviteInfo; onSuccess: () => vo
       <button
         type="submit"
         disabled={submitting}
-        className="w-full rounded-xl bg-[#123524] py-3 text-sm font-bold text-white transition disabled:opacity-50 hover:bg-[#1a4a33] active:scale-[0.98]"
+        className="w-full rounded-xl bg-[#1565ff] py-3 text-sm font-bold text-white transition disabled:opacity-50 hover:bg-[#0d4ed8] active:scale-[0.98]"
       >
         {submitting ? 'Signing in…' : 'Sign in & join team'}
       </button>
@@ -284,7 +284,7 @@ export function JoinPage() {
 
   if (loadError) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#123524] to-[#1e4d36] p-4">
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#1565ff] to-[#1e4d36] p-4">
         <div className="w-full max-w-sm rounded-3xl bg-white p-8 text-center shadow-2xl">
           <p className="text-3xl">🔗</p>
           <h1 className="mt-3 text-lg font-bold text-slate-900">Link not found</h1>
@@ -292,7 +292,7 @@ export function JoinPage() {
           <button
             type="button"
             onClick={() => navigate('/')}
-            className="mt-6 w-full rounded-xl bg-[#123524] py-2.5 text-sm font-semibold text-white"
+            className="mt-6 w-full rounded-xl bg-[#1565ff] py-2.5 text-sm font-semibold text-white"
           >
             Go to app
           </button>
@@ -303,7 +303,7 @@ export function JoinPage() {
 
   if (joined) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#123524] to-[#1e4d36] p-4">
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#1565ff] to-[#1e4d36] p-4">
         <div className="w-full max-w-sm rounded-3xl bg-white p-8 text-center shadow-2xl">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-3xl">✓</div>
           <h1 className="text-xl font-bold text-slate-900">You're in!</h1>
@@ -315,7 +315,7 @@ export function JoinPage() {
           <button
             type="button"
             onClick={() => navigate('/', { replace: true })}
-            className="mt-6 w-full rounded-xl bg-[#123524] py-3 text-sm font-bold text-white"
+            className="mt-6 w-full rounded-xl bg-[#1565ff] py-3 text-sm font-bold text-white"
           >
             Open app →
           </button>
@@ -325,11 +325,11 @@ export function JoinPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#123524] to-[#1e4d36] p-4 sm:flex sm:items-center sm:justify-center">
+    <div className="min-h-screen bg-gradient-to-br from-[#1565ff] to-[#1e4d36] p-4 sm:flex sm:items-center sm:justify-center">
       <div className="mx-auto w-full max-w-md">
         {/* Header */}
         <div className="mb-6 text-center">
-          <p className="text-sm font-semibold tracking-widest text-white/60 uppercase">Club CRM</p>
+          <p className="text-sm font-semibold tracking-widest text-white/60 uppercase">ClubOS</p>
           <h1 className="mt-1 text-2xl font-bold text-white">
             {info!.role === 'parent' ? "You've been invited" : "Join as coach"}
           </h1>
@@ -347,13 +347,13 @@ export function JoinPage() {
           <div className="mt-5">
             {/* Role badge */}
             <div className="mb-4 flex items-center justify-between">
-              <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide ${info!.role === 'parent' ? 'bg-blue-100 text-blue-700' : 'bg-[#123524]/10 text-[#123524]'}`}>
+              <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide ${info!.role === 'parent' ? 'bg-blue-100 text-blue-700' : 'bg-[#1565ff]/10 text-[#1565ff]'}`}>
                 Joining as {info!.role}
               </span>
               <button
                 type="button"
                 onClick={() => setMode(mode === 'signup' ? 'signin' : 'signup')}
-                className="text-xs font-semibold text-slate-400 hover:text-[#123524]"
+                className="text-xs font-semibold text-slate-400 hover:text-[#1565ff]"
               >
                 {mode === 'signup' ? 'Already have an account? Sign in' : 'New here? Sign up'}
               </button>

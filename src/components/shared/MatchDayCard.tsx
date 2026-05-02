@@ -106,7 +106,7 @@ export function MatchDayCard({
       : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location)}`
 
   return (
-    <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#123524] to-[#1e5438] p-6 text-white shadow-2xl shadow-[#123524]/30">
+    <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#1565ff] to-[#1e5438] p-6 text-white shadow-2xl shadow-[#1565ff]/30">
       {/* Decorative circles */}
       <div aria-hidden className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-white/5" />
       <div aria-hidden className="pointer-events-none absolute -bottom-10 -left-10 h-48 w-48 rounded-full bg-white/5" />
@@ -176,7 +176,7 @@ export function MatchDayCard({
                 type="button"
                 onClick={() => onAttendanceChange(myAttendance.id, s)}
                 className={`flex-1 rounded-xl py-2.5 text-sm font-semibold transition active:scale-95 ${
-                  rsvpStatus === s ? 'bg-white text-[#123524] shadow-md' : 'bg-white/15 text-white hover:bg-white/25'
+                  rsvpStatus === s ? 'bg-white text-[#1565ff] shadow-md' : 'bg-white/15 text-white hover:bg-white/25'
                 }`}
               >
                 {s === 'yes' ? '✓ Going' : s === 'no' ? '✕ No' : '? Maybe'}

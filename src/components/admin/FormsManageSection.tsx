@@ -86,7 +86,7 @@ export function FormsManageSection({ profile, teams }: FormsManageSectionProps) 
   const [subFields, setSubFields] = useState<FormField[]>([])
 
   // Club settings state
-  const [clubInput, setClubInput] = useState<ClubSettings>({ name: '', logoUrl: null, primaryColor: '#123524' })
+  const [clubInput, setClubInput] = useState<ClubSettings>({ name: '', logoUrl: null, primaryColor: '#1565ff' })
 
   useEffect(() => {
     void loadForms()
@@ -255,7 +255,7 @@ export function FormsManageSection({ profile, teams }: FormsManageSectionProps) 
     return (
       <div className="space-y-5">
         <div className="flex items-center gap-3">
-          <button type="button" onClick={() => setView('list')} className="text-sm font-semibold text-[#123524] hover:underline">← Back</button>
+          <button type="button" onClick={() => setView('list')} className="text-sm font-semibold text-[#1565ff] hover:underline">← Back</button>
           <h2 className="text-xl font-semibold text-slate-950">Club settings</h2>
         </div>
         {error && <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
@@ -287,7 +287,7 @@ export function FormsManageSection({ profile, teams }: FormsManageSectionProps) 
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-3">
-          <button type="button" onClick={() => setView('list')} className="text-sm font-semibold text-[#123524] hover:underline">← Back</button>
+          <button type="button" onClick={() => setView('list')} className="text-sm font-semibold text-[#1565ff] hover:underline">← Back</button>
           <h2 className="text-xl font-semibold text-slate-950">{editingForm ? 'Edit form' : 'Create form'}</h2>
         </div>
 
@@ -306,7 +306,7 @@ export function FormsManageSection({ profile, teams }: FormsManageSectionProps) 
             <div>
               <label className="mb-1.5 block text-sm font-medium text-slate-700">Description (optional)</label>
               <textarea
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#123524]/20"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1565ff]/20"
                 rows={2}
                 placeholder="Briefly describe this registration form…"
                 value={formInput.description}
@@ -335,11 +335,11 @@ export function FormsManageSection({ profile, teams }: FormsManageSectionProps) 
             />
             <div className="flex flex-wrap gap-4">
               <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
-                <input type="checkbox" className="accent-[#123524]" checked={formInput.active} onChange={(e) => setFormInput((f) => ({ ...f, active: e.target.checked }))} />
+                <input type="checkbox" className="accent-[#1565ff]" checked={formInput.active} onChange={(e) => setFormInput((f) => ({ ...f, active: e.target.checked }))} />
                 Active (accept submissions)
               </label>
               <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
-                <input type="checkbox" className="accent-[#123524]" checked={formInput.requiresLogin} onChange={(e) => setFormInput((f) => ({ ...f, requiresLogin: e.target.checked }))} />
+                <input type="checkbox" className="accent-[#1565ff]" checked={formInput.requiresLogin} onChange={(e) => setFormInput((f) => ({ ...f, requiresLogin: e.target.checked }))} />
                 Require login to submit
               </label>
             </div>
@@ -351,7 +351,7 @@ export function FormsManageSection({ profile, teams }: FormsManageSectionProps) 
               <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Form fields</p>
               <button
                 type="button"
-                className="text-xs font-semibold text-[#123524] hover:underline"
+                className="text-xs font-semibold text-[#1565ff] hover:underline"
                 onClick={() => setFields(DEFAULT_FIELDS)}
               >
                 Reset to defaults
@@ -364,13 +364,13 @@ export function FormsManageSection({ profile, teams }: FormsManageSectionProps) 
                   <div className="flex-1 space-y-3">
                     <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
                       <input
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#123524]/20"
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1565ff]/20"
                         placeholder="Field label"
                         value={field.label}
                         onChange={(e) => updateField(i, { label: e.target.value })}
                       />
                       <select
-                        className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#123524]/20"
+                        className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#1565ff]/20"
                         value={field.fieldType}
                         onChange={(e) => updateField(i, { fieldType: e.target.value as FieldType })}
                       >
@@ -382,7 +382,7 @@ export function FormsManageSection({ profile, teams }: FormsManageSectionProps) 
 
                     {(field.fieldType === 'select' || field.fieldType === 'checkboxes') && (
                       <input
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#123524]/20"
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1565ff]/20"
                         placeholder="Options, separated by commas e.g. U10, U12, U14"
                         value={field.options}
                         onChange={(e) => updateField(i, { options: e.target.value })}
@@ -390,7 +390,7 @@ export function FormsManageSection({ profile, teams }: FormsManageSectionProps) 
                     )}
 
                     <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-600">
-                      <input type="checkbox" className="accent-[#123524]" checked={field.required} onChange={(e) => updateField(i, { required: e.target.checked })} />
+                      <input type="checkbox" className="accent-[#1565ff]" checked={field.required} onChange={(e) => updateField(i, { required: e.target.checked })} />
                       Required
                     </label>
                   </div>
@@ -413,7 +413,7 @@ export function FormsManageSection({ profile, teams }: FormsManageSectionProps) 
             <button
               type="button"
               onClick={addField}
-              className="w-full rounded-2xl border border-dashed border-slate-300 py-3 text-sm font-semibold text-slate-500 transition hover:border-[#123524] hover:text-[#123524]"
+              className="w-full rounded-2xl border border-dashed border-slate-300 py-3 text-sm font-semibold text-slate-500 transition hover:border-[#1565ff] hover:text-[#1565ff]"
             >
               + Add field
             </button>
@@ -433,7 +433,7 @@ export function FormsManageSection({ profile, teams }: FormsManageSectionProps) 
     return (
       <div className="space-y-5">
         <div className="flex items-center gap-3">
-          <button type="button" onClick={() => setView('list')} className="text-sm font-semibold text-[#123524] hover:underline">← Back</button>
+          <button type="button" onClick={() => setView('list')} className="text-sm font-semibold text-[#1565ff] hover:underline">← Back</button>
           <div>
             <h2 className="text-xl font-semibold text-slate-950">Submissions</h2>
             {currentForm && <p className="text-sm text-slate-500">{currentForm.name}</p>}
@@ -474,7 +474,7 @@ export function FormsManageSection({ profile, teams }: FormsManageSectionProps) 
                     </select>
                     <button
                       type="button"
-                      className="text-xs font-semibold text-[#123524] hover:underline"
+                      className="text-xs font-semibold text-[#1565ff] hover:underline"
                       onClick={() => void handleExpandSub(sub.id)}
                     >
                       {expandedSub === sub.id ? 'Hide' : 'View'}
@@ -532,7 +532,7 @@ export function FormsManageSection({ profile, teams }: FormsManageSectionProps) 
         <div className="rounded-[2rem] border border-dashed border-slate-300 px-4 py-12 text-center">
           <p className="text-sm font-medium text-slate-600">No forms yet</p>
           <p className="mt-1 text-sm text-slate-400">Create your first registration form to get a shareable link.</p>
-          <button type="button" onClick={openCreate} className="mt-4 text-sm font-semibold text-[#123524] underline underline-offset-2">
+          <button type="button" onClick={openCreate} className="mt-4 text-sm font-semibold text-[#1565ff] underline underline-offset-2">
             Create a form
           </button>
         </div>
@@ -570,12 +570,12 @@ export function FormsManageSection({ profile, teams }: FormsManageSectionProps) 
                       />
                       <button
                         type="button"
-                        className="text-xs font-semibold text-[#123524] hover:underline"
+                        className="text-xs font-semibold text-[#1565ff] hover:underline"
                         onClick={() => void navigator.clipboard.writeText(link)}
                       >
                         Copy
                       </button>
-                      <a href={link} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-[#123524] hover:underline">
+                      <a href={link} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-[#1565ff] hover:underline">
                         Preview ↗
                       </a>
                     </div>

@@ -157,11 +157,11 @@ export function FamilyBillingCard({ profile, players }: FamilyBillingCardProps) 
         <>
           {/* Monthly total */}
           {pricing && pricing.monthlyPence > 0 && (
-            <div className="rounded-2xl border border-slate-100 bg-gradient-to-br from-[#123524]/5 to-white p-4">
+            <div className="rounded-2xl border border-slate-100 bg-gradient-to-br from-[#1565ff]/5 to-white p-4">
               <div className="flex items-end justify-between">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Monthly total</p>
-                  <p className="mt-1 text-3xl font-bold text-[#123524]">
+                  <p className="mt-1 text-3xl font-bold text-[#1565ff]">
                     {formatPence(pricing.monthlyPence)}
                     <span className="ml-1 text-base font-normal text-slate-400">/month</span>
                   </p>
@@ -271,7 +271,7 @@ export function FamilyBillingCard({ profile, players }: FamilyBillingCardProps) 
             {/* Monthly subscription setup */}
             {hasMonthlyProducts && !subscriptionActive && (
               <button
-                className="flex items-center justify-center gap-2 rounded-2xl bg-[#123524] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1a4d35] disabled:opacity-60"
+                className="flex items-center justify-center gap-2 rounded-2xl bg-[#1565ff] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1a4d35] disabled:opacity-60"
                 disabled={stripeLoading !== null}
                 onClick={() => void handleStripeAction('subscription')}
                 type="button"

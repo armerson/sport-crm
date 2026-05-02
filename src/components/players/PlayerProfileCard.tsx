@@ -108,7 +108,7 @@ function PlayerAvatar({
             className="h-24 w-24 rounded-full object-cover shadow-md ring-2 ring-white sm:h-28 sm:w-28"
           />
         ) : (
-          <div className="flex h-24 w-24 items-center justify-center rounded-full bg-[#123524]/10 text-3xl font-bold text-[#123524] shadow-md ring-2 ring-white sm:h-28 sm:w-28">
+          <div className="flex h-24 w-24 items-center justify-center rounded-full bg-[#1565ff]/10 text-3xl font-bold text-[#1565ff] shadow-md ring-2 ring-white sm:h-28 sm:w-28">
             {player.name.charAt(0)}
           </div>
         )}
@@ -117,7 +117,7 @@ function PlayerAvatar({
             type="button"
             onClick={() => inputRef.current?.click()}
             disabled={uploading}
-            className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-[#123524] text-white shadow transition hover:bg-[#1a4d34] disabled:opacity-60"
+            className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-[#1565ff] text-white shadow transition hover:bg-[#0d4ed8] disabled:opacity-60"
             aria-label="Upload photo"
           >
             {uploading ? (
@@ -188,7 +188,7 @@ function ProfileEditForm({
     }
   }
 
-  const inputCls = "w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#123524]/30"
+  const inputCls = "w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1565ff]/30"
 
   return (
     <form onSubmit={(e) => void handleSave(e)} className="space-y-4">
@@ -236,7 +236,7 @@ function ProfileEditForm({
       </div>
 
       <div className="flex gap-3">
-        <button type="submit" disabled={saving} className="rounded-xl bg-[#123524] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#1a4d34] disabled:opacity-60">
+        <button type="submit" disabled={saving} className="rounded-xl bg-[#1565ff] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0d4ed8] disabled:opacity-60">
           {saving ? 'Saving…' : 'Save profile'}
         </button>
         <button type="button" onClick={onCancel} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50">
@@ -287,14 +287,14 @@ function EmergencyContacts({ playerId, canEdit }: { playerId: string; canEdit: b
     setContacts((prev) => prev.filter((c) => c.id !== id))
   }
 
-  const inputCls = "w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#123524]/30"
+  const inputCls = "w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1565ff]/30"
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-semibold text-slate-700">Emergency contacts</h4>
         {canEdit && !showForm && (
-          <button type="button" onClick={() => { setForm(blank); setEditingId(null); setShowForm(true) }} className="text-xs font-semibold text-[#123524] hover:underline">
+          <button type="button" onClick={() => { setForm(blank); setEditingId(null); setShowForm(true) }} className="text-xs font-semibold text-[#1565ff] hover:underline">
             + Add contact
           </button>
         )}
@@ -315,7 +315,7 @@ function EmergencyContacts({ playerId, canEdit }: { playerId: string; canEdit: b
             Primary emergency contact
           </label>
           <div className="flex gap-2">
-            <button type="button" onClick={() => void handleSave()} className="rounded-xl bg-[#123524] px-4 py-2 text-sm font-semibold text-white hover:bg-[#1a4d34]">Save</button>
+            <button type="button" onClick={() => void handleSave()} className="rounded-xl bg-[#1565ff] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0d4ed8]">Save</button>
             <button type="button" onClick={() => setShowForm(false)} className="rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">Cancel</button>
           </div>
         </div>
@@ -330,12 +330,12 @@ function EmergencyContacts({ playerId, canEdit }: { playerId: string; canEdit: b
               <div>
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-semibold text-slate-900">{contact.name}</p>
-                  {contact.isPrimary && <span className="rounded-full bg-[#123524]/10 px-2 py-0.5 text-xs font-semibold text-[#123524]">Primary</span>}
+                  {contact.isPrimary && <span className="rounded-full bg-[#1565ff]/10 px-2 py-0.5 text-xs font-semibold text-[#1565ff]">Primary</span>}
                 </div>
                 <p className="text-xs text-slate-500">{contact.relationship}</p>
                 <div className="mt-1 flex flex-wrap gap-3 text-xs text-slate-600">
-                  <a href={`tel:${contact.phone}`} className="font-medium hover:text-[#123524]">{contact.phone}</a>
-                  {contact.email && <a href={`mailto:${contact.email}`} className="hover:text-[#123524]">{contact.email}</a>}
+                  <a href={`tel:${contact.phone}`} className="font-medium hover:text-[#1565ff]">{contact.phone}</a>
+                  {contact.email && <a href={`mailto:${contact.email}`} className="hover:text-[#1565ff]">{contact.email}</a>}
                 </div>
               </div>
               {canEdit && (
@@ -422,7 +422,7 @@ function ClubRegistrationFieldsBlock({
           type="button"
           disabled={saving}
           onClick={() => void save()}
-          className="rounded-xl bg-[#123524] px-4 py-2 text-sm font-semibold text-white hover:bg-[#1a4d34] disabled:opacity-50"
+          className="rounded-xl bg-[#1565ff] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0d4ed8] disabled:opacity-50"
         >
           {saving ? 'Saving…' : 'Save club fields'}
         </button>
@@ -506,7 +506,7 @@ function IdentityDocuments({
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-semibold text-slate-700">Identity documents</h4>
         {permissions.canUploadDocuments && (
-          <button type="button" onClick={() => inputRef.current?.click()} disabled={uploading} className="text-xs font-semibold text-[#123524] hover:underline disabled:opacity-50">
+          <button type="button" onClick={() => inputRef.current?.click()} disabled={uploading} className="text-xs font-semibold text-[#1565ff] hover:underline disabled:opacity-50">
             {uploading ? 'Uploading…' : '+ Upload document'}
           </button>
         )}
@@ -522,12 +522,12 @@ function IdentityDocuments({
 
       {permissions.canUploadDocuments && (
         <div className="flex flex-wrap gap-3">
-          <select value={docType} onChange={(e) => setDocType(e.target.value as PlayerDocumentType)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#123524]/30">
+          <select value={docType} onChange={(e) => setDocType(e.target.value as PlayerDocumentType)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1565ff]/30">
             <option value="birth_certificate">Birth Certificate</option>
             <option value="passport">Passport</option>
             <option value="other">Other</option>
           </select>
-          <input type="text" value={docLabel} onChange={(e) => setDocLabel(e.target.value)} placeholder="Label (optional)" className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#123524]/30" />
+          <input type="text" value={docLabel} onChange={(e) => setDocLabel(e.target.value)} placeholder="Label (optional)" className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1565ff]/30" />
         </div>
       )}
 
@@ -553,7 +553,7 @@ function IdentityDocuments({
                 </p>
               </div>
               <div className="flex items-center gap-3">
-                <button type="button" onClick={() => void handleView(doc)} className="text-xs font-semibold text-[#123524] hover:underline">
+                <button type="button" onClick={() => void handleView(doc)} className="text-xs font-semibold text-[#1565ff] hover:underline">
                   View
                 </button>
                 {permissions.canVerifyDocuments && !doc.verified && (
@@ -642,7 +642,7 @@ export function PlayerProfileCard({ playerId, role, currentUserId }: PlayerProfi
           <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
             <h2 className="text-2xl font-bold text-slate-900">{player.name}</h2>
             {player.jerseyNumber && (
-              <span className="rounded-full bg-[#123524]/10 px-2.5 py-0.5 text-sm font-bold text-[#123524]">#{player.jerseyNumber}</span>
+              <span className="rounded-full bg-[#1565ff]/10 px-2.5 py-0.5 text-sm font-bold text-[#1565ff]">#{player.jerseyNumber}</span>
             )}
           </div>
           <div className="mt-1 flex flex-wrap justify-center gap-x-4 gap-y-1 text-sm text-slate-500 sm:justify-start">
@@ -661,7 +661,7 @@ export function PlayerProfileCard({ playerId, role, currentUserId }: PlayerProfi
               <button
                 type="button"
                 onClick={copyCode}
-                className="rounded-lg px-2 py-1 text-xs font-semibold text-[#123524] transition hover:bg-slate-100"
+                className="rounded-lg px-2 py-1 text-xs font-semibold text-[#1565ff] transition hover:bg-slate-100"
                 title="Copy to clipboard"
               >
                 {codeCopied ? '✓ Copied' : 'Copy'}
@@ -686,7 +686,7 @@ export function PlayerProfileCard({ playerId, role, currentUserId }: PlayerProfi
               onClick={() => { setActiveSection(tab.value); setEditing(false) }}
               className={`border-b-2 py-3 text-sm font-semibold transition ${
                 activeSection === tab.value
-                  ? 'border-[#123524] text-[#123524]'
+                  ? 'border-[#1565ff] text-[#1565ff]'
                   : 'border-transparent text-slate-400 hover:text-slate-600'
               }`}
             >

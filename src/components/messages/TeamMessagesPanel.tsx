@@ -187,7 +187,7 @@ export function TeamMessagesPanel({ profile }: TeamMessagesPanelProps) {
                   <div
                     key={message.id}
                     className={`rounded-2xl px-4 py-3 ${
-                      isCurrentUser ? 'ml-6 bg-[#123524] text-white' : 'mr-6 bg-white text-slate-900'
+                      isCurrentUser ? 'ml-6 bg-[#1565ff] text-white' : 'mr-6 bg-white text-slate-900'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-3 text-xs font-semibold uppercase tracking-[0.12em]">

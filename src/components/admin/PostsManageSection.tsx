@@ -9,8 +9,20 @@ import {
 import { PostFeed } from '../posts/PostFeed.tsx'
 import { ConfirmInline } from '../ui/ConfirmInline.tsx'
 import { Button } from '../ui/Button.tsx'
+import { InstagramSharePanel } from './InstagramSharePanel.tsx'
+import { useClubSettings } from '../../hooks/useClubSettings.ts'
 import type { Post, PostInput } from '../../types/posts.ts'
 import type { UserProfile } from '../../types/auth.ts'
+
+function IgIcon() {
+  return (
+    <svg fill="none" height="13" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} viewBox="0 0 24 24" width="13">
+      <rect height="20" rx="5" ry="5" width="20" x="2" y="2" />
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="17.5" cy="6.5" fill="currentColor" r="0.5" stroke="none" />
+    </svg>
+  )
+}
 
 const BLANK: PostInput = {
   title: '',
@@ -36,7 +48,9 @@ export function PostsManageSection({ profile, teams }: PostsManageSectionProps) 
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [sharingPost, setSharingPost] = useState<Post | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  const { settings: clubSettings } = useClubSettings()
 
   useEffect(() => {
     void loadPosts()
@@ -139,7 +153,7 @@ export function PostsManageSection({ profile, teams }: PostsManageSectionProps) 
     return (
       <div className="space-y-5">
         <div className="flex items-center gap-3">
-          <button type="button" onClick={() => setShowForm(false)} className="text-sm font-semibold text-[#123524] hover:underline">
+          <button type="button" onClick={() => setShowForm(false)} className="text-sm font-semibold text-[#1565ff] hover:underline">
             ← Back
           </button>
           <h2 className="text-xl font-semibold text-slate-950">{editingPost ? 'Edit post' : 'New post'}</h2>
@@ -166,7 +180,7 @@ export function PostsManageSection({ profile, teams }: PostsManageSectionProps) 
                 </button>
               </div>
             ) : (
-              <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 py-8 text-slate-500 transition hover:border-[#123524] hover:text-[#123524]">
+              <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 py-8 text-slate-500 transition hover:border-[#1565ff] hover:text-[#1565ff]">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
                   <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
                   <circle cx="8.5" cy="8.5" r="1.5" />
@@ -183,7 +197,7 @@ export function PostsManageSection({ profile, teams }: PostsManageSectionProps) 
           <div>
             <label className="mb-1.5 block text-sm font-medium text-slate-700">Title (optional)</label>
             <input
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#123524]/20"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1565ff]/20"
               placeholder="e.g. Training cancelled this Friday"
               value={input.title}
               onChange={(e) => setInput((p) => ({ ...p, title: e.target.value }))}
@@ -196,7 +210,7 @@ export function PostsManageSection({ profile, teams }: PostsManageSectionProps) 
               Message <span className="text-rose-500">*</span>
             </label>
             <textarea
-              className="w-full resize-none rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#123524]/20"
+              className="w-full resize-none rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1565ff]/20"
               rows={5}
               placeholder="Write your announcement here…"
               required
@@ -210,7 +224,7 @@ export function PostsManageSection({ profile, teams }: PostsManageSectionProps) 
             <div>
               <label className="mb-1.5 block text-sm font-medium text-slate-700">Visible to</label>
               <select
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#123524]/20"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#1565ff]/20"
                 value={input.teamId ?? ''}
                 onChange={(e) => setInput((p) => ({ ...p, teamId: e.target.value || null }))}
               >
@@ -224,7 +238,7 @@ export function PostsManageSection({ profile, teams }: PostsManageSectionProps) 
               <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 w-full">
                 <input
                   type="checkbox"
-                  className="h-4 w-4 accent-[#123524]"
+                  className="h-4 w-4 accent-[#1565ff]"
                   checked={input.pinned}
                   onChange={(e) => setInput((p) => ({ ...p, pinned: e.target.checked }))}
                 />
@@ -262,7 +276,7 @@ export function PostsManageSection({ profile, teams }: PostsManageSectionProps) 
         <div className="rounded-[2rem] border border-dashed border-slate-300 px-4 py-16 text-center">
           <p className="text-sm font-medium text-slate-600">No posts yet</p>
           <p className="mt-1 text-sm text-slate-400">Create your first announcement to get started.</p>
-          <button type="button" onClick={openCreate} className="mt-4 text-sm font-semibold text-[#123524] underline underline-offset-2">
+          <button type="button" onClick={openCreate} className="mt-4 text-sm font-semibold text-[#1565ff] underline underline-offset-2">
             Create a post
           </button>
         </div>
@@ -272,6 +286,14 @@ export function PostsManageSection({ profile, teams }: PostsManageSectionProps) 
             <div key={post.id} className="relative">
               {/* Admin controls overlay */}
               <div className="mb-1.5 flex justify-end gap-2">
+                <button
+                  className="flex items-center gap-1.5 rounded-xl border border-pink-200 bg-white px-3 py-1 text-xs font-semibold text-pink-600 hover:bg-pink-50 shadow-sm"
+                  onClick={() => setSharingPost(post)}
+                  type="button"
+                >
+                  <IgIcon />
+                  Share
+                </button>
                 <button
                   type="button"
                   onClick={() => openEdit(post)}
@@ -324,5 +346,15 @@ export function PostsManageSection({ profile, teams }: PostsManageSectionProps) 
         </div>
       )}
     </div>
+
+    {sharingPost && (
+      <InstagramSharePanel
+        clubName={clubSettings.name}
+        defaultHashtags={clubSettings.instagramHashtags}
+        defaultTagline={clubSettings.instagramTagline}
+        onClose={() => setSharingPost(null)}
+        post={sharingPost}
+      />
+    )}
   )
 }

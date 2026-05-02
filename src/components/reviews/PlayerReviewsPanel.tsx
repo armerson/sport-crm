@@ -65,7 +65,7 @@ export function PlayerReviewsPanel({ playerId, playerName, teamId, coachId }: Pl
           <button
             type="button"
             onClick={() => setEditingId('new')}
-            className="flex items-center gap-1.5 rounded-xl bg-[#123524] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[#1a4a33] active:scale-[0.98]"
+            className="flex items-center gap-1.5 rounded-xl bg-[#1565ff] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[#0d4ed8] active:scale-[0.98]"
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Write review

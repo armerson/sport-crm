@@ -33,17 +33,23 @@ function mapForm(row: Record<string, unknown>): RegistrationForm {
   }
 }
 
-const DEFAULT_SETTINGS: ClubSettings = { name: 'My Club', logoUrl: null, primaryColor: '#123524' }
+const DEFAULT_SETTINGS: ClubSettings = { name: 'My Club', logoUrl: null, primaryColor: '#1565ff', instagramTagline: '', instagramHashtags: '' }
 
 export async function fetchClubSettings(): Promise<ClubSettings> {
   const client = supabase
   if (!client) return DEFAULT_SETTINGS
-  const { data } = await client.from('club_settings').select('name, logo_url, primary_color').eq('id', 1).maybeSingle()
+  const { data } = await client
+    .from('club_settings')
+    .select('name, logo_url, primary_color, instagram_tagline, instagram_hashtags')
+    .eq('id', 1)
+    .maybeSingle()
   if (!data) return DEFAULT_SETTINGS
   return {
     name: (data.name as string) ?? 'My Club',
     logoUrl: (data.logo_url as string | null) ?? null,
-    primaryColor: (data.primary_color as string | null) ?? '#123524',
+    primaryColor: (data.primary_color as string | null) ?? '#1565ff',
+    instagramTagline: (data.instagram_tagline as string | null) ?? '',
+    instagramHashtags: (data.instagram_hashtags as string | null) ?? '',
   }
 }
 
@@ -51,7 +57,15 @@ export async function saveClubSettings(settings: ClubSettings): Promise<void> {
   const client = requireSupabase()
   const { error } = await client
     .from('club_settings')
-    .upsert({ id: 1, name: settings.name, logo_url: settings.logoUrl, primary_color: settings.primaryColor, updated_at: new Date().toISOString() })
+    .upsert({
+      id: 1,
+      name: settings.name,
+      logo_url: settings.logoUrl,
+      primary_color: settings.primaryColor,
+      instagram_tagline: settings.instagramTagline || null,
+      instagram_hashtags: settings.instagramHashtags || null,
+      updated_at: new Date().toISOString(),
+    })
   if (error) throw new Error(error.message)
 }
 

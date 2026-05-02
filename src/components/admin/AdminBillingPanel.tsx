@@ -129,7 +129,7 @@ function ProductsSection() {
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                 placeholder="e.g. U10 Monthly Membership"
                 required
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#123524]/30"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1565ff]/30"
               />
             </div>
             <div className="space-y-1">
@@ -142,7 +142,7 @@ function ProductsSection() {
                 onChange={(e) => setPriceInput(e.target.value)}
                 placeholder="25.00"
                 required
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#123524]/30"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1565ff]/30"
               />
             </div>
             <div className="space-y-1">
@@ -150,7 +150,7 @@ function ProductsSection() {
               <select
                 value={form.billingType}
                 onChange={(e) => setForm((f) => ({ ...f, billingType: e.target.value as BillingType }))}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#123524]/30"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1565ff]/30"
               >
                 <option value="monthly">Monthly subscription</option>
                 <option value="membership">Membership fee (one-off, seasonal)</option>
@@ -169,7 +169,7 @@ function ProductsSection() {
                   value={form.durationMonths}
                   onChange={(e) => setForm((f) => ({ ...f, durationMonths: e.target.value }))}
                   placeholder="Leave blank for ongoing"
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#123524]/30"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1565ff]/30"
                 />
                 <p className="text-xs text-slate-400">e.g. 10 months for a Sept–June season. Leave blank for ongoing until cancelled.</p>
               </div>
@@ -184,7 +184,7 @@ function ProductsSection() {
                   value={form.seasonLabel}
                   onChange={(e) => setForm((f) => ({ ...f, seasonLabel: e.target.value }))}
                   placeholder="e.g. 2025/26 Season"
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#123524]/30"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1565ff]/30"
                 />
               </div>
             )}
@@ -195,7 +195,7 @@ function ProductsSection() {
                 value={form.description}
                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                 placeholder="Brief description for parents"
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#123524]/30"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1565ff]/30"
               />
             </div>
           </div>
@@ -246,7 +246,7 @@ function ProductsSection() {
                         setSuccessMsg('Guest pay link copied — share with anyone; no club login required.')
                       })
                     }}
-                    className="text-xs font-semibold text-[#123524] transition hover:underline"
+                    className="text-xs font-semibold text-[#1565ff] transition hover:underline"
                   >
                     Copy guest pay link
                   </button>
@@ -373,7 +373,7 @@ function PricingRulesSection() {
                         updated[i] = { ...tier, discountPct: parseInt(e.target.value) || 0 }
                         setTierInputs(updated)
                       }}
-                      className="w-20 rounded-xl border border-slate-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#123524]/30"
+                      className="w-20 rounded-xl border border-slate-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1565ff]/30"
                     />
                     <span className="text-sm text-slate-500">% off</span>
                     <button
@@ -391,7 +391,7 @@ function PricingRulesSection() {
                     const nextIndex = (tierInputs[tierInputs.length - 1]?.childIndex ?? 0) + 1
                     setTierInputs([...tierInputs, { childIndex: nextIndex, discountPct: 0 }])
                   }}
-                  className="text-xs font-semibold text-[#123524] hover:underline"
+                  className="text-xs font-semibold text-[#1565ff] hover:underline"
                 >
                   + Add tier
                 </button>
@@ -417,7 +417,7 @@ function PricingRulesSection() {
                       step="0.01"
                       value={capInput}
                       onChange={(e) => setCapInput(e.target.value)}
-                      className="w-24 rounded-xl border border-slate-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#123524]/30"
+                      className="w-24 rounded-xl border border-slate-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1565ff]/30"
                     />
                   </div>
                 </div>
@@ -548,7 +548,7 @@ function AssignSection() {
             onChange={(e) => {
               setPlayerSearch(e.target.value)
             }}
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#123524]/30"
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1565ff]/30"
           />
           <div className="max-h-72 overflow-y-auto rounded-2xl border border-slate-200 bg-white divide-y divide-slate-100">
             {filteredPlayers.length === 0 ? (
@@ -566,7 +566,7 @@ function AssignSection() {
                       setEditingAssignmentId(null)
                     }}
                     className={`w-full px-4 py-3 text-left transition ${
-                      selectedPlayerId === player.id ? 'bg-[#123524]/5 font-semibold text-[#123524]' : 'hover:bg-slate-50'
+                      selectedPlayerId === player.id ? 'bg-[#1565ff]/5 font-semibold text-[#1565ff]' : 'hover:bg-slate-50'
                     }`}
                   >
                     <p className="text-sm font-medium text-slate-900">{player.name}</p>
@@ -651,7 +651,7 @@ function AssignSection() {
                                   await assign(selectedPlayerId, product.id, profile!.id)
                                   setSuccessMsg('Product assigned.')
                                 })())}
-                                className="text-xs font-semibold text-[#123524] transition hover:underline disabled:opacity-40"
+                                className="text-xs font-semibold text-[#1565ff] transition hover:underline disabled:opacity-40"
                               >
                                 Assign
                               </button>
@@ -671,7 +671,7 @@ function AssignSection() {
                                 value={assignMonths}
                                 onChange={(e) => setAssignMonths(e.target.value)}
                                 placeholder="Leave blank for ongoing"
-                                className="w-36 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#123524]/30"
+                                className="w-36 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1565ff]/30"
                               />
                               <span className="text-xs text-slate-500">months</span>
                             </div>
@@ -706,7 +706,7 @@ function AssignSection() {
                                 value={editMonths}
                                 onChange={(e) => setEditMonths(e.target.value)}
                                 placeholder="Leave blank for ongoing"
-                                className="w-36 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#123524]/30"
+                                className="w-36 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1565ff]/30"
                               />
                               <span className="text-xs text-slate-500">months</span>
                             </div>
@@ -794,9 +794,9 @@ function OverviewSection() {
       </div>
 
       {/* Summary stat */}
-      <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-[#123524]/5 to-white p-5">
+      <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-[#1565ff]/5 to-white p-5">
         <p className="text-sm text-slate-500">Total club monthly revenue (calculated)</p>
-        <p className="mt-1 text-3xl font-bold text-[#123524]">{formatPence(totalMonthly)}</p>
+        <p className="mt-1 text-3xl font-bold text-[#1565ff]">{formatPence(totalMonthly)}</p>
         <p className="text-xs text-slate-400 mt-0.5">After discounts · {families.filter(f => f.pricing.monthlyPence > 0).length} paying families</p>
       </div>
 
@@ -826,7 +826,7 @@ function OverviewSection() {
                 <div className="shrink-0 text-right">
                   {family.pricing.monthlyPence > 0 ? (
                     <>
-                      <p className="text-lg font-bold text-[#123524]">{formatPence(family.pricing.monthlyPence)}<span className="text-sm font-normal text-slate-400">/mo</span></p>
+                      <p className="text-lg font-bold text-[#1565ff]">{formatPence(family.pricing.monthlyPence)}<span className="text-sm font-normal text-slate-400">/mo</span></p>
                       {family.pricing.totalDiscountPence > 0 && (
                         <p className="text-xs text-emerald-600">
                           saving {formatPence(family.pricing.totalDiscountPence)}

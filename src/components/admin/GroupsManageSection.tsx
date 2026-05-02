@@ -50,7 +50,7 @@ function TeamMultiSelect({
             onClick={() => toggle(team.id)}
             className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
               active
-                ? 'bg-[#123524] text-white'
+                ? 'bg-[#1565ff] text-white'
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             }`}
           >
@@ -227,7 +227,7 @@ export function GroupsManageSection({ groups, teams, isSubmitting, onCreate, onU
                   <div className="flex shrink-0 items-center gap-3">
                     <button
                       type="button"
-                      className="text-xs font-medium text-slate-500 hover:text-[#123524]"
+                      className="text-xs font-medium text-slate-500 hover:text-[#1565ff]"
                       onClick={() => startEdit(group)}
                     >
                       Edit

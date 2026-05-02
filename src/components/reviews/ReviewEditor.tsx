@@ -74,7 +74,7 @@ export function ReviewEditor({ playerId, playerName, teamId, coachId, existing, 
   const isAlreadyPublished = existing?.status === 'published'
 
   return (
-    <div className="space-y-5 rounded-[1.75rem] border border-[#123524]/20 bg-white p-5 shadow-sm">
+    <div className="space-y-5 rounded-[1.75rem] border border-[#1565ff]/20 bg-white p-5 shadow-sm">
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div>
@@ -97,7 +97,7 @@ export function ReviewEditor({ playerId, playerName, teamId, coachId, existing, 
           value={form.periodLabel}
           onChange={(e) => set('periodLabel', e.target.value)}
           placeholder="e.g. End of Season 2025/26"
-          className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-[#123524] focus:ring-2 focus:ring-[#123524]/15"
+          className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-[#1565ff] focus:ring-2 focus:ring-[#1565ff]/15"
         />
         <datalist id="period-presets">
           {PERIOD_PRESETS.map((p) => <option key={p} value={p} />)}
@@ -132,7 +132,7 @@ export function ReviewEditor({ playerId, playerName, teamId, coachId, existing, 
           onChange={(e) => set('strengths', e.target.value)}
           maxLength={1000}
           placeholder="What has this player done really well this season?"
-          className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-[#123524] focus:ring-2 focus:ring-[#123524]/15"
+          className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-[#1565ff] focus:ring-2 focus:ring-[#1565ff]/15"
         />
       </div>
 
@@ -147,7 +147,7 @@ export function ReviewEditor({ playerId, playerName, teamId, coachId, existing, 
           onChange={(e) => set('areasToImprove', e.target.value)}
           maxLength={1000}
           placeholder="What should this player focus on next?"
-          className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-[#123524] focus:ring-2 focus:ring-[#123524]/15"
+          className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-[#1565ff] focus:ring-2 focus:ring-[#1565ff]/15"
         />
       </div>
 
@@ -183,7 +183,7 @@ export function ReviewEditor({ playerId, playerName, teamId, coachId, existing, 
             type="button"
             onClick={() => void handleSave(true)}
             disabled={saving}
-            className="rounded-xl bg-[#123524] px-4 py-2 text-sm font-semibold text-white transition disabled:opacity-40 hover:bg-[#1a4a33] active:scale-[0.98]"
+            className="rounded-xl bg-[#1565ff] px-4 py-2 text-sm font-semibold text-white transition disabled:opacity-40 hover:bg-[#0d4ed8] active:scale-[0.98]"
           >
             {publishing ? 'Publishing…' : 'Save & publish to parents'}
           </button>

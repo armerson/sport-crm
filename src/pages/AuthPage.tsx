@@ -344,7 +344,7 @@ export function AuthPage() {
                 </Button>
                 <p className="text-center text-sm text-slate-500">
                   <button
-                    className="font-medium text-[#123524] underline underline-offset-2 hover:text-[#1a4a33]"
+                    className="font-medium text-[#1565ff] underline underline-offset-2 hover:text-[#0d4ed8]"
                     onClick={() => switchMode('forgot-password')}
                     type="button"
                   >
@@ -359,7 +359,7 @@ export function AuthPage() {
                 <p className="mt-0.5 text-xs leading-5 text-slate-500">
                   Parents and players can{' '}
                   <button
-                    className="font-semibold text-[#123524] underline underline-offset-2"
+                    className="font-semibold text-[#1565ff] underline underline-offset-2"
                     onClick={() => switchMode('sign-up')}
                     type="button"
                   >
@@ -402,7 +402,7 @@ export function AuthPage() {
                   </Button>
                   <p className="text-center text-sm text-slate-500">
                     <button
-                      className="font-medium text-[#123524] underline underline-offset-2"
+                      className="font-medium text-[#1565ff] underline underline-offset-2"
                       onClick={() => switchMode('sign-in')}
                       type="button"
                     >
@@ -435,7 +435,7 @@ export function AuthPage() {
               <button
                 type="button"
                 onClick={() => selectSignUpKind('parent')}
-                className="w-full rounded-2xl border-2 border-slate-200 bg-white p-5 text-left shadow-sm transition hover:border-[#123524]/40 hover:shadow-md active:scale-[0.99]"
+                className="w-full rounded-2xl border-2 border-slate-200 bg-white p-5 text-left shadow-sm transition hover:border-[#1565ff]/40 hover:shadow-md active:scale-[0.99]"
               >
                 <div className="flex items-center gap-3">
                   <span className="text-2xl">👨‍👩‍👧</span>
@@ -448,7 +448,7 @@ export function AuthPage() {
               <button
                 type="button"
                 onClick={() => selectSignUpKind('player')}
-                className="w-full rounded-2xl border-2 border-slate-200 bg-white p-5 text-left shadow-sm transition hover:border-[#123524]/40 hover:shadow-md active:scale-[0.99]"
+                className="w-full rounded-2xl border-2 border-slate-200 bg-white p-5 text-left shadow-sm transition hover:border-[#1565ff]/40 hover:shadow-md active:scale-[0.99]"
               >
                 <div className="flex items-center gap-3">
                   <span className="text-2xl">⚽</span>
@@ -474,7 +474,7 @@ export function AuthPage() {
                 <button
                   type="button"
                   onClick={() => { setSignUpStep('who'); setSignUpKind(null); setFormError(null) }}
-                  className="font-medium text-[#123524] underline underline-offset-2"
+                  className="font-medium text-[#1565ff] underline underline-offset-2"
                 >
                   ← Back
                 </button>

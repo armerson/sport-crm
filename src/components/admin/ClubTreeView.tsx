@@ -15,7 +15,7 @@ function TreeNode({ group, allGroups, teamById, depth }: TreeNodeProps) {
     <div className={depth > 0 ? 'ml-5 border-l border-slate-200 pl-4' : ''}>
       {/* Group row */}
       <div className="flex items-center gap-2 py-1.5">
-        <svg className="size-4 shrink-0 text-[#123524]/70" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
+        <svg className="size-4 shrink-0 text-[#1565ff]/70" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
           <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v8.25A2.25 2.25 0 004.5 16.5h15A2.25 2.25 0 0021.75 14.25v-3.75" />
         </svg>
         <span className="font-semibold text-slate-950">{group.name}</span>

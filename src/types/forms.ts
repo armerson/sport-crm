@@ -65,6 +65,10 @@ export interface ClubSettings {
   name: string
   logoUrl: string | null
   primaryColor: string
+  /** Short phrase appended to generated Instagram captions, e.g. "Up the Rovers!" */
+  instagramTagline: string
+  /** Space-separated hashtags for Instagram posts, e.g. "#COYB #GrassrootsFootball" */
+  instagramHashtags: string
 }
 
 export interface FormInput {

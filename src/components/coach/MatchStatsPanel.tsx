@@ -129,7 +129,7 @@ export function MatchStatsPanel({ eventId, teamId, attendingPlayers }: MatchStat
                     type="button"
                     disabled={isSaving}
                     onClick={() => void save(player.id)}
-                    className="shrink-0 rounded-full bg-[#123524] px-3 py-1 text-xs font-bold text-white disabled:opacity-60 transition"
+                    className="shrink-0 rounded-full bg-[#1565ff] px-3 py-1 text-xs font-bold text-white disabled:opacity-60 transition"
                   >
                     {isSaving ? 'Saving…' : 'Save'}
                   </button>

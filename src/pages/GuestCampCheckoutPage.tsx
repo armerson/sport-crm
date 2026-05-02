@@ -13,7 +13,7 @@ export function GuestCampCheckoutPage() {
   const [searchParams] = useSearchParams()
   const cancelled = searchParams.get('cancelled') === '1'
 
-  const [club, setClub] = useState<ClubSettings>({ name: 'My Club', logoUrl: null, primaryColor: '#123524' })
+  const [club, setClub] = useState<ClubSettings>({ name: 'My Club', logoUrl: null, primaryColor: '#1565ff' })
   const [product, setProduct] = useState<GuestProductInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
@@ -86,7 +86,7 @@ export function GuestCampCheckoutPage() {
           {club.logoUrl ? (
             <img src={club.logoUrl} alt={club.name} className="mx-auto mb-4 h-16 w-16 rounded-2xl object-cover shadow-md" />
           ) : (
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#123524] shadow-md">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#1565ff] shadow-md">
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10" />
                 <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
@@ -99,7 +99,7 @@ export function GuestCampCheckoutPage() {
           {product.description ? (
             <p className="mt-2 text-sm text-slate-600">{product.description}</p>
           ) : null}
-          <p className="mt-3 text-lg font-semibold text-[#123524]">{formatPence(product.pricePence)}</p>
+          <p className="mt-3 text-lg font-semibold text-[#1565ff]">{formatPence(product.pricePence)}</p>
           <p className="mt-1 text-xs text-slate-500">Secure payment by card (Stripe). No club login required.</p>
         </div>
 
@@ -122,7 +122,7 @@ export function GuestCampCheckoutPage() {
               Parent / guardian name <span className="text-rose-500">*</span>
             </label>
             <input
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#123524]/20 focus:border-[#123524]/40"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#1565ff]/20 focus:border-[#1565ff]/40"
               required
               value={guardianName}
               onChange={(e) => setGuardianName(e.target.value)}
@@ -135,7 +135,7 @@ export function GuestCampCheckoutPage() {
               Email <span className="text-rose-500">*</span>
             </label>
             <input
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#123524]/20 focus:border-[#123524]/40"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#1565ff]/20 focus:border-[#1565ff]/40"
               type="email"
               required
               value={guardianEmail}
@@ -150,7 +150,7 @@ export function GuestCampCheckoutPage() {
               Participant name <span className="text-rose-500">*</span>
             </label>
             <input
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#123524]/20 focus:border-[#123524]/40"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#1565ff]/20 focus:border-[#1565ff]/40"
               required
               value={childName}
               onChange={(e) => setChildName(e.target.value)}
@@ -163,7 +163,7 @@ export function GuestCampCheckoutPage() {
               Date of birth <span className="text-rose-500">*</span>
             </label>
             <input
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#123524]/20 focus:border-[#123524]/40"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#1565ff]/20 focus:border-[#1565ff]/40"
               type="date"
               required
               value={childDob}
@@ -174,7 +174,7 @@ export function GuestCampCheckoutPage() {
           <div>
             <label className="mb-1.5 block text-sm font-semibold text-slate-700">Notes (optional)</label>
             <textarea
-              className="min-h-[72px] w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#123524]/20 focus:border-[#123524]/40"
+              className="min-h-[72px] w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#1565ff]/20 focus:border-[#1565ff]/40"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Allergies, second contact, or other info for the club"
@@ -185,7 +185,7 @@ export function GuestCampCheckoutPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full rounded-2xl bg-[#123524] py-3.5 text-sm font-bold text-white shadow-md transition hover:bg-[#1a4d35] disabled:opacity-60"
+            className="w-full rounded-2xl bg-[#1565ff] py-3.5 text-sm font-bold text-white shadow-md transition hover:bg-[#1a4d35] disabled:opacity-60"
           >
             {submitting ? 'Redirecting to secure payment…' : `Continue to pay ${formatPence(product.pricePence)}`}
           </button>
@@ -200,7 +200,7 @@ export function GuestCampCheckoutPage() {
 }
 
 export function GuestCampSuccessPage() {
-  const [club, setClub] = useState<ClubSettings>({ name: 'My Club', logoUrl: null, primaryColor: '#123524' })
+  const [club, setClub] = useState<ClubSettings>({ name: 'My Club', logoUrl: null, primaryColor: '#1565ff' })
 
   useEffect(() => {
     void fetchClubSettings().then(setClub)
@@ -221,7 +221,7 @@ export function GuestCampSuccessPage() {
           </p>
         </div>
         <p className="mt-8 text-sm text-slate-500">
-          <Link to="/login" className="font-semibold text-[#123524] hover:underline">
+          <Link to="/login" className="font-semibold text-[#1565ff] hover:underline">
             Sign in
           </Link>
           {' '}if you already have a club account.

@@ -19,7 +19,7 @@ interface StatCardProps {
 
 function StatCard({ value, label, variant = 'dark' }: StatCardProps) {
   const bg =
-    variant === 'green' ? 'bg-[#123524]' : variant === 'orange' ? 'bg-[#f18a3f]' : 'bg-slate-950'
+    variant === 'green' ? 'bg-[#1565ff]' : variant === 'orange' ? 'bg-[#f18a3f]' : 'bg-slate-950'
   const textMain = variant === 'orange' ? 'text-slate-950' : 'text-white'
   const textSub = variant === 'orange' ? 'text-slate-800/70' : 'text-white/70'
 

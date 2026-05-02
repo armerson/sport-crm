@@ -85,17 +85,17 @@ export function InstallBanner() {
   if (!deferredPrompt && !showIosHint) return null
 
   return (
-    <div className="flex items-start justify-between gap-3 rounded-2xl border border-[#123524]/20 bg-[#123524]/5 px-4 py-3">
-      <div className="flex items-start gap-2.5 text-[#123524]">
+    <div className="flex items-start justify-between gap-3 rounded-2xl border border-[#1565ff]/20 bg-[#1565ff]/5 px-4 py-3">
+      <div className="flex items-start gap-2.5 text-[#1565ff]">
         <span className="mt-0.5 shrink-0">
           <PhoneIcon />
         </span>
         <div className="text-sm">
-          <p className="font-semibold">Install Club CRM</p>
+          <p className="font-semibold">Install ClubOS</p>
           {deferredPrompt ? (
-            <p className="mt-0.5 text-[#123524]/70">Add to your home screen for quick one-tap access.</p>
+            <p className="mt-0.5 text-[#1565ff]/70">Add to your home screen for quick one-tap access.</p>
           ) : (
-            <p className="mt-0.5 text-[#123524]/70">
+            <p className="mt-0.5 text-[#1565ff]/70">
               Tap <ShareIcon /> <strong>Share</strong> then <strong>Add to Home Screen</strong> to install.
             </p>
           )}
@@ -104,7 +104,7 @@ export function InstallBanner() {
       <div className="flex shrink-0 items-center gap-2">
         {deferredPrompt ? (
           <button
-            className="rounded-xl bg-[#123524] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[#1a4a33]"
+            className="rounded-xl bg-[#1565ff] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[#0d4ed8]"
             onClick={() => void handleInstall()}
             type="button"
           >
@@ -113,7 +113,7 @@ export function InstallBanner() {
         ) : null}
         <button
           aria-label="Dismiss"
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[#123524]/40 transition hover:bg-[#123524]/10 hover:text-[#123524]/70"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[#1565ff]/40 transition hover:bg-[#1565ff]/10 hover:text-[#1565ff]/70"
           onClick={dismiss}
           type="button"
         >

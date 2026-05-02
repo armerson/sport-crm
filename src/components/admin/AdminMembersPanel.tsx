@@ -18,7 +18,7 @@ const ROLE_LABEL: Record<UserRole, string> = {
 }
 const ROLE_COLOUR: Record<UserRole, string> = {
   admin:  'bg-purple-100 text-purple-700',
-  coach:  'bg-[#123524]/10 text-[#123524]',
+  coach:  'bg-[#1565ff]/10 text-[#1565ff]',
   parent: 'bg-blue-100 text-blue-700',
   player: 'bg-amber-100 text-amber-700',
 }
@@ -29,7 +29,7 @@ function Initials({ name }: { name: string }) {
     ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
     : name.slice(0, 2).toUpperCase()
   return (
-    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#123524]/10 text-xs font-bold text-[#123524]">
+    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#1565ff]/10 text-xs font-bold text-[#1565ff]">
       {letters}
     </div>
   )
@@ -88,7 +88,7 @@ function MemberEditor({
   }
 
   return (
-    <div className="mt-3 rounded-2xl border border-[#123524]/20 bg-[#123524]/5 p-4 space-y-4">
+    <div className="mt-3 rounded-2xl border border-[#1565ff]/20 bg-[#1565ff]/5 p-4 space-y-4">
       {/* Role toggles */}
       <div>
         <p className="mb-2 text-xs font-semibold text-slate-600 uppercase tracking-wide">Roles</p>
@@ -127,8 +127,8 @@ function MemberEditor({
                     onClick={() => toggleTeam(team.id)}
                     className={`rounded-xl border px-3 py-2 text-left text-xs transition ${
                       checked
-                        ? 'border-[#123524] bg-[#123524] text-white'
-                        : 'border-slate-200 bg-white text-slate-700 hover:border-[#123524]/40'
+                        ? 'border-[#1565ff] bg-[#1565ff] text-white'
+                        : 'border-slate-200 bg-white text-slate-700 hover:border-[#1565ff]/40'
                     }`}
                   >
                     <p className="font-semibold">{team.name}</p>
@@ -148,7 +148,7 @@ function MemberEditor({
           type="button"
           onClick={() => void handleSave()}
           disabled={saving}
-          className="rounded-xl bg-[#123524] px-4 py-2 text-xs font-bold text-white transition disabled:opacity-50 hover:bg-[#1a4a33]"
+          className="rounded-xl bg-[#1565ff] px-4 py-2 text-xs font-bold text-white transition disabled:opacity-50 hover:bg-[#0d4ed8]"
         >
           {saving ? 'Saving…' : 'Save changes'}
         </button>
@@ -294,7 +294,7 @@ function MembersList({ teams }: { teams: TeamRecord[] }) {
           placeholder="Search by name or email…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none transition focus:border-[#123524] focus:ring-2 focus:ring-[#123524]/15"
+          className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none transition focus:border-[#1565ff] focus:ring-2 focus:ring-[#1565ff]/15"
         />
         <div className="flex flex-wrap gap-1.5">
           {FILTERS.map((f) => (
@@ -304,8 +304,8 @@ function MembersList({ teams }: { teams: TeamRecord[] }) {
               onClick={() => setRoleFilter(f.value)}
               className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
                 roleFilter === f.value
-                  ? 'bg-[#123524] text-white'
-                  : 'border border-slate-200 bg-white text-slate-600 hover:border-[#123524]/30'
+                  ? 'bg-[#1565ff] text-white'
+                  : 'border border-slate-200 bg-white text-slate-600 hover:border-[#1565ff]/30'
               }`}
             >
               {f.label}
@@ -399,14 +399,14 @@ function DuplicateCard({
               onClick={() => setPrimaryId(player.id)}
               className={`w-full rounded-xl border p-3 text-left transition ${
                 isSelected
-                  ? 'border-[#123524] bg-white ring-1 ring-[#123524]'
+                  ? 'border-[#1565ff] bg-white ring-1 ring-[#1565ff]'
                   : 'border-slate-200 bg-white hover:border-slate-300'
               }`}
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-slate-700">{player.name}</span>
                 {isSelected && (
-                  <span className="rounded-full bg-[#123524] px-2 py-0.5 text-[10px] font-bold text-white">Keep</span>
+                  <span className="rounded-full bg-[#1565ff] px-2 py-0.5 text-[10px] font-bold text-white">Keep</span>
                 )}
               </div>
               <p className="mt-0.5 text-[11px] text-slate-400">

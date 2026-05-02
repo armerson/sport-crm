@@ -9,7 +9,7 @@ function FieldInput({ field, value, onChange }: {
   value: string
   onChange: (v: string) => void
 }) {
-  const base = 'w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#123524]/20 focus:border-[#123524]/40'
+  const base = 'w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1565ff]/20 focus:border-[#1565ff]/40'
 
   if (field.fieldType === 'textarea') {
     return (
@@ -27,7 +27,7 @@ function FieldInput({ field, value, onChange }: {
     return (
       <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 hover:bg-slate-50">
         <input
-          className="h-4 w-4 accent-[#123524]"
+          className="h-4 w-4 accent-[#1565ff]"
           type="checkbox"
           required={field.required}
           checked={value === 'true'}
@@ -61,7 +61,7 @@ function FieldInput({ field, value, onChange }: {
         {field.options.map((opt) => (
           <label key={opt} className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 hover:bg-slate-50">
             <input
-              className="h-4 w-4 accent-[#123524]"
+              className="h-4 w-4 accent-[#1565ff]"
               type="checkbox"
               checked={selected.includes(opt)}
               onChange={(e) => {
@@ -100,7 +100,7 @@ export function RegisterPage() {
   const { currentUser: user, loading: authLoading } = useAuth()
 
   const [form, setForm] = useState<(RegistrationForm & { fields: FormField[] }) | null>(null)
-  const [club, setClub] = useState<ClubSettings>({ name: 'My Club', logoUrl: null, primaryColor: '#123524' })
+  const [club, setClub] = useState<ClubSettings>({ name: 'My Club', logoUrl: null, primaryColor: '#1565ff' })
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [values, setValues] = useState<Record<string, string>>({})
@@ -172,7 +172,7 @@ export function RegisterPage() {
           {club.logoUrl ? (
             <img src={club.logoUrl} alt={club.name} className="mx-auto mb-4 h-16 w-16 rounded-2xl object-cover shadow-md" />
           ) : (
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#123524] shadow-md">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#1565ff] shadow-md">
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10" />
                 <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
@@ -224,7 +224,7 @@ export function RegisterPage() {
                 Your name <span className="text-rose-500">*</span>
               </label>
               <input
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#123524]/20 focus:border-[#123524]/40"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1565ff]/20 focus:border-[#1565ff]/40"
                 type="text"
                 required
                 placeholder="Full name"
@@ -238,7 +238,7 @@ export function RegisterPage() {
                 Email address <span className="text-rose-500">*</span>
               </label>
               <input
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#123524]/20 focus:border-[#123524]/40"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1565ff]/20 focus:border-[#1565ff]/40"
                 type="email"
                 required
                 placeholder="your@email.com"
@@ -265,7 +265,7 @@ export function RegisterPage() {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full rounded-2xl bg-[#123524] py-3.5 text-sm font-bold text-white shadow-md transition hover:bg-[#1a4d35] disabled:opacity-60"
+              className="w-full rounded-2xl bg-[#1565ff] py-3.5 text-sm font-bold text-white shadow-md transition hover:bg-[#1a4d35] disabled:opacity-60"
             >
               {submitting ? 'Submitting…' : 'Submit registration'}
             </button>

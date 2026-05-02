@@ -22,7 +22,7 @@ self.addEventListener('push', (event: PushEvent) => {
   try {
     payload = event.data.json() as PushPayload
   } catch {
-    payload = { title: 'Club CRM', body: event.data.text() }
+    payload = { title: 'ClubOS', body: event.data.text() }
   }
 
   event.waitUntil(
@@ -30,7 +30,7 @@ self.addEventListener('push', (event: PushEvent) => {
       body: payload.body,
       icon: payload.icon ?? '/icon-192.svg',
       badge: '/icon-192.svg',
-      tag: payload.tag ?? 'sports-crm',
+      tag: payload.tag ?? 'clubos',
       data: { url: payload.url ?? '/' },
       requireInteraction: false,
     }),

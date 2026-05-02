@@ -45,14 +45,14 @@ export function InviteButton({ teamId, teamName, role }: InviteButtonProps) {
           type="button"
           onClick={() => void handleGenerate()}
           disabled={state === 'loading'}
-          className="flex items-center gap-1.5 rounded-xl border border-[#123524]/30 px-3 py-1.5 text-xs font-semibold text-[#123524] transition hover:bg-[#123524]/5 disabled:opacity-50 active:scale-[0.97]"
+          className="flex items-center gap-1.5 rounded-xl border border-[#1565ff]/30 px-3 py-1.5 text-xs font-semibold text-[#1565ff] transition hover:bg-[#1565ff]/5 disabled:opacity-50 active:scale-[0.97]"
         >
           {icon}
           {state === 'loading' ? 'Generating…' : state === 'error' ? 'Failed — retry' : label}
         </button>
       ) : (
-        <div className="rounded-2xl border border-[#123524]/20 bg-[#123524]/5 p-3 space-y-2">
-          <p className="text-xs font-semibold text-[#123524]">
+        <div className="rounded-2xl border border-[#1565ff]/20 bg-[#1565ff]/5 p-3 space-y-2">
+          <p className="text-xs font-semibold text-[#1565ff]">
             {role === 'parent' ? 'Parent' : 'Coach'} invite link for {teamName}
           </p>
           <p className="text-[10px] text-slate-500 leading-4">
@@ -72,7 +72,7 @@ export function InviteButton({ teamId, teamName, role }: InviteButtonProps) {
               className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold transition ${
                 state === 'copied'
                   ? 'bg-green-100 text-green-700'
-                  : 'bg-[#123524] text-white hover:bg-[#1a4a33]'
+                  : 'bg-[#1565ff] text-white hover:bg-[#0d4ed8]'
               }`}
             >
               {state === 'copied' ? '✓ Copied!' : 'Copy'}

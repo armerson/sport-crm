@@ -150,7 +150,7 @@ export function PlayerRegistrationSection() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button type="button" className="text-sm font-semibold text-[#123524] hover:underline" onClick={() => openEdit(f)}>
+                    <button type="button" className="text-sm font-semibold text-[#1565ff] hover:underline" onClick={() => openEdit(f)}>
                       Edit
                     </button>
                     <ConfirmInline label="Delete" onConfirm={() => void handleDelete(f.id)} />

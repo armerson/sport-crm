@@ -190,6 +190,8 @@ export interface ResultRecord {
   homeScore: number
   awayScore: number
   notes: string
+  /** Officially confirmed Man of the Match player ID (null until coach confirms) */
+  motmWinnerId: string | null
 }
 
 export interface ResultFormInput {

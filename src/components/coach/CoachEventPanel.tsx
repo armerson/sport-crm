@@ -22,6 +22,9 @@ import type { EventType, RecurrencePattern } from '../../types/club.ts'
 import { PostFeed } from '../posts/PostFeed.tsx'
 import { MatchStatsPanel } from './MatchStatsPanel.tsx'
 import { fetchSeasonStats } from '../../services/playerMatchStats.ts'
+import { createPost, uploadPostImage } from '../../services/posts.ts'
+import { subscribeToTables } from '../../services/supabaseHelpers.ts'
+import { setMotmWinner } from '../../services/coachClub.ts'
 
 const TeamMessagesPanel = lazy(async () => {
   const module = await import('../messages/TeamMessagesPanel.tsx')
@@ -115,7 +118,7 @@ function CoachEventCard({
     <div
       className={`relative rounded-2xl border transition ${
         active
-          ? 'border-[#123524] bg-[#123524] text-white'
+          ? 'border-[#1565ff] bg-[#1565ff] text-white'
           : 'border-slate-200 bg-white text-slate-800 hover:border-slate-300'
       }`}
     >
@@ -123,9 +126,9 @@ function CoachEventCard({
       <button className="w-full px-4 py-3 text-left" onClick={onSelect} type="button">
         <div className="flex min-w-0 items-start gap-3">
           {/* Date box */}
-          <div className={`flex w-10 shrink-0 flex-col items-center rounded-xl py-1.5 ${active ? 'bg-white/15' : isPast ? 'bg-slate-100' : 'bg-[#123524]/8'}`}>
-            <span className={`text-[9px] font-bold uppercase tracking-widest ${active ? 'text-white/70' : isPast ? 'text-slate-400' : 'text-[#123524]/70'}`}>{box.month}</span>
-            <span className={`text-lg font-bold leading-tight ${active ? 'text-white' : isPast ? 'text-slate-500' : 'text-[#123524]'}`}>{box.day}</span>
+          <div className={`flex w-10 shrink-0 flex-col items-center rounded-xl py-1.5 ${active ? 'bg-white/15' : isPast ? 'bg-slate-100' : 'bg-[#1565ff]/8'}`}>
+            <span className={`text-[9px] font-bold uppercase tracking-widest ${active ? 'text-white/70' : isPast ? 'text-slate-400' : 'text-[#1565ff]/70'}`}>{box.month}</span>
+            <span className={`text-lg font-bold leading-tight ${active ? 'text-white' : isPast ? 'text-slate-500' : 'text-[#1565ff]'}`}>{box.day}</span>
           </div>
           {/* Content */}
           <div className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -182,7 +185,7 @@ function CoachEventCard({
 
       {/* Dropdown menu */}
       {menuOpen && (
-        <div className={`absolute right-2 top-9 z-20 min-w-[160px] rounded-2xl border py-1 shadow-xl ${active ? 'border-white/20 bg-[#1a4a33]' : 'border-slate-100 bg-white'}`}>
+        <div className={`absolute right-2 top-9 z-20 min-w-[160px] rounded-2xl border py-1 shadow-xl ${active ? 'border-white/20 bg-[#0d4ed8]' : 'border-slate-100 bg-white'}`}>
           <button
             type="button"
             onClick={() => { onEdit(); setMenuOpen(false) }}
@@ -246,10 +249,13 @@ function CoachEventCard({
   )
 }
 
-/** Tiny side-effect component that fetches season match stats when the Stats tab opens. */
+/** Fetches season match stats when the Stats tab opens and re-fetches whenever player stats change. */
 function StatsFetcher({ teamId, onData }: { teamId: string; onData: (s: import('../../types/club.ts').PlayerMatchStat[]) => void }) {
   useEffect(() => {
     fetchSeasonStats(teamId).then(onData).catch(() => undefined)
+    return subscribeToTables(`season-stats-${teamId}`, ['player_match_stats'], async () => {
+      await fetchSeasonStats(teamId).then(onData).catch(() => undefined)
+    })
   }, [teamId, onData])
   return null
 }
@@ -292,7 +298,12 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
   const [resultValues, setResultValues] = useState({ homeScore: '', awayScore: '', notes: '' })
   const [resultError, setResultError] = useState<string | null>(null)
   const [showResultForm, setShowResultForm] = useState(false)
+  const [optimisticResult, setOptimisticResult] = useState<{ homeScore: number; awayScore: number; notes: string } | null>(null)
+  const [postToFeed, setPostToFeed] = useState(true)
+  const [resultPhoto, setResultPhoto] = useState<File | null>(null)
+  const [resultPhotoPreview, setResultPhotoPreview] = useState<string | null>(null)
   const [seasonMatchStats, setSeasonMatchStats] = useState<import('../../types/club.ts').PlayerMatchStat[]>([])
+  const [activeMatchStats, setActiveMatchStats] = useState<import('../../types/club.ts').PlayerMatchStat[]>([])
   const [sendingReminder, setSendingReminder] = useState(false)
   const [reminderMsg, setReminderMsg] = useState<string | null>(null)
 
@@ -327,7 +338,11 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
   const selectedTeam = teams.find((team) => team.id === activeTeamId) ?? null
   const activeEvent = events.find((e) => e.id === activeEventId) ?? null
   const isPastMatch = activeEvent?.type === 'match' && new Date(activeEvent.dateTime) < new Date()
-  const existingResult = isPastMatch ? resultByEventId.get(activeEventId) : undefined
+  const existingResult = isPastMatch
+    ? (optimisticResult
+        ? { id: '', eventId: activeEventId, ...optimisticResult }
+        : resultByEventId.get(activeEventId))
+    : undefined
   const isSingleTeamCoach = teams.length === 1
 
   const activeEventCounts = useMemo(
@@ -464,7 +479,17 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
     setShowResultForm(false)
     setResultValues({ homeScore: '', awayScore: '', notes: '' })
     setResultError(null)
+    setOptimisticResult(null)
+    setPostToFeed(true)
+    setResultPhoto(null)
+    setResultPhotoPreview(null)
+    setActiveMatchStats([])
   }, [activeEventId])
+
+  useEffect(() => {
+    if (!activeEventId || !isPastMatch) return
+    fetchMatchStats(activeEventId).then(setActiveMatchStats).catch(() => undefined)
+  }, [activeEventId, isPastMatch])
 
   async function handleSaveResult(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -481,9 +506,28 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
         awayScore: away,
         notes: resultValues.notes.trim(),
       })
+      setOptimisticResult({ homeScore: home, awayScore: away, notes: resultValues.notes.trim() })
       setShowResultForm(false)
       setResultError(null)
-      setSuccessMessage('Result saved.')
+
+      if (postToFeed) {
+        try {
+          let imageUrl: string | null = null
+          if (resultPhoto) imageUrl = await uploadPostImage(resultPhoto)
+          const teamName = selectedTeam?.name ?? 'Us'
+          const opponent = activeEvent?.opponent ?? 'Opponent'
+          const notes = resultValues.notes.trim()
+          const body = notes
+            ? `Full-time: ${teamName} ${home}–${away} ${opponent}\n\n${notes}`
+            : `Full-time: ${teamName} ${home}–${away} ${opponent}`
+          await createPost(coachId, { title: null, body, teamId: activeTeamId || null, pinned: false, imageUrl })
+          setSuccessMessage('Result saved and posted to club feed.')
+        } catch {
+          setSuccessMessage('Result saved. (Feed post failed — try posting manually.)')
+        }
+      } else {
+        setSuccessMessage('Result saved.')
+      }
     } catch (err) {
       setResultError(err instanceof Error ? err.message : 'Unable to save result. Please try again.')
     }
@@ -595,7 +639,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                       type="button"
                       onClick={() => { setCreateTeamId(activeTeamId || teams[0]?.id || ''); setActiveTab('create') }}
                       title="Create event"
-                      className="flex h-8 w-8 items-center justify-center rounded-full bg-[#123524] text-white shadow-sm transition hover:bg-[#1a4a33] active:scale-95"
+                      className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1565ff] text-white shadow-sm transition hover:bg-[#0d4ed8] active:scale-95"
                     >
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
                         <line x1="12" y1="5" x2="12" y2="19" />
@@ -610,7 +654,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                 {events.length > 0 ? (
                   groupByWeek(events, true).map(({ bucket, label, items: bucketEvents }) => (
                     <div key={bucket}>
-                      <p className={`mb-2 text-[11px] font-bold uppercase tracking-widest ${bucket === 'past' ? 'text-slate-400' : bucket === 'today' ? 'text-[#123524]' : 'text-slate-500'}`}>
+                      <p className={`mb-2 text-[11px] font-bold uppercase tracking-widest ${bucket === 'past' ? 'text-slate-400' : bucket === 'today' ? 'text-[#1565ff]' : 'text-slate-500'}`}>
                         {label}
                       </p>
                       <div className="space-y-2">
@@ -639,7 +683,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                     </p>
                     {activeTeamId || isSingleTeamCoach ? (
                       <button
-                        className="mt-3 text-sm font-semibold text-[#123524] underline underline-offset-2"
+                        className="mt-3 text-sm font-semibold text-[#1565ff] underline underline-offset-2"
                         onClick={() => setActiveTab('create')}
                         type="button"
                       >
@@ -658,7 +702,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                 <button
                   type="button"
                   onClick={() => setSelectedEventId('')}
-                  className="mb-4 flex items-center gap-1.5 text-sm font-semibold text-[#123524] xl:hidden"
+                  className="mb-4 flex items-center gap-1.5 text-sm font-semibold text-[#1565ff] xl:hidden"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="15 18 9 12 15 6" />
@@ -741,7 +785,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
               {activeEventId ? (
                 <>
                   <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-3xl bg-[#123524] p-4 text-white">
+                    <div className="rounded-3xl bg-[#1565ff] p-4 text-white">
                       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">Going</p>
                       <p className="mt-2 text-3xl font-semibold">{activeEventCounts.yes}</p>
                     </div>
@@ -866,7 +910,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                     <h3 className="font-semibold text-slate-900">Match Result</h3>
                     {!showResultForm ? (
                       <button
-                        className="text-xs font-semibold text-[#123524] hover:underline"
+                        className="text-xs font-semibold text-[#1565ff] hover:underline"
                         onClick={() => {
                           if (existingResult) {
                             setResultValues({
@@ -909,6 +953,55 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                       {resultError && (
                         <p className="rounded-xl bg-red-50 px-3 py-2 text-xs text-red-600">{resultError}</p>
                       )}
+                      <div className="border-t border-slate-100 pt-3 space-y-3">
+                        <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer select-none">
+                          <input
+                            checked={postToFeed}
+                            className="h-4 w-4 rounded border-slate-300 accent-[#1565ff]"
+                            onChange={(e) => setPostToFeed(e.target.checked)}
+                            type="checkbox"
+                          />
+                          Post result to club feed
+                        </label>
+                        {postToFeed && (
+                          <div>
+                            {resultPhotoPreview ? (
+                              <div className="relative overflow-hidden rounded-2xl">
+                                <img alt="Match photo preview" className="aspect-video w-full object-cover" src={resultPhotoPreview} />
+                                <button
+                                  aria-label="Remove photo"
+                                  className="absolute right-2 top-2 rounded-full bg-black/50 p-1.5 text-white hover:bg-black/70"
+                                  onClick={() => { setResultPhoto(null); setResultPhotoPreview(null) }}
+                                  type="button"
+                                >
+                                  <svg fill="none" height="14" stroke="currentColor" strokeLinecap="round" strokeWidth={2.5} viewBox="0 0 24 24" width="14">
+                                    <path d="M18 6 6 18M6 6l12 12" />
+                                  </svg>
+                                </button>
+                              </div>
+                            ) : (
+                              <label className="flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed border-slate-300 py-5 text-slate-500 transition hover:border-[#1565ff] hover:text-[#1565ff]">
+                                <svg fill="none" height="20" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} viewBox="0 0 24 24" width="20">
+                                  <rect height="18" rx="2" ry="2" width="18" x="3" y="3" />
+                                  <circle cx="8.5" cy="8.5" r="1.5" />
+                                  <polyline points="21 15 16 10 5 21" />
+                                </svg>
+                                <span className="text-xs font-medium">Add match photo (optional)</span>
+                                <input
+                                  accept="image/*"
+                                  className="sr-only"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0] ?? null
+                                    setResultPhoto(file)
+                                    setResultPhotoPreview(file ? URL.createObjectURL(file) : null)
+                                  }}
+                                  type="file"
+                                />
+                              </label>
+                            )}
+                          </div>
+                        )}
+                      </div>
                       <div className="flex gap-2">
                         <Button className="flex-1" loading={isSubmitting} type="submit">
                           Save result
@@ -924,7 +1017,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                       </div>
                     </form>
                   ) : existingResult ? (
-                    <div className="rounded-2xl bg-slate-50 px-4 py-4 text-center">
+                    <div className="rounded-2xl bg-slate-50 px-4 py-4">
                       <div className="flex items-center justify-center gap-3">
                         <span className="text-xs font-semibold text-slate-500">{selectedTeam?.name ?? 'Us'}</span>
                         <p className="text-3xl font-bold tabular-nums text-slate-950">
@@ -933,8 +1026,31 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                         <span className="text-xs font-semibold text-slate-500">{activeEvent?.opponent ?? 'Opponent'}</span>
                       </div>
                       {existingResult.notes ? (
-                        <p className="mt-2 text-sm text-slate-600">{existingResult.notes}</p>
+                        <p className="mt-2 text-center text-sm text-slate-600">{existingResult.notes}</p>
                       ) : null}
+                      {/* Goal scorers */}
+                      {activeMatchStats.filter((s) => s.goals > 0).length > 0 && (
+                        <div className="mt-3 border-t border-slate-200 pt-3 space-y-1">
+                          {activeMatchStats
+                            .filter((s) => s.goals > 0)
+                            .sort((a, b) => b.goals - a.goals)
+                            .map((s) => {
+                              const name = players.find((p) => p.id === s.playerId)?.name ?? 'Player'
+                              return (
+                                <div key={s.playerId} className="flex items-center gap-2 text-sm">
+                                  <span className="text-base leading-none">⚽</span>
+                                  <span className="flex-1 font-medium text-slate-800">{name}</span>
+                                  {s.goals > 1 && (
+                                    <span className="text-xs font-bold text-slate-500">×{s.goals}</span>
+                                  )}
+                                  {s.assists > 0 && (
+                                    <span className="text-xs text-slate-400">🎯 {s.assists}</span>
+                                  )}
+                                </div>
+                              )
+                            })}
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-400">
@@ -944,7 +1060,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                 </div>
               ) : null}
 
-              {/* MOTM voting tally — coach sees read-only view */}
+              {/* MOTM voting tally — coach sees tally + confirm MOTM */}
               {activeEventId && isPastMatch ? (
                 <MotmVotingCard
                   eventId={activeEventId}
@@ -952,6 +1068,10 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                   players={players}
                   currentUserId={profile.id}
                   readOnly
+                  confirmedWinnerId={resultByEventId.get(activeEventId)?.motmWinnerId ?? null}
+                  onConfirmWinner={async (playerId) => {
+                    await setMotmWinner(activeEventId, playerId)
+                  }}
                 />
               ) : null}
 
@@ -993,7 +1113,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                           {/* Starter / Sub segmented toggle */}
                           <div className="flex overflow-hidden rounded-xl border border-slate-200 text-xs font-semibold">
                             <button
-                              className={`px-2.5 py-1 transition ${entry.isStarting ? 'bg-[#123524] text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
+                              className={`px-2.5 py-1 transition ${entry.isStarting ? 'bg-[#1565ff] text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
                               onClick={() => void toggleLineup(player.id, true, true)}
                               type="button"
                             >
@@ -1030,7 +1150,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                             <div key={player.id} className="flex items-center gap-2 rounded-2xl bg-slate-50/60 px-3 py-2">
                               <p className="flex-1 truncate text-sm text-slate-600">{player.name}</p>
                               <button
-                                className="text-xs font-semibold text-[#123524] hover:underline"
+                                className="text-xs font-semibold text-[#1565ff] hover:underline"
                                 onClick={() => void toggleLineup(player.id, true, true)}
                                 type="button"
                               >
@@ -1070,13 +1190,13 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                   key={team.id}
                   type="button"
                   onClick={() => { setCreateTeamId(team.id); setSelectedTeamId(team.id) }}
-                  className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:border-[#123524]/40 hover:shadow-md active:scale-[0.97]"
+                  className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:border-[#1565ff]/40 hover:shadow-md active:scale-[0.97]"
                 >
                   {team.photoUrl ? (
                     <img src={team.photoUrl} alt={team.name} className="h-28 w-full object-cover transition group-hover:opacity-90 sm:h-32" />
                   ) : (
-                    <div className="flex h-28 w-full items-center justify-center bg-gradient-to-br from-[#123524]/10 to-[#123524]/5 sm:h-32">
-                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#123524" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-30">
+                    <div className="flex h-28 w-full items-center justify-center bg-gradient-to-br from-[#1565ff]/10 to-[#1565ff]/5 sm:h-32">
+                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#1565ff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-30">
                         <circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/>
                       </svg>
                     </div>
@@ -1096,7 +1216,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
               <button
                 type="button"
                 onClick={() => setCreateTeamId('')}
-                className="flex items-center gap-1.5 text-sm font-medium text-[#123524] hover:opacity-70"
+                className="flex items-center gap-1.5 text-sm font-medium text-[#1565ff] hover:opacity-70"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
                 Teams
@@ -1171,7 +1291,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                   <button
                     aria-checked={eventValues.recurring}
                     className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none ${
-                      eventValues.recurring ? 'bg-[#123524]' : 'bg-slate-300'
+                      eventValues.recurring ? 'bg-[#1565ff]' : 'bg-slate-300'
                     }`}
                     onClick={() => setEventValues((current) => ({ ...current, recurring: !current.recurring }))}
                     role="switch"
@@ -1269,7 +1389,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                     {selectedTeam?.name ?? 'Team'} · {played} of {pastMatches.length} match{pastMatches.length === 1 ? '' : 'es'} with results
                   </p>
                 </div>
-                <span className="rounded-full bg-[#123524]/10 px-3 py-1 text-sm font-bold text-[#123524]">
+                <span className="rounded-full bg-[#1565ff]/10 px-3 py-1 text-sm font-bold text-[#1565ff]">
                   {pts} pts
                 </span>
               </div>
@@ -1373,6 +1493,41 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
           )
         })()}
 
+        {/* MOTM leaderboard */}
+        {(() => {
+          const now = new Date()
+          const motmCounts = new Map<string, number>()
+          for (const [eventId, result] of resultByEventId) {
+            const ev = events.find((e) => e.id === eventId)
+            if (!ev || new Date(ev.dateTime) >= now) continue
+            if (result.motmWinnerId) {
+              motmCounts.set(result.motmWinnerId, (motmCounts.get(result.motmWinnerId) ?? 0) + 1)
+            }
+          }
+          const sorted = [...motmCounts.entries()]
+            .sort((a, b) => b[1] - a[1])
+          if (sorted.length === 0) return null
+          return (
+            <article className="rounded-[1.75rem] border border-white/70 bg-white/85 p-6 shadow-lg shadow-slate-900/5 backdrop-blur-sm">
+              <h2 className="text-xl font-semibold text-slate-950">Man of the Match</h2>
+              <p className="mt-0.5 text-sm text-slate-500">Season MOTM awards</p>
+              <div className="mt-4 space-y-2">
+                {sorted.map(([playerId, count], i) => {
+                  const playerName = players.find((p) => p.id === playerId)?.name
+                    ?? stats.find((s) => s.playerId === playerId)?.playerName ?? 'Player'
+                  return (
+                    <div key={playerId} className="flex items-center gap-3 rounded-2xl bg-amber-50 px-4 py-3">
+                      <span className="w-5 text-center text-sm font-bold text-amber-400">{i === 0 ? '🏆' : i + 1}</span>
+                      <p className="flex-1 truncate font-medium text-slate-900">{playerName}</p>
+                      <span className="text-sm font-bold text-amber-700">{count} <span className="font-normal text-amber-500">{count === 1 ? 'award' : 'awards'}</span></span>
+                    </div>
+                  )
+                })}
+              </div>
+            </article>
+          )
+        })()}
+
         <article className="rounded-[1.75rem] border border-white/70 bg-white/85 p-6 shadow-lg shadow-slate-900/5 backdrop-blur-sm">
           <h2 className="text-xl font-semibold text-slate-950">Attendance Stats</h2>
           <p className="mt-1 text-sm text-slate-500">Per-player attendance rate across all past events.</p>
@@ -1468,7 +1623,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
               <button
                 type="button"
                 onClick={() => setSquadViewPlayerId(null)}
-                className="flex items-center gap-1.5 text-sm font-semibold text-[#123524] hover:underline"
+                className="flex items-center gap-1.5 text-sm font-semibold text-[#1565ff] hover:underline"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
                   <path d="M19 12H5M12 5l-7 7 7 7" />
@@ -1489,23 +1644,36 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
             </div>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {players.map((player) => (
+              {[...players]
+                .sort((a, b) => {
+                  if (a.jerseyNumber != null && b.jerseyNumber != null) return a.jerseyNumber - b.jerseyNumber
+                  if (a.jerseyNumber != null) return -1
+                  if (b.jerseyNumber != null) return 1
+                  return a.name.localeCompare(b.name)
+                })
+                .map((player) => (
                 <button
                   key={player.id}
                   type="button"
                   onClick={() => setSquadViewPlayerId(player.id)}
-                  className="rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-[#123524]/30 hover:shadow-md"
+                  className="rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-[#1565ff]/30 hover:shadow-md"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#123524]/10 text-lg font-bold text-[#123524]">
-                      {player.name.charAt(0)}
+                    <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#1565ff]/10 text-lg font-bold text-[#1565ff]">
+                      {player.jerseyNumber != null ? (
+                        <span className="text-base font-extrabold tabular-nums">{player.jerseyNumber}</span>
+                      ) : (
+                        <span>{player.name.charAt(0)}</span>
+                      )}
                     </div>
-                    <div>
-                      <p className="font-semibold text-slate-900">{player.name}</p>
-                      <p className="text-xs text-slate-500">{formatDate(player.dob)}</p>
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-slate-900">{player.name}</p>
+                      <p className="text-xs text-slate-500">
+                        {player.jerseyNumber != null ? `#${player.jerseyNumber} · ` : ''}{formatDate(player.dob)}
+                      </p>
                     </div>
                   </div>
-                  <p className="mt-2 text-right text-xs font-semibold text-[#123524]">View profile →</p>
+                  <p className="mt-2 text-right text-xs font-semibold text-[#1565ff]">View profile →</p>
                 </button>
               ))}
             </div>

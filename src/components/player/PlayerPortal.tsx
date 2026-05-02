@@ -142,7 +142,7 @@ export function PlayerPortal({ profile, activeTab, onTabChange }: PlayerPortalPr
                   <div className="mt-2 flex flex-wrap gap-2">
                     {selfPlayer.teams.length > 0 ? (
                       selfPlayer.teams.map((teamId) => (
-                        <span key={teamId} className="rounded-full bg-[#123524] px-3 py-1 text-xs font-semibold text-white">
+                        <span key={teamId} className="rounded-full bg-[#1565ff] px-3 py-1 text-xs font-semibold text-white">
                           {teamById.get(teamId)?.name ?? 'Team'}
                         </span>
                       ))
@@ -158,7 +158,7 @@ export function PlayerPortal({ profile, activeTab, onTabChange }: PlayerPortalPr
               <h2 className="text-2xl font-semibold tracking-tight text-slate-950">Attendance summary</h2>
               {attendanceCounts && selfPlayer ? (
                 <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-3xl bg-[#123524] p-4 text-white">
+                  <div className="rounded-3xl bg-[#1565ff] p-4 text-white">
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">Going</p>
                     <p className="mt-2 text-3xl font-semibold">{attendanceCounts.yes}</p>
                   </div>

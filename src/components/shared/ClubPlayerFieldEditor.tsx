@@ -1,7 +1,7 @@
 import type { ClubPlayerField } from '../../types/clubPlayerFields.ts'
 
 const base =
-  'w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#123524]/20 focus:border-[#123524]/40'
+  'w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1565ff]/20 focus:border-[#1565ff]/40'
 
 export function ClubPlayerFieldEditor({
   fields,
@@ -57,7 +57,7 @@ function FieldControl({
     return (
       <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 hover:bg-slate-50">
         <input
-          className="h-4 w-4 accent-[#123524] disabled:opacity-50"
+          className="h-4 w-4 accent-[#1565ff] disabled:opacity-50"
           type="checkbox"
           disabled={disabled}
           required={field.required}
@@ -98,7 +98,7 @@ function FieldControl({
             className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 hover:bg-slate-50"
           >
             <input
-              className="h-4 w-4 accent-[#123524] disabled:opacity-50"
+              className="h-4 w-4 accent-[#1565ff] disabled:opacity-50"
               type="checkbox"
               disabled={disabled}
               checked={selected.includes(opt)}

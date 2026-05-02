@@ -72,9 +72,9 @@ export function subscribeToPlayers(
   return subscribeToTables(`team-players-${teamId}`, ['players', 'player_teams', 'player_parents'], async () => {
     const { data, error } = await client
       .from('players')
-      .select('id, name, dob, player_parents(parent_id), player_teams!inner(team_id)')
+      .select('id, name, dob, jersey_number, player_parents(parent_id), player_teams!inner(team_id)')
       .eq('player_teams.team_id', teamId)
-      .order('name', { ascending: true })
+      .order('jersey_number', { ascending: true, nullsFirst: false })
 
     if (error) {
       onError('Unable to load players.')

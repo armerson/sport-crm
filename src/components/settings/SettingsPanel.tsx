@@ -25,7 +25,7 @@ function BackButton({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="flex items-center gap-1.5 text-sm font-medium text-[#123524] hover:opacity-70"
+      className="flex items-center gap-1.5 text-sm font-medium text-[#1565ff] hover:opacity-70"
     >
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
         <polyline points="15 18 9 12 15 6" />
@@ -48,7 +48,7 @@ function RowButton({ icon, label, sublabel, onClick, danger }: {
       onClick={onClick}
       className={`flex w-full items-center gap-3 rounded-2xl bg-white px-4 py-3.5 text-left shadow-sm ring-1 ring-slate-100 transition active:scale-[0.98] ${danger ? 'text-red-600' : 'text-slate-800'}`}
     >
-      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${danger ? 'bg-red-50' : 'bg-[#123524]/8'}`}>
+      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${danger ? 'bg-red-50' : 'bg-[#1565ff]/8'}`}>
         {icon}
       </span>
       <span className="min-w-0 flex-1">
@@ -96,7 +96,7 @@ function SectionProfile({ onBack }: { onBack: () => void }) {
             type="text"
             value={name}
             onChange={(e) => { setName(e.target.value); setSaved(false) }}
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-[#123524] focus:ring-2 focus:ring-[#123524]/20"
+            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-[#1565ff] focus:ring-2 focus:ring-[#1565ff]/20"
             placeholder="Your name"
           />
         </label>
@@ -115,7 +115,7 @@ function SectionProfile({ onBack }: { onBack: () => void }) {
           type="button"
           onClick={() => void handleSave()}
           disabled={saving || !name.trim() || name.trim() === profile?.name}
-          className="w-full rounded-xl bg-[#123524] py-2.5 text-sm font-semibold text-white transition disabled:opacity-40 active:scale-[0.98]"
+          className="w-full rounded-xl bg-[#1565ff] py-2.5 text-sm font-semibold text-white transition disabled:opacity-40 active:scale-[0.98]"
         >
           {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save changes'}
         </button>
@@ -164,7 +164,7 @@ function SectionNotifications({ onBack }: { onBack: () => void }) {
         <ul className="space-y-1.5 text-xs text-slate-500">
           {['New events added to your team', 'Event reminders', 'Club announcements', 'Match results'].map((item) => (
             <li key={item} className="flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#123524]/50 shrink-0" />
+              <span className="h-1.5 w-1.5 rounded-full bg-[#1565ff]/50 shrink-0" />
               {item}
             </li>
           ))}
@@ -179,7 +179,7 @@ function SectionNotifications({ onBack }: { onBack: () => void }) {
             type="button"
             onClick={() => void handleEnable()}
             disabled={subscribing}
-            className="w-full rounded-xl bg-[#123524] py-2.5 text-sm font-semibold text-white transition disabled:opacity-40 active:scale-[0.98]"
+            className="w-full rounded-xl bg-[#1565ff] py-2.5 text-sm font-semibold text-white transition disabled:opacity-40 active:scale-[0.98]"
           >
             {subscribing ? 'Enabling…' : done ? '✓ Notifications on' : 'Enable notifications'}
           </button>
@@ -287,7 +287,7 @@ function SectionPrivacy({ onBack }: { onBack: () => void }) {
               'Push notification subscription (device token)',
             ].map((item) => (
               <li key={item} className="flex items-start gap-2">
-                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-[#123524]/50 shrink-0" />
+                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-[#1565ff]/50 shrink-0" />
                 {item}
               </li>
             ))}
@@ -341,7 +341,7 @@ export function SettingsPanel({ onClose }: Props) {
       {section === 'main' && (
         <div className="space-y-3">
           {/* Profile summary */}
-          <div className="flex items-center gap-3 rounded-2xl bg-[#123524] px-4 py-4 text-white">
+          <div className="flex items-center gap-3 rounded-2xl bg-[#1565ff] px-4 py-4 text-white">
             <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-lg font-bold">
               {initials}
             </span>
@@ -390,7 +390,7 @@ export function SettingsPanel({ onClose }: Props) {
             danger
           />
 
-          <p className="text-center text-[10px] text-slate-300">Club CRM · v{__APP_VERSION__}</p>
+          <p className="text-center text-[10px] text-slate-300">ClubOS · v{__APP_VERSION__}</p>
         </div>
       )}
 

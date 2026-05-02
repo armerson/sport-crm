@@ -155,7 +155,7 @@ export function BottomNav({ items, active, onChange, badges = {} }: BottomNavPro
             type="button"
             onClick={() => onChange(item.value)}
             className={`relative flex flex-1 flex-col items-center gap-1 px-1 pb-3 pt-2.5 transition-colors ${
-              isActive ? 'text-[#123524]' : 'text-slate-400 active:text-slate-600'
+              isActive ? 'text-[#1565ff]' : 'text-slate-400 active:text-slate-600'
             }`}
           >
             <span className="relative">
@@ -164,7 +164,7 @@ export function BottomNav({ items, active, onChange, badges = {} }: BottomNavPro
                 <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-white" />
               )}
             </span>
-            <span className={`text-[10px] font-semibold leading-none tracking-wide ${isActive ? 'text-[#123524]' : 'text-slate-400'}`}>
+            <span className={`text-[10px] font-semibold leading-none tracking-wide ${isActive ? 'text-[#1565ff]' : 'text-slate-400'}`}>
               {item.label}
             </span>
           </button>

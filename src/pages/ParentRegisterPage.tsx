@@ -23,7 +23,7 @@ export function ParentRegisterPage() {
   const navigate = useNavigate()
   const { currentUser, profile, signUp, refreshProfile, loading: authLoading } = useAuth()
   const [step, setStep] = useState<Step>('account')
-  const [club, setClub] = useState<ClubSettings>({ name: 'My Club', logoUrl: null, primaryColor: '#123524' })
+  const [club, setClub] = useState<ClubSettings>({ name: 'My Club', logoUrl: null, primaryColor: '#1565ff' })
   const [fields, setFields] = useState<ClubPlayerField[]>([])
   const [loadingMeta, setLoadingMeta] = useState(true)
 
@@ -150,7 +150,7 @@ export function ParentRegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#123524] to-slate-900 px-4 py-10">
+    <div className="min-h-screen bg-gradient-to-b from-[#1565ff] to-slate-900 px-4 py-10">
       <div className="mx-auto max-w-lg">
         <div className="mb-6 text-center text-white">
           <p className="text-sm font-semibold uppercase tracking-widest text-white/60">{club.name}</p>
@@ -163,7 +163,7 @@ export function ParentRegisterPage() {
             <form className="space-y-4" onSubmit={handleAccount}>
               <p className="text-sm text-slate-600">
                 Create a parent account. Already have one?{' '}
-                <Link className="font-semibold text-[#123524] hover:underline" to={`/login?next=${encodeURIComponent('/register/parent')}`}>
+                <Link className="font-semibold text-[#1565ff] hover:underline" to={`/login?next=${encodeURIComponent('/register/parent')}`}>
                   Sign in
                 </Link>
               </p>

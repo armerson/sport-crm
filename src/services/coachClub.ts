@@ -272,7 +272,7 @@ export function subscribeToResultsForTeam(
   return subscribeToTables(`team-results-${teamId}`, ['results', 'events'], async () => {
     const { data, error } = await client
       .from('results')
-      .select('id, event_id, home_score, away_score, notes, events!inner(team_id)')
+      .select('id, event_id, home_score, away_score, notes, motm_winner_id, events!inner(team_id)')
       .eq('events.team_id', teamId)
 
     if (error) {
@@ -296,6 +296,16 @@ export async function upsertResult(eventId: string, input: ResultFormInput): Pro
     },
     { onConflict: 'event_id' },
   )
+  if (error) throw new Error(error.message)
+}
+
+/** Confirm (or clear) the MOTM winner for an event. Requires a result row to already exist. */
+export async function setMotmWinner(eventId: string, playerId: string | null): Promise<void> {
+  const client = requireSupabase()
+  const { error } = await client
+    .from('results')
+    .update({ motm_winner_id: playerId, updated_at: new Date().toISOString() })
+    .eq('event_id', eventId)
   if (error) throw new Error(error.message)
 }
 

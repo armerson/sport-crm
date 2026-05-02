@@ -116,7 +116,7 @@ export function BulkImportPanel() {
           <li>If a parent email already exists they are linked without re-inviting</li>
         </ul>
         <button
-          className="mt-3 text-xs font-medium text-[#123524] underline underline-offset-2"
+          className="mt-3 text-xs font-medium text-[#1565ff] underline underline-offset-2"
           onClick={() => setCsvText(EXAMPLE_CSV)}
           type="button"
         >
@@ -130,7 +130,7 @@ export function BulkImportPanel() {
         <input
           ref={fileInputRef}
           accept=".csv,text/csv"
-          className="block w-full cursor-pointer rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 file:mr-4 file:rounded-full file:border-0 file:bg-[#123524] file:px-3 file:py-1 file:text-xs file:font-semibold file:text-white"
+          className="block w-full cursor-pointer rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 file:mr-4 file:rounded-full file:border-0 file:bg-[#1565ff] file:px-3 file:py-1 file:text-xs file:font-semibold file:text-white"
           onChange={handleFileChange}
           type="file"
         />
