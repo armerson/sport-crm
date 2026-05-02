@@ -11,6 +11,7 @@ import { useAdminClubData } from '../../hooks/useAdminClubData.ts'
 import { useAuditLogs } from '../../hooks/useAuditLogs.ts'
 import { useClubSettings } from '../../hooks/useClubSettings.ts'
 import { useTeamPlayers } from '../../hooks/useTeamPlayers.ts'
+import { useAllPlayers } from '../../hooks/useAllPlayers.ts'
 import { useAuth } from '../../hooks/useAuth.ts'
 import { formatDate, formatDateTime } from '../../utils/date.ts'
 import type { ProvisionableRole } from '../../services/provisioning.ts'
@@ -68,11 +69,12 @@ const PlayerRegistrationSection = lazy(async () => {
   return { default: module.PlayerRegistrationSection }
 })
 
-export type AdminTab = 'overview' | 'manage' | 'members' | 'activity' | 'messages' | 'billing' | 'forms' | 'registration' | 'posts'
+export type AdminTab = 'overview' | 'players' | 'manage' | 'members' | 'activity' | 'messages' | 'billing' | 'forms' | 'registration' | 'posts'
 type ManageSection = 'import' | 'team' | 'player' | 'coach' | 'parent' | 'staff' | 'groups'
 
 const ADMIN_TABS = [
   { label: 'Overview', value: 'overview' as AdminTab },
+  { label: 'Players', value: 'players' as AdminTab },
   { label: 'Manage', value: 'manage' as AdminTab },
   { label: 'Members', value: 'members' as AdminTab },
   { label: 'Posts', value: 'posts' as AdminTab },
@@ -119,6 +121,8 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
   } = useAdminClubData()
 
   const { logs: auditLogs, loading: loadingAuditLogs, error: auditLogError } = useAuditLogs()
+  const { players: allPlayers, loading: loadingAllPlayers } = useAllPlayers()
+  const [playerSearch, setPlayerSearch] = useState('')
   const [manageSection, setManageSection] = useState<ManageSection>('import')
   const [showAllPlayers, setShowAllPlayers] = useState(false)
 
@@ -1180,6 +1184,62 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
               </article>
             )
           })() : null}
+        </section>
+      ) : null}
+
+      {/* PLAYERS TAB */}
+      {activeTab === 'players' ? (
+        <section className="space-y-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-2xl font-semibold tracking-tight text-slate-950">Players</h2>
+              <p className="mt-0.5 text-sm text-slate-500">{loadingAllPlayers ? 'Loading…' : `${allPlayers.length} player${allPlayers.length === 1 ? '' : 's'}`}</p>
+            </div>
+            <input
+              type="search"
+              placeholder="Search by name…"
+              value={playerSearch}
+              onChange={(e) => setPlayerSearch(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-[#1565ff] focus:outline-none sm:w-64"
+            />
+          </div>
+
+          {loadingAllPlayers ? (
+            <p className="text-sm text-slate-400">Loading players…</p>
+          ) : allPlayers.length === 0 ? (
+            <p className="text-sm text-slate-400">No players yet.</p>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {allPlayers
+                .filter((p) => !playerSearch || p.name.toLowerCase().includes(playerSearch.toLowerCase()))
+                .map((player) => {
+                  const teamName = teams.find((t) => player.teams.includes(t.id))?.name ?? 'No team'
+                  return (
+                    <button
+                      key={player.id}
+                      type="button"
+                      onClick={() => setViewingPlayerId(player.id)}
+                      className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white px-4 py-3 text-left shadow-sm transition hover:border-[#1565ff]/30 hover:shadow-md"
+                    >
+                      {player.photoUrl ? (
+                        <img src={player.photoUrl} alt={player.name} className="h-12 w-12 shrink-0 rounded-full object-cover" />
+                      ) : (
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#1565ff]/10 text-lg font-bold text-[#1565ff]">
+                          {player.name.charAt(0)}
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-slate-900">{player.name}</p>
+                        <p className="text-xs text-slate-400">{teamName} · {formatDate(player.dob)}</p>
+                      </div>
+                      <svg className="ml-auto h-4 w-4 shrink-0 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M9 18l6-6-6-6" />
+                      </svg>
+                    </button>
+                  )
+                })}
+            </div>
+          )}
         </section>
       ) : null}
 
