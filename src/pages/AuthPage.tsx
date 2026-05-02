@@ -42,7 +42,7 @@ function MobileHeader({ clubName, logoUrl, primaryColor }: { clubName: string; l
       )}
       <div className="min-w-0">
         <p className="truncate text-base font-bold leading-none">{clubName}</p>
-        <p className="mt-0.5 truncate text-xs text-white/70">Track squads, attendance &amp; match-day</p>
+        <p className="mt-0.5 truncate text-xs text-white/70">Track squads, attendance, and match-day updates.</p>
       </div>
     </div>
   )
@@ -83,17 +83,22 @@ function DesktopHero({
       <div className="relative flex h-full flex-col justify-between gap-10">
         <div className="space-y-6">
           {/* Brand */}
-          <div className="flex items-center gap-3">
-            {logoUrl ? (
-              <img src={logoUrl} alt={`${clubName} badge`} className="h-12 w-12 rounded-2xl object-cover ring-2 ring-white/30" />
-            ) : (
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/>
-                </svg>
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              {logoUrl ? (
+                <img src={logoUrl} alt={`${clubName} badge`} className="h-12 w-12 rounded-2xl object-cover ring-2 ring-white/30" />
+              ) : (
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/>
+                  </svg>
+                </div>
+              )}
+              <div>
+                <span className="text-lg font-bold tracking-tight leading-none">{clubName}</span>
+                <p className="mt-0.5 text-xs font-medium text-white/50 tracking-wide uppercase">Powered by ClubOS</p>
               </div>
-            )}
-            <span className="text-lg font-bold tracking-tight">{clubName}</span>
+            </div>
           </div>
 
           {/* Headline + context */}
@@ -576,6 +581,11 @@ export function AuthPage() {
               </p>
             </form>
           )}
+          {/* Powered by */}
+          <p className="mt-6 text-center text-xs text-slate-400">
+            Powered by{' '}
+            <span className="font-semibold text-slate-500">ClubOS</span>
+          </p>
         </section>
       </div>
     </main>
