@@ -34,6 +34,7 @@ function mapPlayerRow(row: Record<string, unknown>): PlayerRecord {
     gender: (row.gender as string | null) ?? null,
     fatherName: (row.father_name as string | null) ?? null,
     motherName: (row.mother_name as string | null) ?? null,
+    email: (row.email as string | null) ?? null,
   }
 }
 
@@ -97,6 +98,7 @@ export async function updatePlayerProfile(playerId: string, input: PlayerProfile
       gender: input.gender || null,
       father_name: input.fatherName || null,
       mother_name: input.motherName || null,
+      email: input.email || null,
       updated_at: new Date().toISOString(),
     })
     .eq('id', playerId)

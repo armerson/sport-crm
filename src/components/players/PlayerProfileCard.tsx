@@ -199,6 +199,7 @@ function ProfileEditForm({
     gender: player.gender ?? '',
     fatherName: player.fatherName ?? '',
     motherName: player.motherName ?? '',
+    email: player.email ?? '',
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -222,6 +223,7 @@ function ProfileEditForm({
         gender: form.gender || null,
         fatherName: form.fatherName || null,
         motherName: form.motherName || null,
+        email: form.email || null,
       })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save.')
@@ -309,6 +311,12 @@ function ProfileEditForm({
           <div className="space-y-1">
             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide">Mother's name</label>
             <input type="text" value={form.motherName} onChange={(e) => setForm((f) => ({ ...f, motherName: e.target.value }))} placeholder="First name" className={inputCls} />
+          </div>
+          <div className="space-y-1 sm:col-span-2">
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide">
+              Player email <span className="font-normal normal-case text-slate-400">(adult players only — used instead of parent email)</span>
+            </label>
+            <input type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} placeholder="player@example.com" className={inputCls} />
           </div>
         </div>
       </div>
@@ -700,6 +708,27 @@ export function PlayerProfileCard({ playerId, role, currentUserId }: PlayerProfi
       const firstName = nameParts[0] ?? ''
       const familyName = nameParts.slice(1).join(' ')
       const dob = player.dob ? new Date(player.dob).toLocaleDateString('en-GB') : ''
+
+      // Determine if adult (18+) to decide whose email to include
+      const ageMs = player.dob ? Date.now() - new Date(player.dob).getTime() : 0
+      const ageYears = ageMs / (1000 * 60 * 60 * 24 * 365.25)
+      const isAdult = ageYears >= 18
+
+      const contactSection = isAdult
+        ? [
+            '=== Player Contact ===',
+            `Email:            ${player.email ?? ''}`,
+            `Emergency contact: ${primaryContact?.name ?? ''} (${primaryContact?.relationship ?? ''})`,
+            `Phone:            ${primaryContact?.phone ?? ''}`,
+          ]
+        : [
+            '=== Parent / Guardian ===',
+            `Name:             ${primaryContact?.name ?? ''}`,
+            `Relationship:     ${primaryContact?.relationship ?? ''}`,
+            `Phone:            ${primaryContact?.phone ?? ''}`,
+            `Email:            ${primaryContact?.email ?? ''}`,
+          ]
+
       const summary = [
         '=== IFA COMET Registration Data ===',
         '',
@@ -715,11 +744,7 @@ export function PlayerProfileCard({ playerId, role, currentUserId }: PlayerProfi
         `Mother name:      ${player.motherName ?? ''}`,
         `Position:         ${player.position ?? ''}`,
         '',
-        '=== Parent / Guardian ===',
-        `Name:             ${primaryContact?.name ?? ''}`,
-        `Relationship:     ${primaryContact?.relationship ?? ''}`,
-        `Phone:            ${primaryContact?.phone ?? ''}`,
-        `Email:            ${primaryContact?.email ?? ''}`,
+        ...contactSection,
         '',
         `Exported: ${new Date().toLocaleString('en-GB')}`,
       ].join('\n')
