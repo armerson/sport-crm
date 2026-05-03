@@ -416,8 +416,13 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
   function startEditingEvent(eventId: string) {
     const event = events.find((e) => e.id === eventId)
     if (!event) return
-    // Convert stored ISO datetime to datetime-local format (no seconds, no Z)
-    const localDt = event.dateTime ? event.dateTime.slice(0, 16) : ''
+    // Convert stored UTC ISO datetime to local datetime-local format (no seconds, no Z)
+    const localDt = event.dateTime
+      ? (() => {
+          const d = new Date(event.dateTime)
+          return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16)
+        })()
+      : ''
     setEditValues({ title: event.title, type: event.type, dateTime: localDt, location: event.location, opponent: event.opponent ?? '' })
     setEditingEventId(eventId)
     setSelectedEventId(eventId)
@@ -445,8 +450,8 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
       setSuccessMessage('Event updated.')
       setEditingEventId(null)
       setEditLocationMeta({})
-    } catch {
-      // Hook exposes a user-facing error.
+    } catch (err) {
+      setLocalError(err instanceof Error ? err.message : 'Failed to save event.')
     }
   }
 
@@ -763,6 +768,11 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                         placeholder="Search pitch, ground, or address…"
                       />
                     </div>
+                    {(localError ?? error) ? (
+                      <p className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm text-rose-800">
+                        {localError ?? error}
+                      </p>
+                    ) : null}
                     <Button className="w-full" loading={isSubmitting} type="submit">
                       Save changes
                     </Button>

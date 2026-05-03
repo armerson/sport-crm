@@ -161,15 +161,23 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
 
   // Club branding
   const { settings: clubSettings, saving: savingBranding, save: saveBranding } = useClubSettings()
-  const [brandingName, setBrandingName] = useState('')
-  const [brandingColor, setBrandingColor] = useState('')
+  const [brandingName, setBrandingName] = useState(clubSettings.name)
+  const [brandingColor, setBrandingColor] = useState(clubSettings.primaryColor)
   const [brandingLogoFile, setBrandingLogoFile] = useState<File | null>(null)
   const [brandingSuccess, setBrandingSuccess] = useState(false)
   // Instagram defaults
-  const [igTagline, setIgTagline] = useState('')
-  const [igHashtags, setIgHashtags] = useState('')
+  const [igTagline, setIgTagline] = useState(clubSettings.instagramTagline)
+  const [igHashtags, setIgHashtags] = useState(clubSettings.instagramHashtags)
   const [igSuccess, setIgSuccess] = useState(false)
   const [igSaving, setIgSaving] = useState(false)
+
+  // Sync branding form when async club settings arrive (or change in another tab)
+  useEffect(() => {
+    setBrandingName(clubSettings.name)
+    setBrandingColor(clubSettings.primaryColor)
+    setIgTagline(clubSettings.instagramTagline)
+    setIgHashtags(clubSettings.instagramHashtags)
+  }, [clubSettings])
 
   // Onboarding checklist
   const [onboardingDismissed, setOnboardingDismissed] = useState(
@@ -500,7 +508,7 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
                 <input
                   id="branding-name"
                   type="text"
-                  defaultValue={clubSettings.name}
+                  value={brandingName}
                   onChange={(e) => setBrandingName(e.target.value)}
                   className="mt-1.5 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#f18a3f] focus:ring-4 focus:ring-[#f18a3f]/15"
                   placeholder="My Club FC"
@@ -513,13 +521,11 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
                   <input
                     id="branding-color"
                     type="color"
-                    defaultValue={clubSettings.primaryColor}
+                    value={brandingColor}
                     onChange={(e) => setBrandingColor(e.target.value)}
                     className="h-10 w-14 cursor-pointer rounded-xl border border-slate-200 bg-white p-1"
                   />
-                  <span className="text-sm text-slate-500">
-                    {brandingColor || clubSettings.primaryColor}
-                  </span>
+                  <span className="text-sm text-slate-500">{brandingColor}</span>
                 </div>
               </div>
               {/* Logo upload */}
@@ -553,8 +559,8 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
                 setBrandingSuccess(false)
                 await saveBranding(
                   {
-                    name: brandingName || clubSettings.name,
-                    primaryColor: brandingColor || clubSettings.primaryColor,
+                    name: brandingName,
+                    primaryColor: brandingColor,
                   },
                   brandingLogoFile ?? undefined,
                 )
@@ -585,7 +591,7 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
                 <label className="mb-1 block text-sm font-medium text-slate-700" htmlFor="ig-tagline">Club tagline</label>
                 <input
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-pink-300"
-                  defaultValue={clubSettings.instagramTagline}
+                  value={igTagline}
                   id="ig-tagline"
                   onChange={(e) => setIgTagline(e.target.value)}
                   placeholder="e.g. Up the Rovers! ⚽"
@@ -597,7 +603,7 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
                 <label className="mb-1 block text-sm font-medium text-slate-700" htmlFor="ig-hashtags">Default hashtags</label>
                 <input
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-pink-300"
-                  defaultValue={clubSettings.instagramHashtags}
+                  value={igHashtags}
                   id="ig-hashtags"
                   onChange={(e) => setIgHashtags(e.target.value)}
                   placeholder="#COYB #GrassrootsFootball #YouthFootball"
@@ -617,8 +623,8 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
                 setIgSuccess(false)
                 try {
                   await saveBranding({
-                    instagramTagline: igTagline || clubSettings.instagramTagline,
-                    instagramHashtags: igHashtags || clubSettings.instagramHashtags,
+                    instagramTagline: igTagline,
+                    instagramHashtags: igHashtags,
                   })
                   setIgSuccess(true)
                   setTimeout(() => setIgSuccess(false), 3000)
