@@ -180,12 +180,15 @@ export async function approvePendingPlayerToTeam(playerId: string, teamId: strin
 
   const { data: teamRow } = await client.from('teams').select('name').eq('id', teamId).single()
 
-  await writeAuditLog({
-    action: 'approve_pending_player',
-    targetType: 'player',
-    targetId: playerId,
-    summary: `Approved ${playerRow.name} onto ${teamRow?.name ?? 'team'}.`,
-  })
+  // Audit log is best-effort — a logging failure must not roll back the approval
+  try {
+    await writeAuditLog({
+      action: 'approve_pending_player',
+      targetType: 'player',
+      targetId: playerId,
+      summary: `Approved ${playerRow.name} onto ${teamRow?.name ?? 'team'}.`,
+    })
+  } catch { /* non-blocking */ }
 }
 
 export async function rejectPendingRegistration(playerId: string) {

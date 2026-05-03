@@ -587,10 +587,10 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
           {!isSingleTeamCoach ? (
             <div className="max-w-sm">
               <SelectField
-                label="Team"
+                label="Filter by team"
                 onChange={(event) => { setSelectedTeamId(event.target.value); setSelectedEventId('') }}
                 options={[
-                  { label: loadingTeams ? 'Loading teams...' : teams.length > 0 ? 'Choose a team' : 'No teams assigned', value: '' },
+                  { label: loadingTeams ? 'Loading teams…' : 'All teams', value: '' },
                   ...teams.map((team) => ({ label: `${team.name} (${team.ageGroup})`, value: team.id })),
                 ]}
                 value={selectedTeamId}
@@ -663,20 +663,29 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                         {label}
                       </p>
                       <div className="space-y-2">
-                        {bucketEvents.map((clubEvent) => (
-                          <CoachEventCard
-                            key={clubEvent.id}
-                            event={clubEvent}
-                            active={activeEventId === clubEvent.id}
-                            counts={attendanceCounts.get(clubEvent.id)}
-                            onSelect={() => setSelectedEventId(clubEvent.id)}
-                            onEdit={() => startEditingEvent(clubEvent.id)}
-                            onDelete={() => handleDeleteEvent(clubEvent.id)}
-                            onDeleteSeries={clubEvent.recurrenceGroupId
-                              ? () => handleDeleteSeries(clubEvent.recurrenceGroupId!, clubEvent.dateTime, clubEvent.id)
-                              : undefined}
-                          />
-                        ))}
+                        {bucketEvents.map((clubEvent) => {
+                          const eventTeamName = (!isSingleTeamCoach && !selectedTeamId)
+                            ? teams.find((t) => t.id === clubEvent.teamId)?.name
+                            : undefined
+                          return (
+                            <div key={clubEvent.id}>
+                              {eventTeamName ? (
+                                <p className="mb-0.5 ml-1 text-[10px] font-semibold uppercase tracking-widest text-slate-400">{eventTeamName}</p>
+                              ) : null}
+                              <CoachEventCard
+                                event={clubEvent}
+                                active={activeEventId === clubEvent.id}
+                                counts={attendanceCounts.get(clubEvent.id)}
+                                onSelect={() => setSelectedEventId(clubEvent.id)}
+                                onEdit={() => startEditingEvent(clubEvent.id)}
+                                onDelete={() => handleDeleteEvent(clubEvent.id)}
+                                onDeleteSeries={clubEvent.recurrenceGroupId
+                                  ? () => handleDeleteSeries(clubEvent.recurrenceGroupId!, clubEvent.dateTime, clubEvent.id)
+                                  : undefined}
+                              />
+                            </div>
+                          )
+                        })}
                       </div>
                     </div>
                   ))
@@ -684,7 +693,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                   <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-10 text-center">
                     <p className="text-2xl">📅</p>
                     <p className="mt-2 text-sm font-medium text-slate-500">
-                      {activeTeamId || isSingleTeamCoach ? 'No events yet for this team.' : 'Select a team to see its schedule.'}
+                      {teams.length === 0 ? 'No teams assigned yet.' : 'No events yet.'}
                     </p>
                     {activeTeamId || isSingleTeamCoach ? (
                       <button

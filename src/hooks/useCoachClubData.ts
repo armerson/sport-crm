@@ -13,6 +13,7 @@ import {
   subscribeToAttendanceCountsForTeam,
   subscribeToCoachTeams,
   subscribeToEventsForTeam,
+  subscribeToEventsForTeams,
   subscribeToLineupForEvent,
   subscribeToMotmVotes,
   subscribeToResultsForTeam,
@@ -36,7 +37,7 @@ export function useCoachClubData(coachId: string, selectedTeamId: string, select
   const [lineup, setLineup] = useState<LineupEntry[]>([])
   const [motmVotes, setMotmVotes] = useState<MotmVote[]>([])
   const [loadingTeams, setLoadingTeams] = useState(true)
-  const [loadingEvents, setLoadingEvents] = useState(Boolean(selectedTeamId))
+  const [loadingEvents, setLoadingEvents] = useState(true)
   const [loadingAttendance, setLoadingAttendance] = useState(Boolean(selectedEventId))
   const [loadingLineup, setLoadingLineup] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -70,12 +71,6 @@ export function useCoachClubData(coachId: string, selectedTeamId: string, select
   }, [coachId])
 
   useEffect(() => {
-    if (!activeTeamId) {
-      setEvents([])
-      setLoadingEvents(false)
-      return undefined
-    }
-
     if (!isSupabaseConfigured) {
       setEvents([])
       setLoadingEvents(false)
@@ -85,20 +80,32 @@ export function useCoachClubData(coachId: string, selectedTeamId: string, select
 
     setLoadingEvents(true)
 
-    const unsubscribe = subscribeToEventsForTeam(
-      activeTeamId,
-      (nextEvents) => {
-        setEvents(nextEvents)
-        setLoadingEvents(false)
-      },
-      (message) => {
-        setError(message)
-        setLoadingEvents(false)
-      },
-    )
+    // Single-team coach or explicit team selection → subscribe to one team
+    if (activeTeamId) {
+      const unsubscribe = subscribeToEventsForTeam(
+        activeTeamId,
+        (nextEvents) => { setEvents(nextEvents); setLoadingEvents(false) },
+        (message) => { setError(message); setLoadingEvents(false) },
+      )
+      return unsubscribe
+    }
 
-    return unsubscribe
-  }, [activeTeamId])
+    // Multi-team coach with no specific team chosen → show all their teams' events
+    if (teams.length > 1) {
+      const allIds = teams.map((t) => t.id)
+      const unsubscribe = subscribeToEventsForTeams(
+        allIds,
+        (nextEvents) => { setEvents(nextEvents); setLoadingEvents(false) },
+        (message) => { setError(message); setLoadingEvents(false) },
+      )
+      return unsubscribe
+    }
+
+    // No teams yet (still loading)
+    setEvents([])
+    setLoadingEvents(false)
+    return undefined
+  }, [activeTeamId, teams])
 
   // Results + attendance-counts subscriptions — live alongside the events subscription
   useEffect(() => {

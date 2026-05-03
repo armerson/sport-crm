@@ -98,6 +98,31 @@ export function subscribeToEventsForTeam(
   })
 }
 
+/** Fetch events for multiple teams at once — used by multi-team coaches who have no specific team selected. */
+export function subscribeToEventsForTeams(
+  teamIds: string[],
+  onData: (events: EventRecord[]) => void,
+  onError: (message: string) => void,
+): () => void {
+  const client = requireSupabase()
+  const key = `team-events-multi-${[...teamIds].sort().join('-')}`
+
+  return subscribeToTables(key, ['events'], async () => {
+    const { data, error } = await client
+      .from('events')
+      .select('id, team_id, title, type, date_time, location, place_id, lat, lng, recurrence_group_id, opponent')
+      .in('team_id', teamIds)
+      .order('date_time', { ascending: true })
+
+    if (error) {
+      onError('Unable to load team events.')
+      return
+    }
+
+    onData((data ?? []).map((row) => mapEventRow(row as Record<string, unknown>)))
+  })
+}
+
 export function subscribeToAttendanceForEvent(
   eventId: string,
   onData: (attendance: AttendanceRecord[]) => void,
