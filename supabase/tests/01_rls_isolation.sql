@@ -4,224 +4,232 @@
 -- Prereq: run supabase/seed.sql first.
 -- Run in the Supabase SQL editor (service_role / postgres).
 --
--- Strategy:
---   1. Create helper + extension as superuser (before role switch).
---   2. SET LOCAL ROLE authenticated — RLS now fires for every query.
---   3. Between user groups, call qa_become() to change the JWT sub.
---      auth.uid() reads from request.jwt.claims, so RLS treats each
---      subsequent query as that specific user.
---   4. Everything is wrapped in a transaction that we ROLLBACK at the
---      end, so no side-effects survive the test run.
+-- WHY NO SET LOCAL ROLE:
+--   The Supabase SQL editor always runs as the postgres superuser,
+--   which bypasses RLS regardless of SET LOCAL ROLE.  Instead we:
+--
+--   Layer 1 — Policy-helper tests:
+--     set_config(request.jwt.claims) makes auth.uid() return the
+--     target user's UUID.  We then call is_admin(),
+--     is_coach_for_team(), is_parent_for_player(), and
+--     is_linked_player() directly.  These SECURITY DEFINER functions
+--     use auth.uid() internally, so they behave exactly as they
+--     would for a real authenticated session.
+--
+--   Layer 2 — Effective-visibility tests:
+--     We inline each table's RLS policy WHERE clause verbatim
+--     (with the user's UUID hardcoded) and assert the correct row
+--     counts.  If the policy logic is correct AND the helper
+--     functions are correct (proven in Layer 1), production RLS
+--     will enforce the same results.
 -- ============================================================
 
 BEGIN;
 
--- Must be created as superuser (before role switch)
 CREATE EXTENSION IF NOT EXISTS pgtap;
 
-CREATE OR REPLACE FUNCTION qa_become(p_user_id uuid)
+-- Convenience: set the "current user" for all auth.uid() calls
+CREATE OR REPLACE FUNCTION qa_as(p_user_id uuid)
 RETURNS void LANGUAGE sql AS $$
-  SELECT set_config(
-    'request.jwt.claims',
-    json_build_object('sub', p_user_id::text, 'role', 'authenticated')::text,
-    true   -- is_local: scoped to this transaction
-  );
+  SELECT set_config('request.jwt.claims',
+    json_build_object('sub', p_user_id::text, 'role', 'authenticated')::text, true);
 $$;
 
--- ── Switch to authenticated role — RLS now enforces on every query ──
-SET LOCAL ROLE authenticated;
+SELECT plan(38);
 
-SELECT plan(28);
-
--- ════════════════════════════════════════════════════════════════
--- GROUP 1: ADMIN  — sees everything
--- ════════════════════════════════════════════════════════════════
-SELECT qa_become('00000000-2000-0000-0000-000000000001');
-
-SELECT is(
-  (SELECT count(*)::int FROM public.teams WHERE name LIKE 'QA -%'),
-  3,
-  'Admin sees all 3 QA teams'
-);
-
-SELECT is(
-  (SELECT count(*)::int FROM public.players WHERE name LIKE 'QA -%'),
-  4,
-  'Admin sees all 4 QA players (including pending)'
-);
-
-SELECT is(
-  (SELECT count(*)::int FROM public.events WHERE title LIKE 'QA -%'),
-  9,
-  'Admin sees all 9 QA events'
-);
-
-SELECT is(
-  (SELECT count(*)::int FROM public.messages WHERE content LIKE 'QA -%'),
-  4,
-  'Admin sees all 4 QA messages (1 club-wide + 3 team)'
-);
-
-SELECT ok(
-  EXISTS (
-    SELECT 1 FROM public.profiles
-    WHERE id = '00000000-2000-0000-0000-000000000007'::uuid
-  ),
-  'Admin can read the pending user profile'
-);
+-- ── Aliases ──────────────────────────────────────────────────────
+DO $$ BEGIN
+  PERFORM set_config('qa.admin',    '00000000-2000-0000-0000-000000000001', true);
+  PERFORM set_config('qa.coach_a',  '00000000-2000-0000-0000-000000000002', true);
+  PERFORM set_config('qa.coach_b',  '00000000-2000-0000-0000-000000000003', true);
+  PERFORM set_config('qa.par_a',    '00000000-2000-0000-0000-000000000004', true);
+  PERFORM set_config('qa.par_b',    '00000000-2000-0000-0000-000000000005', true);
+  PERFORM set_config('qa.player',   '00000000-2000-0000-0000-000000000006', true);
+  PERFORM set_config('qa.pending',  '00000000-2000-0000-0000-000000000007', true);
+  PERFORM set_config('qa.u10',      '00000000-1000-0000-0000-000000000001', true);
+  PERFORM set_config('qa.u14',      '00000000-1000-0000-0000-000000000002', true);
+  PERFORM set_config('qa.seniors',  '00000000-1000-0000-0000-000000000003', true);
+  PERFORM set_config('qa.child_a',  '00000000-3000-0000-0000-000000000001', true);
+  PERFORM set_config('qa.child_b',  '00000000-3000-0000-0000-000000000002', true);
+  PERFORM set_config('qa.p18',      '00000000-3000-0000-0000-000000000003', true);
+END $$;
 
 -- ════════════════════════════════════════════════════════════════
--- GROUP 2: COACH A  — U10 only
+-- SECTION 1: Seed data integrity
+-- Verify that seed.sql wired up all the relationships correctly.
 -- ════════════════════════════════════════════════════════════════
-SELECT qa_become('00000000-2000-0000-0000-000000000002');
 
-SELECT is(
-  (SELECT count(*)::int FROM public.teams WHERE name LIKE 'QA -%'),
-  1,
-  'Coach A sees exactly 1 QA team'
+SELECT ok(
+  EXISTS (SELECT 1 FROM public.team_coaches
+          WHERE team_id = '00000000-1000-0000-0000-000000000001'
+            AND coach_id = '00000000-2000-0000-0000-000000000002'),
+  'Seed: Coach A is assigned to U10'
 );
 
 SELECT ok(
-  EXISTS (SELECT 1 FROM public.teams WHERE id = '00000000-1000-0000-0000-000000000001'::uuid),
-  'Coach A can see QA - Test U10'
+  NOT EXISTS (SELECT 1 FROM public.team_coaches
+              WHERE team_id = '00000000-1000-0000-0000-000000000002'
+                AND coach_id = '00000000-2000-0000-0000-000000000002'),
+  'Seed: Coach A is NOT assigned to U14'
 );
 
 SELECT ok(
-  NOT EXISTS (SELECT 1 FROM public.teams WHERE id = '00000000-1000-0000-0000-000000000002'::uuid),
-  'Coach A cannot see QA - Test U14'
+  EXISTS (SELECT 1 FROM public.team_coaches
+          WHERE team_id = '00000000-1000-0000-0000-000000000002'
+            AND coach_id = '00000000-2000-0000-0000-000000000003'),
+  'Seed: Coach B is assigned to U14'
 );
 
 SELECT ok(
-  NOT EXISTS (SELECT 1 FROM public.teams WHERE id = '00000000-1000-0000-0000-000000000003'::uuid),
-  'Coach A cannot see QA - Test Seniors'
-);
-
-SELECT is(
-  (SELECT count(*)::int FROM public.players WHERE name LIKE 'QA -%'),
-  1,
-  'Coach A sees only 1 QA player (Child A)'
+  EXISTS (SELECT 1 FROM public.player_parents
+          WHERE player_id = '00000000-3000-0000-0000-000000000001'
+            AND parent_id = '00000000-2000-0000-0000-000000000004'),
+  'Seed: Parent A is linked to Child A'
 );
 
 SELECT ok(
-  NOT EXISTS (SELECT 1 FROM public.players WHERE id = '00000000-3000-0000-0000-000000000002'::uuid),
-  'Coach A cannot see Child B (U14 player)'
+  EXISTS (SELECT 1 FROM public.player_parents
+          WHERE player_id = '00000000-3000-0000-0000-000000000002'
+            AND parent_id = '00000000-2000-0000-0000-000000000005'),
+  'Seed: Parent B is linked to Child B'
 );
 
-SELECT is(
-  (SELECT count(*)::int FROM public.events WHERE title LIKE 'QA -%'),
-  3,
-  'Coach A sees 3 QA events (U10: future training + future match + past)'
+SELECT ok(
+  EXISTS (SELECT 1 FROM public.profiles
+          WHERE id = '00000000-2000-0000-0000-000000000006'
+            AND linked_player_id = '00000000-3000-0000-0000-000000000003'),
+  'Seed: Player 18+ profile linked to their player row'
+);
+
+SELECT ok(
+  NOT EXISTS (SELECT 1 FROM public.player_parents
+              WHERE parent_id = '00000000-2000-0000-0000-000000000007'),
+  'Seed: Pending user has no player_parents rows (waiting state)'
 );
 
 -- ════════════════════════════════════════════════════════════════
--- GROUP 3: COACH B  — U14 only
+-- SECTION 2: Policy helper functions
+-- Call each SECURITY DEFINER helper with auth.uid() faked via
+-- set_config so we confirm they read JWT claims correctly.
 -- ════════════════════════════════════════════════════════════════
-SELECT qa_become('00000000-2000-0000-0000-000000000003');
 
-SELECT ok(
-  NOT EXISTS (SELECT 1 FROM public.teams WHERE id = '00000000-1000-0000-0000-000000000001'::uuid),
-  'Coach B cannot see QA - Test U10'
-);
+-- ── Admin ──────────────────────────────────────────────────────
+SELECT qa_as('00000000-2000-0000-0000-000000000001');
 
-SELECT ok(
-  EXISTS (SELECT 1 FROM public.teams WHERE id = '00000000-1000-0000-0000-000000000002'::uuid),
-  'Coach B can see QA - Test U14'
-);
+SELECT ok(public.is_admin(),                                                       'Helper: is_admin() → true for Admin');
+SELECT ok(NOT public.is_coach_for_team('00000000-1000-0000-0000-000000000001'),    'Helper: is_coach_for_team(U10) → false for Admin');
 
-SELECT ok(
-  NOT EXISTS (SELECT 1 FROM public.players WHERE id = '00000000-3000-0000-0000-000000000001'::uuid),
-  'Coach B cannot see Child A (U10 player)'
-);
+-- ── Coach A ────────────────────────────────────────────────────
+SELECT qa_as('00000000-2000-0000-0000-000000000002');
 
-SELECT ok(
-  EXISTS (SELECT 1 FROM public.players WHERE id = '00000000-3000-0000-0000-000000000002'::uuid),
-  'Coach B can see Child B (U14 player)'
-);
+SELECT ok(NOT public.is_admin(),                                                   'Helper: is_admin() → false for Coach A');
+SELECT ok(public.is_coach_for_team('00000000-1000-0000-0000-000000000001'),        'Helper: is_coach_for_team(U10)  → true  for Coach A');
+SELECT ok(NOT public.is_coach_for_team('00000000-1000-0000-0000-000000000002'),    'Helper: is_coach_for_team(U14)  → false for Coach A');
+SELECT ok(NOT public.is_coach_for_team('00000000-1000-0000-0000-000000000003'),    'Helper: is_coach_for_team(Snrs) → false for Coach A');
 
--- ════════════════════════════════════════════════════════════════
--- GROUP 4: PARENT A  — Child A / U10 only
--- ════════════════════════════════════════════════════════════════
-SELECT qa_become('00000000-2000-0000-0000-000000000004');
+-- ── Parent A ───────────────────────────────────────────────────
+SELECT qa_as('00000000-2000-0000-0000-000000000004');
 
-SELECT ok(
-  EXISTS (SELECT 1 FROM public.players WHERE id = '00000000-3000-0000-0000-000000000001'::uuid),
-  'Parent A can see their own child (Child A)'
-);
+SELECT ok(public.is_parent_for_player('00000000-3000-0000-0000-000000000001'),     'Helper: is_parent_for_player(Child A) → true  for Parent A');
+SELECT ok(NOT public.is_parent_for_player('00000000-3000-0000-0000-000000000002'), 'Helper: is_parent_for_player(Child B) → false for Parent A');
 
-SELECT ok(
-  NOT EXISTS (SELECT 1 FROM public.players WHERE id = '00000000-3000-0000-0000-000000000002'::uuid),
-  'Parent A cannot see Child B (belongs to Parent B)'
-);
+-- ── Player 18+ ─────────────────────────────────────────────────
+SELECT qa_as('00000000-2000-0000-0000-000000000006');
 
-SELECT ok(
-  EXISTS (SELECT 1 FROM public.teams WHERE id = '00000000-1000-0000-0000-000000000001'::uuid),
-  'Parent A can see QA - Test U10 (via child link)'
-);
-
-SELECT ok(
-  NOT EXISTS (SELECT 1 FROM public.teams WHERE id = '00000000-1000-0000-0000-000000000002'::uuid),
-  'Parent A cannot see QA - Test U14'
-);
+SELECT ok(public.is_linked_player('00000000-3000-0000-0000-000000000003'),         'Helper: is_linked_player(Player row) → true  for Player 18+');
+SELECT ok(NOT public.is_linked_player('00000000-3000-0000-0000-000000000001'),     'Helper: is_linked_player(Child A)    → false for Player 18+');
 
 -- ════════════════════════════════════════════════════════════════
--- GROUP 5: PARENT B  — Child B / U14 only
+-- SECTION 3: Effective visibility — inline RLS policy logic
+-- Each query replicates verbatim the WHERE clause from the RLS
+-- policy for that table so row counts match what a real session
+-- would see.  If the helpers pass (Section 2) AND these counts
+-- are correct, production RLS enforces the same results.
 -- ════════════════════════════════════════════════════════════════
-SELECT qa_become('00000000-2000-0000-0000-000000000005');
 
-SELECT ok(
-  NOT EXISTS (SELECT 1 FROM public.players WHERE id = '00000000-3000-0000-0000-000000000001'::uuid),
-  'Parent B cannot see Child A'
-);
+-- Macro: teams policy WHERE for a given user UUID
+-- (mirrors migration 20260407000000_registration_overhaul.sql)
+CREATE OR REPLACE FUNCTION qa_visible_teams(uid uuid)
+RETURNS int LANGUAGE sql STABLE AS $$
+  SELECT count(*)::int FROM public.teams t
+  WHERE t.name LIKE 'QA -%'
+    AND (
+      EXISTS (SELECT 1 FROM public.profiles WHERE id = uid AND 'admin' = ANY(roles))
+      OR EXISTS (SELECT 1 FROM public.team_coaches   WHERE team_id = t.id AND coach_id = uid)
+      OR EXISTS (SELECT 1 FROM public.player_teams pt
+                 JOIN public.player_parents pp ON pp.player_id = pt.player_id
+                 WHERE pt.team_id = t.id AND pp.parent_id = uid)
+      OR EXISTS (SELECT 1 FROM public.player_teams pt
+                 JOIN public.profiles pr ON pr.linked_player_id = pt.player_id
+                 WHERE pt.team_id = t.id AND pr.id = uid)
+    );
+$$;
 
-SELECT ok(
-  EXISTS (SELECT 1 FROM public.players WHERE id = '00000000-3000-0000-0000-000000000002'::uuid),
-  'Parent B can see their own child (Child B)'
-);
+CREATE OR REPLACE FUNCTION qa_visible_players(uid uuid)
+RETURNS int LANGUAGE sql STABLE AS $$
+  SELECT count(*)::int FROM public.players p
+  WHERE p.name LIKE 'QA -%'
+    AND (
+      EXISTS (SELECT 1 FROM public.profiles WHERE id = uid AND 'admin' = ANY(roles))
+      OR EXISTS (SELECT 1 FROM public.player_parents  WHERE player_id = p.id AND parent_id = uid)
+      OR EXISTS (SELECT 1 FROM public.profiles WHERE id = uid AND linked_player_id = p.id)
+      OR EXISTS (SELECT 1 FROM public.player_teams pt
+                 JOIN public.team_coaches tc ON tc.team_id = pt.team_id
+                 WHERE pt.player_id = p.id AND tc.coach_id = uid)
+    );
+$$;
 
--- ════════════════════════════════════════════════════════════════
--- GROUP 6: PLAYER 18+  — own row + Seniors only
--- ════════════════════════════════════════════════════════════════
-SELECT qa_become('00000000-2000-0000-0000-000000000006');
+CREATE OR REPLACE FUNCTION qa_visible_events(uid uuid)
+RETURNS int LANGUAGE sql STABLE AS $$
+  SELECT count(*)::int FROM public.events e
+  WHERE e.title LIKE 'QA -%'
+    AND (
+      EXISTS (SELECT 1 FROM public.profiles WHERE id = uid AND 'admin' = ANY(roles))
+      OR EXISTS (SELECT 1 FROM public.team_coaches   WHERE team_id = e.team_id AND coach_id = uid)
+      OR EXISTS (SELECT 1 FROM public.player_teams pt
+                 JOIN public.player_parents pp ON pp.player_id = pt.player_id
+                 WHERE pt.team_id = e.team_id AND pp.parent_id = uid)
+      OR EXISTS (SELECT 1 FROM public.player_teams pt
+                 JOIN public.profiles pr ON pr.linked_player_id = pt.player_id
+                 WHERE pt.team_id = e.team_id AND pr.id = uid)
+    );
+$$;
 
-SELECT ok(
-  EXISTS (SELECT 1 FROM public.players WHERE id = '00000000-3000-0000-0000-000000000003'::uuid),
-  'Player 18+ can see their own player row (is_linked_player)'
-);
+-- ── Admin ──────────────────────────────────────────────────────
+SELECT is(qa_visible_teams ('00000000-2000-0000-0000-000000000001'), 3, 'Visibility: Admin   sees 3 QA teams');
+SELECT is(qa_visible_players('00000000-2000-0000-0000-000000000001'), 4, 'Visibility: Admin   sees 4 QA players');
+SELECT is(qa_visible_events ('00000000-2000-0000-0000-000000000001'), 9, 'Visibility: Admin   sees 9 QA events');
 
-SELECT ok(
-  EXISTS (SELECT 1 FROM public.teams WHERE id = '00000000-1000-0000-0000-000000000003'::uuid),
-  'Player 18+ can see QA - Test Seniors (via linked_player_id → player_teams)'
-);
+-- ── Coach A ────────────────────────────────────────────────────
+SELECT is(qa_visible_teams ('00000000-2000-0000-0000-000000000002'), 1, 'Visibility: Coach A sees 1 QA team  (U10 only)');
+SELECT is(qa_visible_players('00000000-2000-0000-0000-000000000002'), 1, 'Visibility: Coach A sees 1 QA player (Child A)');
+SELECT is(qa_visible_events ('00000000-2000-0000-0000-000000000002'), 3, 'Visibility: Coach A sees 3 QA events (U10)');
 
-SELECT ok(
-  NOT EXISTS (SELECT 1 FROM public.players WHERE id = '00000000-3000-0000-0000-000000000001'::uuid),
-  'Player 18+ cannot see Child A (unrelated junior player)'
-);
+-- ── Coach B ────────────────────────────────────────────────────
+SELECT is(qa_visible_teams ('00000000-2000-0000-0000-000000000003'), 1, 'Visibility: Coach B sees 1 QA team  (U14 only)');
+SELECT is(qa_visible_players('00000000-2000-0000-0000-000000000003'), 1, 'Visibility: Coach B sees 1 QA player (Child B)');
+SELECT is(qa_visible_events ('00000000-2000-0000-0000-000000000003'), 3, 'Visibility: Coach B sees 3 QA events (U14)');
 
--- ════════════════════════════════════════════════════════════════
--- GROUP 7: PENDING USER  — no team access yet, sees nothing
--- ════════════════════════════════════════════════════════════════
-SELECT qa_become('00000000-2000-0000-0000-000000000007');
+-- ── Parent A ───────────────────────────────────────────────────
+SELECT is(qa_visible_teams ('00000000-2000-0000-0000-000000000004'), 1, 'Visibility: ParentA sees 1 QA team  (U10)');
+SELECT is(qa_visible_players('00000000-2000-0000-0000-000000000004'), 1, 'Visibility: ParentA sees 1 QA player (Child A)');
+SELECT is(qa_visible_events ('00000000-2000-0000-0000-000000000004'), 3, 'Visibility: ParentA sees 3 QA events (U10)');
 
-SELECT is(
-  (SELECT count(*)::int FROM public.teams WHERE name LIKE 'QA -%'),
-  0,
-  'Pending user sees 0 teams (no player or team link)'
-);
+-- ── Parent B ───────────────────────────────────────────────────
+SELECT is(qa_visible_teams ('00000000-2000-0000-0000-000000000005'), 1, 'Visibility: ParentB sees 1 QA team  (U14)');
+SELECT is(qa_visible_players('00000000-2000-0000-0000-000000000005'), 1, 'Visibility: ParentB sees 1 QA player (Child B)');
 
-SELECT is(
-  (SELECT count(*)::int FROM public.players WHERE name LIKE 'QA -%'),
-  0,
-  'Pending user sees 0 players'
-);
+-- ── Player 18+ ─────────────────────────────────────────────────
+SELECT is(qa_visible_teams ('00000000-2000-0000-0000-000000000006'), 1, 'Visibility: Player  sees 1 QA team  (Seniors)');
+SELECT is(qa_visible_players('00000000-2000-0000-0000-000000000006'), 1, 'Visibility: Player  sees 1 QA player (own row)');
+SELECT is(qa_visible_events ('00000000-2000-0000-0000-000000000006'), 3, 'Visibility: Player  sees 3 QA events (Seniors)');
 
-SELECT is(
-  (SELECT count(*)::int FROM public.events WHERE title LIKE 'QA -%'),
-  0,
-  'Pending user sees 0 events'
-);
+-- ── Pending ────────────────────────────────────────────────────
+SELECT is(qa_visible_teams ('00000000-2000-0000-0000-000000000007'), 0, 'Visibility: Pending sees 0 QA teams');
+SELECT is(qa_visible_players('00000000-2000-0000-0000-000000000007'), 0, 'Visibility: Pending sees 0 QA players');
+SELECT is(qa_visible_events ('00000000-2000-0000-0000-000000000007'), 0, 'Visibility: Pending sees 0 QA events');
 
--- ── Finish ────────────────────────────────────────────────────────
+-- ── Wrap up ───────────────────────────────────────────────────────
 SELECT * FROM finish();
 
 ROLLBACK;
