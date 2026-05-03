@@ -1,4 +1,4 @@
-import { Suspense, lazy, useMemo, useState } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
 import type { BillingTab } from './AdminBillingPanel.tsx'
 import { Button } from '../ui/Button.tsx'
 import { AdminDashboardStats } from './AdminDashboardStats.tsx'

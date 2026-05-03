@@ -46,6 +46,7 @@ export default defineConfig({
   ],
   build: {
     rollupOptions: {
+      external: ['onnxruntime-web', 'onnxruntime-web/webgpu'],
       output: {
         manualChunks(id) {
           if (id.includes('node_modules/@supabase')) {
