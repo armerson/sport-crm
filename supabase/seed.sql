@@ -22,40 +22,101 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- ── 1. Auth users ────────────────────────────────────────────────
--- Supabase stores BCrypt hashes in encrypted_password.
--- We derive the hash inline so no pre-computed constant is needed.
+-- Individual INSERTs (not a loop) so any error surfaces immediately.
+-- Each call to crypt() gets its own salt — that is correct bcrypt behaviour.
+-- Columns is_sso_user and is_anonymous are explicit because some Supabase
+-- versions define them NOT NULL without a visible DEFAULT.
 
-DO $$
-DECLARE
-  pw text := crypt('Test@clubos1', gen_salt('bf', 10));
-  users record;
-BEGIN
-  FOR users IN SELECT * FROM (VALUES
-    ('00000000-2000-0000-0000-000000000001'::uuid, 'admin.test@clubos.test',   'QA - Admin'),
-    ('00000000-2000-0000-0000-000000000002'::uuid, 'coach.a.test@clubos.test', 'QA - Coach A'),
-    ('00000000-2000-0000-0000-000000000003'::uuid, 'coach.b.test@clubos.test', 'QA - Coach B'),
-    ('00000000-2000-0000-0000-000000000004'::uuid, 'parent.a.test@clubos.test','QA - Parent A'),
-    ('00000000-2000-0000-0000-000000000005'::uuid, 'parent.b.test@clubos.test','QA - Parent B'),
-    ('00000000-2000-0000-0000-000000000006'::uuid, 'player.test@clubos.test',  'QA - Player'),
-    ('00000000-2000-0000-0000-000000000007'::uuid, 'pending.test@clubos.test', 'QA - Pending')
-  ) AS t(id, email, name)
-  LOOP
-    INSERT INTO auth.users (
-      id, instance_id, aud, role, email, encrypted_password,
-      email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
-      created_at, updated_at
-    ) VALUES (
-      users.id,
-      '00000000-0000-0000-0000-000000000000',
-      'authenticated', 'authenticated',
-      users.email, pw,
-      now(),
-      '{"provider":"email","providers":["email"]}'::jsonb,
-      jsonb_build_object('name', users.name),
-      now(), now()
-    ) ON CONFLICT (id) DO NOTHING;
-  END LOOP;
-END $$;
+INSERT INTO auth.users (
+  id, instance_id, aud, role, email, encrypted_password,
+  email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
+  is_sso_user, is_anonymous, created_at, updated_at
+) VALUES (
+  '00000000-2000-0000-0000-000000000001',
+  '00000000-0000-0000-0000-000000000000',
+  'authenticated', 'authenticated', 'admin.test@clubos.test',
+  crypt('Test@clubos1', gen_salt('bf', 10)),
+  now(), '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb,
+  false, false, now(), now()
+) ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO auth.users (
+  id, instance_id, aud, role, email, encrypted_password,
+  email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
+  is_sso_user, is_anonymous, created_at, updated_at
+) VALUES (
+  '00000000-2000-0000-0000-000000000002',
+  '00000000-0000-0000-0000-000000000000',
+  'authenticated', 'authenticated', 'coach.a.test@clubos.test',
+  crypt('Test@clubos1', gen_salt('bf', 10)),
+  now(), '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb,
+  false, false, now(), now()
+) ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO auth.users (
+  id, instance_id, aud, role, email, encrypted_password,
+  email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
+  is_sso_user, is_anonymous, created_at, updated_at
+) VALUES (
+  '00000000-2000-0000-0000-000000000003',
+  '00000000-0000-0000-0000-000000000000',
+  'authenticated', 'authenticated', 'coach.b.test@clubos.test',
+  crypt('Test@clubos1', gen_salt('bf', 10)),
+  now(), '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb,
+  false, false, now(), now()
+) ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO auth.users (
+  id, instance_id, aud, role, email, encrypted_password,
+  email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
+  is_sso_user, is_anonymous, created_at, updated_at
+) VALUES (
+  '00000000-2000-0000-0000-000000000004',
+  '00000000-0000-0000-0000-000000000000',
+  'authenticated', 'authenticated', 'parent.a.test@clubos.test',
+  crypt('Test@clubos1', gen_salt('bf', 10)),
+  now(), '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb,
+  false, false, now(), now()
+) ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO auth.users (
+  id, instance_id, aud, role, email, encrypted_password,
+  email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
+  is_sso_user, is_anonymous, created_at, updated_at
+) VALUES (
+  '00000000-2000-0000-0000-000000000005',
+  '00000000-0000-0000-0000-000000000000',
+  'authenticated', 'authenticated', 'parent.b.test@clubos.test',
+  crypt('Test@clubos1', gen_salt('bf', 10)),
+  now(), '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb,
+  false, false, now(), now()
+) ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO auth.users (
+  id, instance_id, aud, role, email, encrypted_password,
+  email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
+  is_sso_user, is_anonymous, created_at, updated_at
+) VALUES (
+  '00000000-2000-0000-0000-000000000006',
+  '00000000-0000-0000-0000-000000000000',
+  'authenticated', 'authenticated', 'player.test@clubos.test',
+  crypt('Test@clubos1', gen_salt('bf', 10)),
+  now(), '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb,
+  false, false, now(), now()
+) ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO auth.users (
+  id, instance_id, aud, role, email, encrypted_password,
+  email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
+  is_sso_user, is_anonymous, created_at, updated_at
+) VALUES (
+  '00000000-2000-0000-0000-000000000007',
+  '00000000-0000-0000-0000-000000000000',
+  'authenticated', 'authenticated', 'pending.test@clubos.test',
+  crypt('Test@clubos1', gen_salt('bf', 10)),
+  now(), '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb,
+  false, false, now(), now()
+) ON CONFLICT (id) DO NOTHING;
 
 -- ── 2. Profiles ──────────────────────────────────────────────────
 INSERT INTO public.profiles (id, name, email, roles) VALUES
@@ -225,11 +286,14 @@ WHERE EXISTS (SELECT 1 FROM public.teams WHERE id = '00000000-1000-0000-0000-000
 ON CONFLICT (id) DO NOTHING;
 
 -- ── Done ─────────────────────────────────────────────────────────
--- Verify summary
+-- Verify summary — every column should show the expected count.
+-- qa_auth_users should be 7; if it's 0 the inserts above failed
+-- (check for a constraint or column error in the output above).
 SELECT
-  (SELECT count(*) FROM public.teams       WHERE name LIKE 'QA -%') AS qa_teams,
-  (SELECT count(*) FROM public.profiles    WHERE name LIKE 'QA -%') AS qa_profiles,
-  (SELECT count(*) FROM public.players     WHERE name LIKE 'QA -%') AS qa_players,
-  (SELECT count(*) FROM public.events      WHERE title LIKE 'QA -%') AS qa_events,
-  (SELECT count(*) FROM public.messages    WHERE content LIKE 'QA -%') AS qa_messages,
-  (SELECT count(*) FROM public.attendance  WHERE event_id LIKE '00000000-4000%') AS qa_attendance;
+  (SELECT count(*) FROM auth.users         WHERE email LIKE '%@clubos.test') AS qa_auth_users,
+  (SELECT count(*) FROM public.profiles    WHERE name  LIKE 'QA -%')         AS qa_profiles,
+  (SELECT count(*) FROM public.teams       WHERE name  LIKE 'QA -%')         AS qa_teams,
+  (SELECT count(*) FROM public.players     WHERE name  LIKE 'QA -%')         AS qa_players,
+  (SELECT count(*) FROM public.events      WHERE title LIKE 'QA -%')         AS qa_events,
+  (SELECT count(*) FROM public.messages    WHERE content LIKE 'QA -%')       AS qa_messages,
+  (SELECT count(*) FROM public.attendance  WHERE event_id::text LIKE '00000000-4000%') AS qa_attendance;
