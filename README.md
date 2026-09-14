@@ -46,6 +46,10 @@ Required frontend variables:
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
 
+Optional integrations:
+
+- `VITE_GOOGLE_MAPS_API_KEY` enables Google venue search when coaches create or edit events. Enable Maps JavaScript API and Places API (New) for the key. Without it, the location field falls back to basic address search and Google Maps directions still work.
+
 ## Supabase Setup
 
 See [CLUB_SETUP.md](CLUB_SETUP.md) for the separate-club deployment checklist.

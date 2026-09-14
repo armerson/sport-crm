@@ -48,6 +48,9 @@ h1, h2, h3 { text-wrap: balance; }
   .ui-input:focus { outline: none; border-color: var(--ui-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ui-accent) 15%, transparent); }
   .ui-input:disabled { background: #f0f2ee; cursor: not-allowed; }
   .ui-input[aria-invalid=true] { border-color: #be3544; }
+  .google-place-search, .google-place-autocomplete { display: block; width: 100%; }
+  .google-place-autocomplete::part(input) { min-height: 46px; border: 1px solid var(--ui-border); border-radius: 10px; background: white; padding: 11px 13px 11px 36px; font: inherit; font-size: 16px; color: var(--ui-ink); }
+  .google-place-autocomplete::part(input):focus { outline: none; border-color: var(--ui-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ui-accent) 15%, transparent); }
   .ui-panel { border: 1px solid var(--ui-border); border-radius: var(--ui-radius); background: var(--ui-surface); box-shadow: var(--ui-shadow); }
   .ui-tabs { display: flex; gap: 4px; overflow-x: auto; padding: 5px; border: 1px solid var(--ui-border); border-radius: 12px; background: #eceedf55; scrollbar-width: thin; }
   .ui-tab { flex: 1; flex-shrink: 0; white-space: nowrap; border-radius: 8px; padding: 11px 16px; min-height: 44px; font-size: 13px; font-weight: 600; color: var(--ui-muted); transition: background 150ms; }
