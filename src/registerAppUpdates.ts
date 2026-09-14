@@ -13,3 +13,13 @@ export function reloadWhenAppUpdates() {
     window.location.reload()
   })
 }
+
+export async function checkForAppUpdate() {
+  if (!('serviceWorker' in navigator)) return 'unsupported' as const
+
+  const registration = await navigator.serviceWorker.getRegistration()
+  if (!registration) return 'unsupported' as const
+
+  await registration.update()
+  return 'current' as const
+}

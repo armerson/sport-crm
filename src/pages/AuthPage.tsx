@@ -575,6 +575,7 @@ export function AuthPage() {
           <p className="mt-6 text-center text-xs text-slate-400">
             Powered by{' '}
             <span className="font-semibold text-slate-500">ClubOS</span>
+            <span className="ml-1 text-slate-300">v{__APP_VERSION__}</span>
           </p>
         </section>
       </div>

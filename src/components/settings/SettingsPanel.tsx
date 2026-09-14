@@ -5,6 +5,7 @@ import {
   getNotificationPermission,
   requestPermissionAndSubscribe,
 } from '../../lib/pushNotifications.ts'
+import { checkForAppUpdate } from '../../registerAppUpdates.ts'
 
 interface Props {
   onClose: () => void
@@ -311,10 +312,20 @@ function SectionPrivacy({ onBack }: { onBack: () => void }) {
 export function SettingsPanel({ onClose }: Props) {
   const { profile, signOutUser } = useAuth()
   const [section, setSection] = useState<Section>('main')
+  const [updateStatus, setUpdateStatus] = useState<'idle' | 'checking' | 'current' | 'unsupported' | 'error'>('idle')
 
   const initials = profile?.name
     ? profile.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
     : '?'
+
+  async function handleUpdateCheck() {
+    setUpdateStatus('checking')
+    try {
+      setUpdateStatus(await checkForAppUpdate())
+    } catch {
+      setUpdateStatus('error')
+    }
+  }
 
   return (
     <div className="min-h-[calc(100vh-8rem)] space-y-5 px-1 pb-6">
@@ -386,7 +397,31 @@ export function SettingsPanel({ onClose }: Props) {
             danger
           />
 
-          <p className="text-center text-[10px] text-slate-300">ClubOS · v{__APP_VERSION__}</p>
+          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-bold text-slate-800">ClubOS v{__APP_VERSION__}</p>
+                <p className="text-xs text-slate-400">{window.location.host}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => void handleUpdateCheck()}
+                disabled={updateStatus === 'checking'}
+                className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700 transition active:scale-[0.98] disabled:opacity-50"
+              >
+                {updateStatus === 'checking' ? 'Checking…' : 'Check for update'}
+              </button>
+            </div>
+            {updateStatus !== 'idle' && updateStatus !== 'checking' ? (
+              <p className={`mt-2 text-xs ${updateStatus === 'current' ? 'text-green-600' : 'text-amber-600'}`}>
+                {updateStatus === 'current'
+                  ? `You have the current release, v${__APP_VERSION__}.`
+                  : updateStatus === 'unsupported'
+                    ? 'Updates are managed by this browser.'
+                    : 'Could not check just now. Close and reopen the app, then try again.'}
+              </p>
+            ) : null}
+          </div>
         </div>
       )}
 
