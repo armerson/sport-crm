@@ -12,6 +12,8 @@ The Ambassadors FC website already holds the IFA COMET API key on its server and
 
 Each ClubOS team stores its public COMET team ID and competition ID. An authorised coach or admin can choose **Sync COMET** from the schedule. The sync imports official fixtures and scores, prepares pending attendance for the squad, and updates matching records using the permanent COMET match ID.
 
+Once a fixture has been imported, later syncs compare its kickoff, venue, opponent and status. When any of those details change, ClubOS sends one concise update to the team's linked parents. The first import stays quiet so connecting an existing season does not produce a burst of notifications.
+
 For another separately branded club app, set the Edge Function's `COMET_FEED_URL` secret to that club website's compatible server feed.
 
 ## First release

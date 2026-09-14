@@ -139,15 +139,33 @@ Deno.serve(async (request) => {
   })
 
   if (valid.length === 0) {
-    return json(request, { synced: 0, added: 0, updated: 0, results: 0 })
+    return json(request, { synced: 0, added: 0, updated: 0, results: 0, changes: [] })
   }
 
   const { data: existing } = await service
     .from('events')
-    .select('external_id')
+    .select('external_id, title, date_time, location, event_status')
     .eq('team_id', teamId)
     .eq('external_source', 'comet')
   const existingIds = new Set((existing ?? []).map((row) => String(row.external_id)))
+  const existingById = new Map((existing ?? []).map((row) => [String(row.external_id), row]))
+  const changes = valid.flatMap(({ event }) => {
+    const previous = existingById.get(event.external_id)
+    if (!previous) return []
+    const details: string[] = []
+    if (new Date(previous.date_time).getTime() !== new Date(event.date_time).getTime()) {
+      const kickoff = new Date(event.date_time).toLocaleString('en-GB', {
+        timeZone: 'Europe/London', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+      })
+      details.push(`kick-off changed to ${kickoff}`)
+    }
+    if (previous.location !== event.location) details.push(`venue changed to ${event.location}`)
+    if (previous.title !== event.title) details.push(`fixture changed to ${event.title}`)
+    if (previous.event_status !== event.event_status) {
+      details.push(event.event_status === 'cancelled' ? 'fixture postponed or cancelled' : 'fixture reinstated')
+    }
+    return details.length ? [{ externalId: event.external_id, title: event.title, summary: details.join('; ') }] : []
+  })
 
   const { data: syncedEvents, error: eventError } = await service
     .from('events')
@@ -184,5 +202,5 @@ Deno.serve(async (request) => {
     summary: `${team.name}: synced ${valid.length} COMET fixtures (${added} new, ${updated} updated).`,
   })
 
-  return json(request, { synced: valid.length, added, updated, results: resultRows.length })
+  return json(request, { synced: valid.length, added, updated, results: resultRows.length, changes })
 })
