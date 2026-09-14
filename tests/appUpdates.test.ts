@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { reloadWhenAppUpdates } from '../src/registerAppUpdates.ts'
+import { checkForAppUpdate, reloadWhenAppUpdates } from '../src/registerAppUpdates.ts'
 
 test('an activated app release reloads the open shell once', () => {
   const previousNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator')
@@ -34,5 +34,29 @@ test('an activated app release reloads the open shell once', () => {
     else Reflect.deleteProperty(globalThis, 'navigator')
     if (previousWindow) Object.defineProperty(globalThis, 'window', previousWindow)
     else Reflect.deleteProperty(globalThis, 'window')
+  }
+})
+
+test('the manual update check asks the installed service worker for a fresh release', async () => {
+  const previousNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator')
+  let updates = 0
+
+  Object.defineProperty(globalThis, 'navigator', {
+    configurable: true,
+    value: {
+      serviceWorker: {
+        getRegistration: async () => ({
+          update: async () => { updates += 1 },
+        }),
+      },
+    },
+  })
+
+  try {
+    assert.equal(await checkForAppUpdate(), 'current')
+    assert.equal(updates, 1)
+  } finally {
+    if (previousNavigator) Object.defineProperty(globalThis, 'navigator', previousNavigator)
+    else Reflect.deleteProperty(globalThis, 'navigator')
   }
 })
