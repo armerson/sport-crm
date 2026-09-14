@@ -14,6 +14,9 @@ and member sign-in; they do not host the CRM or access private club records.
 See [Website integration](WEBSITE_INTEGRATION.md) for entry points, configuration
 and release order. Set `VITE_CLUB_WEBSITE_URL` to show that club’s website link.
 
+For the Irish FA fixture and result sync, plus the later registration phase, see
+[IFA COMET integration](COMET_INTEGRATION.md).
+
 ## Stack
 
 - React 19 with Vite and TypeScript

@@ -67,6 +67,8 @@ export function mapTeamRow(row: Record<string, unknown>): TeamRecord {
     photoUrl: typeof row.photo_url === 'string' ? row.photo_url : null,
     photoFocusX: typeof row.photo_focus_x === 'number' ? row.photo_focus_x : 50,
     photoFocusY: typeof row.photo_focus_y === 'number' ? row.photo_focus_y : 50,
+    cometTeamId: typeof row.comet_team_id === 'number' ? row.comet_team_id : null,
+    cometCompetitionId: typeof row.comet_competition_id === 'number' ? row.comet_competition_id : null,
   }
 }
 
@@ -117,6 +119,10 @@ export function mapEventRow(row: Record<string, unknown>): EventRecord {
     recurrenceGroupId: typeof row.recurrence_group_id === 'string' ? row.recurrence_group_id : null,
     opponent: typeof row.opponent === 'string' && row.opponent.trim() ? row.opponent.trim() : null,
     eventStatus: (row.event_status === 'availability_request' || row.event_status === 'cancelled') ? row.event_status as EventStatus : 'confirmed',
+    externalSource: typeof row.external_source === 'string' ? row.external_source : null,
+    externalId: typeof row.external_id === 'string' ? row.external_id : null,
+    competition: typeof row.competition === 'string' ? row.competition : null,
+    homeAway: row.home_away === 'home' || row.home_away === 'away' ? row.home_away : null,
   }
 }
 

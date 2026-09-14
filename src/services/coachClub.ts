@@ -27,7 +27,7 @@ export function subscribeToCoachTeams(
 
     const { data: teams, error: teamsErr } = await client
       .from('teams')
-      .select('id, name, age_group, is_senior, photo_url')
+      .select('id, name, age_group, is_senior, photo_url, photo_focus_x, photo_focus_y, comet_team_id, comet_competition_id')
       .in('id', teamIds)
       .order('age_group', { ascending: true })
       .order('name', { ascending: true })
@@ -85,7 +85,7 @@ export function subscribeToEventsForTeam(
   return subscribeToTables(`team-events-${teamId}`, ['events'], async () => {
     const { data, error } = await client
       .from('events')
-      .select('id, team_id, title, type, date_time, location, place_id, lat, lng, recurrence_group_id, opponent, event_status')
+      .select('id, team_id, title, type, date_time, location, place_id, lat, lng, recurrence_group_id, opponent, event_status, external_source, external_id, competition, home_away')
       .eq('team_id', teamId)
       .order('date_time', { ascending: true })
 
@@ -110,7 +110,7 @@ export function subscribeToEventsForTeams(
   return subscribeToTables(key, ['events'], async () => {
     const { data, error } = await client
       .from('events')
-      .select('id, team_id, title, type, date_time, location, place_id, lat, lng, recurrence_group_id, opponent, event_status')
+      .select('id, team_id, title, type, date_time, location, place_id, lat, lng, recurrence_group_id, opponent, event_status, external_source, external_id, competition, home_away')
       .in('team_id', teamIds)
       .order('date_time', { ascending: true })
 
@@ -281,6 +281,31 @@ export async function deleteEventSeries(recurrenceGroupId: string, fromDateTime:
   if (error) {
     throw new Error(error.message)
   }
+}
+
+export interface CometSyncResult {
+  synced: number
+  added: number
+  updated: number
+  results: number
+}
+
+/** Import official fixtures through the club website's server-side COMET feed. */
+export async function syncCometFixtures(teamId: string): Promise<CometSyncResult> {
+  const client = requireSupabase()
+  const { data, error } = await client.functions.invoke('sync-comet-fixtures', { body: { teamId } })
+  if (error) {
+    let message = error.message || 'Unable to sync COMET fixtures.'
+    const context = (error as { context?: Response }).context
+    if (context && typeof context.clone === 'function') {
+      try {
+        const body = await context.clone().json() as { error?: string }
+        if (body.error) message = body.error
+      } catch { /* keep the function error */ }
+    }
+    throw new Error(message)
+  }
+  return data as CometSyncResult
 }
 
 // ──────────────────────────────────────────────────────────────

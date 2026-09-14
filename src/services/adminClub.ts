@@ -20,7 +20,7 @@ export function subscribeToTeams(
   return subscribeToTables('teams-feed', ['teams', 'team_coaches', 'player_teams'], async () => {
     const { data: teamsData, error: teamsError } = await client
       .from('teams')
-      .select('id, name, age_group, is_senior, photo_url, photo_focus_x, photo_focus_y')
+      .select('id, name, age_group, is_senior, photo_url, photo_focus_x, photo_focus_y, comet_team_id, comet_competition_id')
       .order('age_group', { ascending: true })
       .order('name', { ascending: true })
 
@@ -227,7 +227,7 @@ export function subscribeToAllEvents(
   return subscribeToTables('all-events', ['events'], async () => {
     const { data, error } = await client
       .from('events')
-      .select('id, team_id, title, type, date_time, location, place_id, lat, lng, recurrence_group_id, opponent, event_status')
+      .select('id, team_id, title, type, date_time, location, place_id, lat, lng, recurrence_group_id, opponent, event_status, external_source, external_id, competition, home_away')
       .order('date_time', { ascending: true })
 
     if (error) {
@@ -312,6 +312,8 @@ export async function createTeam(input: TeamFormInput) {
     name: input.name,
     age_group: input.ageGroup,
     is_senior: input.isSenior === true,
+    comet_team_id: input.cometTeamId ?? null,
+    comet_competition_id: input.cometCompetitionId ?? null,
   })
 
   if (error) {
@@ -327,6 +329,8 @@ export async function updateTeam(teamId: string, input: TeamFormInput) {
       name: input.name,
       age_group: input.ageGroup,
       is_senior: input.isSenior === true,
+      comet_team_id: input.cometTeamId ?? null,
+      comet_competition_id: input.cometCompetitionId ?? null,
     })
     .eq('id', teamId)
 

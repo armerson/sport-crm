@@ -12,6 +12,8 @@ export interface TeamRecord {
   /** Focal point 0–100 for object-position when cropping the team photo */
   photoFocusX: number
   photoFocusY: number
+  cometTeamId: number | null
+  cometCompetitionId: number | null
 }
 
 export type PlayerDocumentType = 'birth_certificate' | 'passport' | 'other'
@@ -99,6 +101,8 @@ export interface TeamFormInput {
   name: string
   ageGroup: string
   isSenior?: boolean
+  cometTeamId?: number | null
+  cometCompetitionId?: number | null
 }
 
 export interface PlayerFormInput {
@@ -132,6 +136,10 @@ export interface EventRecord {
   /** Opponent name for match events (null for training, other types). */
   opponent: string | null
   eventStatus: EventStatus
+  externalSource: string | null
+  externalId: string | null
+  competition: string | null
+  homeAway: 'home' | 'away' | null
 }
 
 export interface AttendanceRecord {

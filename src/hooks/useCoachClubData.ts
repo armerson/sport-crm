@@ -17,6 +17,7 @@ import {
   subscribeToLineupForEvent,
   subscribeToMotmVotes,
   subscribeToResultsForTeam,
+  syncCometFixtures,
   updateEvent,
   upsertLineupPlayer,
   upsertResult,
@@ -286,6 +287,19 @@ export function useCoachClubData(coachId: string, selectedTeamId: string, select
         await deleteEventSeries(recurrenceGroupId, fromDateTime)
       } catch (submitError) {
         setError(getCoachErrorMessage(submitError, 'Unable to cancel series.'))
+        throw submitError
+      } finally {
+        setIsSubmitting(false)
+      }
+    },
+    syncComet: async (teamId: string) => {
+      if (!isSupabaseConfigured) throw new Error(supabaseConfigError)
+      setIsSubmitting(true)
+      setError(null)
+      try {
+        return await syncCometFixtures(teamId)
+      } catch (submitError) {
+        setError(getCoachErrorMessage(submitError, 'Unable to sync COMET fixtures.'))
         throw submitError
       } finally {
         setIsSubmitting(false)

@@ -126,7 +126,7 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
   const [manageSection, setManageSection] = useState<ManageSection>('import')
   const [showAllPlayers, setShowAllPlayers] = useState(false)
 
-  const [teamValues, setTeamValues] = useState({ name: '', ageGroup: '', isSenior: false })
+  const [teamValues, setTeamValues] = useState({ name: '', ageGroup: '', isSenior: false, cometTeamId: '', cometCompetitionId: '' })
   const [pendingTeamPick, setPendingTeamPick] = useState<Record<string, string>>({})
   const [playerValues, setPlayerValues] = useState({ name: '', dob: '', teamId: '' })
   const [assignmentValues, setAssignmentValues] = useState({ teamId: '', coachId: '' })
@@ -148,7 +148,7 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
   }, [coaches, profile])
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [editingTeamId, setEditingTeamId] = useState<string | null>(null)
-  const [editTeamValues, setEditTeamValues] = useState({ name: '', ageGroup: '', isSenior: false })
+  const [editTeamValues, setEditTeamValues] = useState({ name: '', ageGroup: '', isSenior: false, cometTeamId: '', cometCompetitionId: '' })
   const [uploadingPhotoForTeam, setUploadingPhotoForTeam] = useState<string | null>(null)
   const [repositioningTeamId, setRepositioningTeamId] = useState<string | null>(null)
   const [draftFocus, setDraftFocus] = useState<{ x: number; y: number }>({ x: 50, y: 50 })
@@ -242,13 +242,19 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
       setLocalError('Team name and age group are required.')
       return
     }
+    if (Boolean(teamValues.cometTeamId) !== Boolean(teamValues.cometCompetitionId)) {
+      setLocalError('Enter both COMET IDs, or leave both blank.')
+      return
+    }
     try {
       await createTeam({
         name: teamValues.name.trim(),
         ageGroup: teamValues.ageGroup.trim(),
         isSenior: teamValues.isSenior,
+        cometTeamId: teamValues.cometTeamId ? Number(teamValues.cometTeamId) : null,
+        cometCompetitionId: teamValues.cometCompetitionId ? Number(teamValues.cometCompetitionId) : null,
       })
-      setTeamValues({ name: '', ageGroup: '', isSenior: false })
+      setTeamValues({ name: '', ageGroup: '', isSenior: false, cometTeamId: '', cometCompetitionId: '' })
       showSuccess('Team saved successfully.')
     } catch {
       // Hook exposes a user-facing error.
@@ -263,11 +269,17 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
       setLocalError('Team name and age group are required.')
       return
     }
+    if (Boolean(editTeamValues.cometTeamId) !== Boolean(editTeamValues.cometCompetitionId)) {
+      setLocalError('Enter both COMET IDs, or leave both blank.')
+      return
+    }
     try {
       await updateTeam(editingTeamId, {
         name: editTeamValues.name.trim(),
         ageGroup: editTeamValues.ageGroup.trim(),
         isSenior: editTeamValues.isSenior,
+        cometTeamId: editTeamValues.cometTeamId ? Number(editTeamValues.cometTeamId) : null,
+        cometCompetitionId: editTeamValues.cometCompetitionId ? Number(editTeamValues.cometCompetitionId) : null,
       })
       setEditingTeamId(null)
       showSuccess('Team updated.')
@@ -1045,6 +1057,14 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
                           />
                           Senior team (18+)
                         </label>
+                        <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-3">
+                          <p className="text-xs font-semibold text-blue-900">COMET fixture sync</p>
+                          <p className="mt-1 text-xs text-blue-700">Use the IDs already configured on the club website.</p>
+                          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                            <TextField label="COMET team ID" type="number" min="1" onChange={(e) => setEditTeamValues((v) => ({ ...v, cometTeamId: e.target.value }))} value={editTeamValues.cometTeamId} />
+                            <TextField label="Competition ID" type="number" min="1" onChange={(e) => setEditTeamValues((v) => ({ ...v, cometCompetitionId: e.target.value }))} value={editTeamValues.cometCompetitionId} />
+                          </div>
+                        </div>
                         <div className="flex gap-2">
                           <Button loading={isSubmitting} type="submit" variant="primary">Save</Button>
                           <button
@@ -1071,7 +1091,13 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
                             <button
                               className="rounded-xl border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100"
                               onClick={() => {
-                                setEditTeamValues({ name: team.name, ageGroup: team.ageGroup, isSenior: team.isSenior })
+                                setEditTeamValues({
+                                  name: team.name,
+                                  ageGroup: team.ageGroup,
+                                  isSenior: team.isSenior,
+                                  cometTeamId: team.cometTeamId ? String(team.cometTeamId) : '',
+                                  cometCompetitionId: team.cometCompetitionId ? String(team.cometCompetitionId) : '',
+                                })
                                 setEditingTeamId(team.id)
                               }}
                               type="button"
@@ -1333,6 +1359,14 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
                     />
                     Senior team (18+) — players can register themselves
                   </label>
+                  <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-3">
+                    <p className="text-xs font-semibold text-blue-900">COMET fixture sync · optional</p>
+                    <p className="mt-1 text-xs text-blue-700">Copy the team and competition IDs from the club website connection.</p>
+                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                      <TextField label="COMET team ID" type="number" min="1" onChange={(e) => setTeamValues((v) => ({ ...v, cometTeamId: e.target.value }))} value={teamValues.cometTeamId} />
+                      <TextField label="Competition ID" type="number" min="1" onChange={(e) => setTeamValues((v) => ({ ...v, cometCompetitionId: e.target.value }))} value={teamValues.cometCompetitionId} />
+                    </div>
+                  </div>
                   <Button className="w-full" loading={isSubmitting} type="submit">
                     Save team
                   </Button>

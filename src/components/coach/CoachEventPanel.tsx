@@ -89,6 +89,14 @@ function RecurringBadge() {
   )
 }
 
+function CometBadge({ onDark = false }: { onDark?: boolean }) {
+  return (
+    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${onDark ? 'bg-white/15 text-white' : 'bg-indigo-50 text-indigo-700'}`}>
+      COMET
+    </span>
+  )
+}
+
 // ── Coach event card with overflow menu ──────────────────────────
 function CoachEventCard({
   event,
@@ -135,6 +143,7 @@ function CoachEventCard({
           <div className="flex min-w-0 flex-1 flex-col gap-0.5">
             <div className="flex min-w-0 items-center gap-1.5 pr-6">
               <p className="truncate text-sm font-semibold leading-snug">{event.title}</p>
+              {event.externalSource === 'comet' ? <CometBadge onDark={active} /> : null}
               {event.recurrenceGroupId ? <RecurringBadge /> : null}
               {event.eventStatus === 'cancelled' ? <span className="rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700">Cancelled</span> : null}
             </div>
@@ -176,7 +185,7 @@ function CoachEventCard({
         type="button"
         aria-label="Event options"
         onClick={(e) => { e.stopPropagation(); setMenuOpen((v) => !v); setConfirmDelete(false); setConfirmSeries(false) }}
-        className={`absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full transition ${
+        className={`absolute right-2 top-2 h-7 w-7 items-center justify-center rounded-full transition ${event.externalSource === 'comet' ? 'hidden' : 'flex'} ${
           active ? 'text-white/60 hover:bg-white/15 hover:text-white' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'
         }`}
       >
@@ -186,7 +195,7 @@ function CoachEventCard({
       </button>
 
       {/* Dropdown menu */}
-      {menuOpen && (
+      {menuOpen && event.externalSource !== 'comet' && (
         <div className={`absolute right-2 top-9 z-20 min-w-[160px] rounded-2xl border py-1 shadow-xl ${active ? 'border-white/20 bg-[#0d4ed8]' : 'border-slate-100 bg-white'}`}>
           <button
             type="button"
@@ -313,6 +322,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
   const [activeMatchStats, setActiveMatchStats] = useState<import('../../types/club.ts').PlayerMatchStat[]>([])
   const [sendingReminder, setSendingReminder] = useState(false)
   const [reminderMsg, setReminderMsg] = useState<string | null>(null)
+  const [syncingComet, setSyncingComet] = useState(false)
 
   const {
     activeEventId,
@@ -335,6 +345,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
     resultByEventId,
     attendanceCounts,
     saveResult,
+    syncComet,
     sendAttendanceReminder,
     teams,
     toggleLineup,
@@ -351,6 +362,20 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
         : resultByEventId.get(activeEventId))
     : undefined
   const isSingleTeamCoach = teams.length === 1
+
+  async function handleCometSync() {
+    if (!selectedTeam?.cometTeamId || !selectedTeam.cometCompetitionId) return
+    setLocalError(null)
+    setSyncingComet(true)
+    try {
+      const result = await syncComet(selectedTeam.id)
+      setSuccessMessage(`COMET synced: ${result.added} new, ${result.updated} updated.`)
+    } catch (syncError) {
+      setLocalError(syncError instanceof Error ? syncError.message : 'Unable to sync COMET fixtures.')
+    } finally {
+      setSyncingComet(false)
+    }
+  }
 
   const activeEventCounts = useMemo(
     () => ({
@@ -665,8 +690,19 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                     )
                   })()}
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center justify-end gap-2">
                   <p className="text-sm text-slate-500">{loadingEvents ? 'Loading...' : `${visibleEvents.length} events`}</p>
+                  {selectedTeam?.cometTeamId && selectedTeam.cometCompetitionId ? (
+                    <Button
+                      className="min-h-8 px-3 py-1.5 text-xs"
+                      loading={syncingComet}
+                      onClick={() => void handleCometSync()}
+                      type="button"
+                      variant="secondary"
+                    >
+                      Sync COMET
+                    </Button>
+                  ) : null}
                   {(activeTeamId || isSingleTeamCoach) ? (
                     <button
                       type="button"
