@@ -30,6 +30,7 @@ html { min-height: 100%; scroll-padding-top: 90px; }
 body { min-height: 100dvh; margin: 0; background: var(--ui-canvas); }
 ::selection { background: #d8eadc; color: #182b29; }
 button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+button, a { touch-action: manipulation; }
 button:not(:disabled), select { cursor: pointer; }
 h1, h2, h3 { text-wrap: balance; }
 
@@ -69,10 +70,17 @@ h1, h2, h3 { text-wrap: balance; }
   .ui-registration-route { border-radius: 16px; box-shadow: var(--ui-shadow); }
   .ui-registration-route:hover { border-color: var(--ui-accent); transform: translateY(-2px); box-shadow: 0 12px 30px #182b2910; }
   .ui-spinner { width: 15px; height: 15px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: ui-spin .7s linear infinite; }
+  .ui-skeleton { position: relative; overflow: hidden; background: #e5e9e5; }
+  .ui-skeleton::after { content: ''; position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, #ffffffa8, transparent); animation: ui-shimmer 1.35s ease-in-out infinite; }
+  .ui-view-enter { animation: ui-view-in 180ms ease-out both; }
+  .ui-toast-enter { animation: ui-toast-in 220ms ease-out both; }
   .ui-skip { position: fixed; left: 16px; top: -80px; z-index: 100; background: white; padding: 12px 20px; border-radius: 10px; }
   .ui-skip:focus { top: 16px; }
 }
 @keyframes ui-spin { to { transform: rotate(360deg); } }
+@keyframes ui-shimmer { to { transform: translateX(100%); } }
+@keyframes ui-view-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes ui-toast-in { from { opacity: 0; transform: translate(-50%, 10px) scale(.98); } to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
 
 @media (max-width: 639px) {
   .ui-mobile-header { padding-top: calc(16px + env(safe-area-inset-top)); }
