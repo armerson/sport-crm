@@ -15,9 +15,15 @@ const events = [{ id: 'demo', teamId: 'demo', title: 'Wednesday training', type:
 export default function UiPreview() {
   const [active, setActive] = useState('schedule')
   const [notice, setNotice] = useState('')
-  return <main className="ui-workspace min-h-screen pb-24">
-    <header className="ui-workspace-header mb-8 flex items-center justify-between gap-4 px-6 py-6"><div><p className="font-bold">ClubOS / Design system</p><p className="text-xs text-slate-500">Preview · fictional club data</p></div><a href="/register" className="ui-button ui-button-secondary">Registration →</a></header>
-    <div id="workspace-content" className="px-5">
+  const activeLabel = COACH_BOTTOM_NAV.find((item) => item.value === active)?.label ?? 'Schedule'
+  return <main className="ui-workspace min-h-screen pb-32">
+    <header className="ui-mobile-header relative overflow-hidden bg-[#1f6849] px-5 pb-9 pt-4 text-white sm:hidden">
+      <div aria-hidden="true" className="absolute -right-12 -top-20 h-56 w-56 rounded-full border-[38px] border-white/[0.06]" />
+      <div className="relative flex items-center justify-between"><div className="flex items-center gap-3"><span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15 font-bold ring-1 ring-white/20">C</span><div><p className="font-bold">ClubOS</p><p className="text-[11px] text-white/65">Coach workspace</p></div></div><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-xs font-bold">AS</span></div>
+      <div className="relative mt-7"><p className="text-sm text-white/70">Good afternoon, Alex</p><h1 className="mt-1 text-3xl font-bold tracking-[-0.035em]">{activeLabel}</h1><p className="mt-2 text-sm leading-5 text-white/65">Plan training, publish fixtures, and track availability before kickoff.</p></div>
+    </header>
+    <header className="ui-workspace-header mb-8 hidden items-center justify-between gap-4 px-6 py-6 sm:flex"><div><p className="font-bold">ClubOS / Design system</p><p className="text-xs text-slate-500">Preview · fictional club data</p></div><a href="/register" className="ui-button ui-button-secondary">Registration →</a></header>
+    <div id="workspace-content" className="relative z-10 -mt-4 rounded-t-[1.75rem] bg-[var(--ui-canvas)] px-5 pt-7 sm:mt-0 sm:rounded-none sm:bg-transparent sm:pt-0">
       <div className="ui-workspace-navigation hidden sm:block"><p className="ui-navigation-label">Workspace</p><TabNav tabs={COACH_BOTTOM_NAV} active={active} onChange={setActive} /></div>
       <div className="mx-auto max-w-6xl space-y-6">
         <CoachOverview name="Alex" teams={teams} events={events} loading={false} onCreate={() => setNotice('Create event selected')} onSelectEvent={() => setNotice('Availability selected')} onSquad={() => setActive('squad')} onMessages={() => setActive('messages')} />

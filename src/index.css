@@ -55,10 +55,11 @@ h1, h2, h3 { text-wrap: balance; }
   .ui-tab[aria-pressed=true] { background: white; color: var(--ui-ink); box-shadow: 0 1px 4px #182b2918; }
   .ui-workspace { background: var(--ui-canvas); }
   .ui-workspace-header { background: #ffffffed; backdrop-filter: blur(16px); border-bottom: 1px solid var(--ui-border); }
-  .ui-bottom-nav { box-shadow: 0 -4px 24px #182b2908; }
-  .ui-bottom-nav button { min-height: 64px; }
+  .ui-bottom-nav { left: 10px; right: 10px; bottom: calc(10px + env(safe-area-inset-bottom)); border-radius: 18px; padding: 4px; box-shadow: 0 12px 36px #182b2920; }
+  .ui-bottom-nav button { min-height: 58px; border-radius: 14px; }
   .ui-bottom-nav button[aria-current=page] { color: var(--ui-accent); }
-  .ui-bottom-nav button[aria-current=page] > span:first-child { background: color-mix(in srgb, var(--ui-accent) 12%, white); border-radius: 10px; padding: 3px 14px; margin: -3px -14px; }
+  .ui-bottom-nav button[aria-current=page] { background: color-mix(in srgb, var(--ui-accent) 10%, white); }
+  .ui-bottom-nav button[aria-current=page] > span:first-child { transform: translateY(-1px); }
   .ui-feature { background: #193b32; border-radius: 20px; }
   .ui-registration { background: var(--ui-canvas); }
   .ui-registration-route { border-radius: 16px; box-shadow: var(--ui-shadow); }
@@ -68,6 +69,12 @@ h1, h2, h3 { text-wrap: balance; }
   .ui-skip:focus { top: 16px; }
 }
 @keyframes ui-spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 639px) {
+  .ui-mobile-header { padding-top: calc(16px + env(safe-area-inset-top)); }
+  .ui-workspace #workspace-content article { border-radius: 18px; }
+  .ui-workspace #workspace-content > div > section > h2:first-child { letter-spacing: -.025em; }
+}
 
 #root {
   min-height: 100vh;
