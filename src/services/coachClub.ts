@@ -288,6 +288,8 @@ export interface CometSyncResult {
   added: number
   updated: number
   results: number
+  changes: Array<{ externalId: string; title: string; summary: string }>
+  notified?: number
 }
 
 /** Import official fixtures through the club website's server-side COMET feed. */

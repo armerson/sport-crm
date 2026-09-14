@@ -1,7 +1,7 @@
 {
   "name": "clubos",
   "private": true,
-  "version": "27",
+  "version": "28",
   "type": "module",
   "scripts": {
     "dev": "vite",

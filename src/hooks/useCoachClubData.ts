@@ -297,7 +297,20 @@ export function useCoachClubData(coachId: string, selectedTeamId: string, select
       setIsSubmitting(true)
       setError(null)
       try {
-        return await syncCometFixtures(teamId)
+        const result = await syncCometFixtures(teamId)
+        let notified = 0
+        if (result.changes.length > 0) {
+          const parentIds = await fetchTeamParentIds(teamId)
+          if (parentIds.length > 0) {
+            const teamName = teams.find((team) => team.id === teamId)?.name ?? 'Team'
+            const summaries = result.changes.slice(0, 2).map((change) => `${change.title}: ${change.summary}`)
+            const remaining = result.changes.length - summaries.length
+            const body = `${summaries.join(' · ')}${remaining > 0 ? ` · ${remaining} more update${remaining === 1 ? '' : 's'}` : ''}`
+            const sent = await sendPushToUsers(parentIds, `${teamName} fixture update`, body, '/')
+            if (sent) notified = parentIds.length
+          }
+        }
+        return { ...result, notified }
       } catch (submitError) {
         setError(getCoachErrorMessage(submitError, 'Unable to sync COMET fixtures.'))
         throw submitError

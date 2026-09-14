@@ -126,14 +126,14 @@ export async function fetchParentIdsForPlayers(playerIds: string[]): Promise<str
   return [...new Set((data ?? []).map((r) => r.parent_id as string))]
 }
 
-export async function sendPushToUsers(userIds: string[], title: string, body: string, url = '/'): Promise<void> {
-  if (!userIds.length) return
+export async function sendPushToUsers(userIds: string[], title: string, body: string, url = '/'): Promise<boolean> {
+  if (!userIds.length) return false
 
   const client = requireSupabase()
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 
   try {
-    await fetch(`${supabaseUrl}/functions/v1/send-push-notification`, {
+    const response = await fetch(`${supabaseUrl}/functions/v1/send-push-notification`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -141,7 +141,9 @@ export async function sendPushToUsers(userIds: string[], title: string, body: st
       },
       body: JSON.stringify({ userIds, title, body, url }),
     })
+    return response.ok
   } catch (err) {
     console.error('[push] Failed to send notification:', err)
+    return false
   }
 }
