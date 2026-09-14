@@ -19,6 +19,10 @@ Use 16px panel corners, 10px controls, 44px minimum primary interaction targets 
 
 The desktop rail uses the existing full role tab lists, so all existing destinations remain available. A skip link bypasses the dashboard header. At smaller widths the existing mobile navigation remains in place.
 
+On phones, the workspace opens with a branded role header that names the current section, greets the member and explains the workspace. The content rises into a rounded sheet beneath it. Primary navigation floats above the device safe area, with a filled background for the current destination.
+
+The installed app activates a completed release immediately and reloads its open shell when the service-worker controller changes. This keeps cached JavaScript and styles from leaving an older interface on screen after deployment.
+
 ## Preview and verification
 
 Run `npm run dev` and visit `/ui-preview` for an interactive component and coaching-layout gallery using fictional records. The route and gallery are development-only, excluded from the production route tree. Preview actions do not write club data. Public `/register` and `/login` show the actual onboarding layouts.

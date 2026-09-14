@@ -180,6 +180,10 @@ export function DashboardPage() {
         ? PLAYER_BOTTOM_NAV
         : PARENT_BOTTOM_NAV
 
+  const activeTabLabel = bottomNavItems.find((item) => item.value === activeTab)?.label ?? activeContent.title
+  const hour = new Date().getHours()
+  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
+
   function handleTabChange(value: string) {
     setShowSettings(false)
     if (value === 'messages') markMessagesRead(profile?.id ?? '')
@@ -199,49 +203,29 @@ export function DashboardPage() {
     .toUpperCase()
 
   return (
-    <main className="ui-workspace min-h-screen overflow-x-hidden pb-24 sm:pb-10">
+    <main className="ui-workspace min-h-screen overflow-x-hidden pb-32 sm:pb-10">
       <a href="#workspace-content" className="ui-skip">Skip to workspace</a>
       {/* ── Mobile header ── */}
-      <header className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:hidden" style={{ backgroundColor: clubSettings.primaryColor }}>
-        <div className="flex items-center gap-2.5">
+      <header className="ui-mobile-header relative overflow-hidden px-4 pb-9 pt-4 text-white sm:hidden" style={{ backgroundColor: clubSettings.primaryColor }}>
+        <div aria-hidden="true" className="absolute -right-12 -top-20 h-56 w-56 rounded-full border-[38px] border-white/[0.06]" />
+        <div className="relative flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
           {clubSettings.logoUrl ? (
-            <img src={clubSettings.logoUrl} alt={clubSettings.name} className="h-8 w-8 rounded-xl object-cover" />
+            <img src={clubSettings.logoUrl} alt={clubSettings.name} className="h-11 w-11 rounded-2xl bg-white/10 object-contain p-1 ring-1 ring-white/20" />
           ) : (
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/15">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/20">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
                 <circle cx="12" cy="12" r="10" fill="none" stroke="white" strokeWidth="2" />
                 <polygon points="12,6 15,10 13,10 13,18 11,18 11,10 9,10" fill="white" />
               </svg>
             </div>
           )}
-          <div>
-            <p className="text-sm font-bold text-white">{clubSettings.name}</p>
-            <p className="text-[10px] text-white/60">{activeContent.title}</p>
+          <div className="min-w-0">
+            <p className="truncate text-base font-bold tracking-tight text-white">{clubSettings.name}</p>
+            <p className="truncate text-[11px] font-medium text-white/65">{activeContent.title}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          {hasMultipleRoles ? (
-            <div className="flex items-center gap-1 rounded-full bg-white/10 p-1">
-              {sortedRoles.map((role) => (
-                <button
-                  key={role}
-                  type="button"
-                  onClick={() => setActiveRole(role)}
-                  className={`rounded-full px-2.5 py-1 text-[10px] font-semibold capitalize transition ${
-                    activeRole === role ? 'bg-white text-[#1565ff]' : 'text-white/70 hover:text-white'
-                  }`}
-                >
-                  {ROLE_LABELS[role]}
-                </button>
-              ))}
-            </div>
-          ) : null}
-          <div className="flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1">
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/25 text-[9px] font-bold text-white">
-              {initials}
-            </span>
-            <span className="max-w-[80px] truncate text-xs font-medium text-white">{profile.name.split(' ')[0]}</span>
-          </div>
+          <div className="flex shrink-0 items-center gap-1">
           <NotificationBell
             hasUnread={hasUnreadMessages}
             onClick={() => {
@@ -252,7 +236,7 @@ export function DashboardPage() {
           <button
             type="button"
             onClick={() => setShowSettings(true)}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white/80 transition active:bg-white/20"
+            className="flex h-10 w-10 items-center justify-center rounded-xl text-white/80 transition active:bg-white/15"
             aria-label="Settings"
           >
             <GearIcon />
@@ -260,12 +244,36 @@ export function DashboardPage() {
           <button
             type="button"
             onClick={() => void signOutUser()}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white/80 transition active:bg-white/20"
+            className="flex h-10 w-10 items-center justify-center rounded-xl text-white/80 transition active:bg-white/15"
             aria-label="Sign out"
           >
             <SignOutIcon />
           </button>
         </div>
+        </div>
+
+        <div className="relative mt-7">
+          <p className="text-sm font-medium text-white/70">{greeting}, {profile.name.split(' ')[0]}</p>
+          <h1 className="mt-1 text-3xl font-bold tracking-[-0.035em] text-white">{activeTabLabel}</h1>
+          <p className="mt-2 max-w-sm text-sm leading-5 text-white/65">{activeContent.summary}</p>
+        </div>
+
+        {hasMultipleRoles ? (
+          <div aria-label="Choose workspace" className="relative mt-5 flex w-fit items-center gap-1 rounded-xl bg-black/15 p-1">
+            {sortedRoles.map((role) => (
+              <button
+                key={role}
+                type="button"
+                onClick={() => setActiveRole(role)}
+                className={`min-h-9 rounded-lg px-3 text-xs font-semibold transition ${
+                  activeRole === role ? 'bg-white text-slate-900 shadow-sm' : 'text-white/70 hover:text-white'
+                }`}
+              >
+                {ROLE_LABELS[role]}
+              </button>
+            ))}
+          </div>
+        ) : null}
       </header>
 
       {/* Desktop workspace header */}
@@ -290,7 +298,7 @@ export function DashboardPage() {
       </header>
 
       {/* ── Main content ── */}
-      <div id="workspace-content" tabIndex={-1} className="px-4 py-5 sm:px-6 sm:py-0 lg:px-8">
+      <div id="workspace-content" tabIndex={-1} className="relative z-10 -mt-4 rounded-t-[1.75rem] bg-[var(--ui-canvas)] px-4 pb-5 pt-7 sm:mt-0 sm:rounded-none sm:bg-transparent sm:px-6 sm:py-0 lg:px-8">
         <div className="mx-auto max-w-6xl space-y-4 sm:space-y-6">
           {showSettings ? (
             <SettingsPanel onClose={() => setShowSettings(false)} />

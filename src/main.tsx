@@ -4,6 +4,9 @@ import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import App from './App.tsx'
 import { AuthProvider } from './context/AuthContext.tsx'
+import { reloadWhenAppUpdates } from './registerAppUpdates.ts'
+
+reloadWhenAppUpdates()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -13,7 +13,7 @@ interface BottomNavProps {
 
 export function BottomNav({ items, active, onChange, badges = {} }: BottomNavProps) {
   return (
-    <nav aria-label="Main navigation" className="ui-bottom-nav fixed bottom-0 left-0 right-0 z-50 flex border-t border-slate-200 bg-white/95 pb-safe backdrop-blur-md sm:hidden">
+    <nav aria-label="Main navigation" className="ui-bottom-nav fixed z-50 flex border border-slate-200/80 bg-white/95 backdrop-blur-xl sm:hidden">
       {items.map((item) => {
         const isActive = item.value === active
         const hasBadge = badges[item.value] === true
@@ -23,7 +23,7 @@ export function BottomNav({ items, active, onChange, badges = {} }: BottomNavPro
             type="button"
             aria-current={isActive ? 'page' : undefined}
             onClick={() => onChange(item.value)}
-            className={`relative flex flex-1 flex-col items-center gap-1 px-1 pb-3 pt-2.5 transition-colors ${
+            className={`relative flex flex-1 flex-col items-center gap-1 px-1 py-2 transition-colors ${
               isActive ? 'text-[var(--ui-accent)]' : 'text-slate-500 active:text-slate-600'
             }`}
           >
