@@ -1,20 +1,20 @@
 /** Single shimmer bar */
 function Bar({ className }: { className: string }) {
-  return <div className={`animate-pulse rounded-xl bg-slate-200 ${className}`} />
+  return <div className={`ui-skeleton rounded-xl ${className}`} />
 }
 
 /** Skeleton that looks like 3 event cards */
 export function EventListSkeleton() {
   return (
     <div className="space-y-3">
-      {[72, 60, 72].map((h, i) => (
+      {['w-1/2', 'w-2/5', 'w-1/2'].map((width, i) => (
         <div key={i} className="rounded-2xl border border-slate-100 bg-white p-4 space-y-2.5">
           <div className="flex items-center justify-between gap-3">
             <Bar className="h-4 w-2/5" />
             <Bar className="h-5 w-14 rounded-full" />
           </div>
           <Bar className="h-3 w-1/3" />
-          <Bar className={`h-3 w-${h === 72 ? '1/2' : '2/5'}`} />
+          <Bar className={`h-3 ${width}`} />
         </div>
       ))}
     </div>
@@ -45,8 +45,8 @@ export function PageSkeleton() {
         <Bar className="h-5 w-48" />
         <Bar className="h-4 w-72" />
         <div className="flex gap-3 pt-1">
-          {[80, 64, 80, 64, 72].map((w, i) => (
-            <Bar key={i} className={`h-8 w-${w === 80 ? '20' : w === 64 ? '16' : '18'} rounded-full`} />
+          {['w-20', 'w-16', 'w-20', 'w-16', 'w-18'].map((width, i) => (
+            <Bar key={i} className={`h-8 ${width} rounded-full`} />
           ))}
         </div>
       </div>

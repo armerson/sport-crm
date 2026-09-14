@@ -51,7 +51,7 @@ export function UndoToast({ message, duration = 5000, onUndo, onConfirm }: UndoT
     <div
       role="status"
       aria-live="polite"
-      className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 w-[min(92vw,26rem)] overflow-hidden rounded-2xl bg-slate-900 shadow-xl shadow-slate-900/40"
+      className="ui-toast-enter fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] left-1/2 z-[60] w-[min(92vw,26rem)] -translate-x-1/2 overflow-hidden rounded-2xl bg-slate-900 shadow-xl shadow-slate-900/40 sm:bottom-6"
     >
       {/* Progress bar */}
       <div

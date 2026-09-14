@@ -138,6 +138,13 @@ function prefetchPanels() {
   prefetch(() => import('../components/player/PlayerPortal.tsx'))
 }
 
+function scrollWorkspaceToTop() {
+  requestAnimationFrame(() => {
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' })
+  })
+}
+
 export function DashboardPage() {
   const { profile, loading: authLoading, error: authError, signOutUser } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -165,6 +172,17 @@ export function DashboardPage() {
       next.set('view', role)
       return next
     })
+    scrollWorkspaceToTop()
+  }
+
+  function openSettings() {
+    setShowSettings(true)
+    scrollWorkspaceToTop()
+  }
+
+  function closeSettings() {
+    setShowSettings(false)
+    scrollWorkspaceToTop()
   }
 
   if (authLoading) {
@@ -228,6 +246,7 @@ export function DashboardPage() {
     else if (isCoach) setCoachTab(value as CoachTab)
     else if (isPlayer) setPlayerTab(value as PlayerTab)
     else setParentTab(value as ParentTab)
+    scrollWorkspaceToTop()
   }
 
   const navBadges: Record<string, boolean> = { messages: hasUnreadMessages }
@@ -272,7 +291,7 @@ export function DashboardPage() {
           />
           <button
             type="button"
-            onClick={() => setShowSettings(true)}
+            onClick={openSettings}
             className="flex h-10 w-10 items-center justify-center rounded-xl text-white/80 transition active:bg-white/15"
             aria-label="Settings"
           >
@@ -319,7 +338,7 @@ export function DashboardPage() {
               {sortedRoles.map((role) => <option key={role} value={role}>{ROLE_LABELS[role]} workspace</option>)}
             </select> : null}
             <NotificationBell hasUnread={hasUnreadMessages} onClick={() => handleTabChange('messages')} className="h-10 w-10 !bg-slate-100 !text-slate-600" />
-            <button type="button" onClick={() => setShowSettings(true)} className="rounded-xl p-3 text-slate-500 hover:bg-slate-100" aria-label="Settings"><GearIcon /></button>
+            <button type="button" onClick={openSettings} className="rounded-xl p-3 text-slate-500 hover:bg-slate-100" aria-label="Settings"><GearIcon /></button>
             <div className="flex items-center gap-2 border-l border-slate-200 pl-4"><span className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-700">{initials}</span><span className="max-w-36 truncate text-sm font-semibold">{profile.name}</span></div>
             <button type="button" onClick={() => void signOutUser()} className="rounded-xl p-3 text-slate-500 hover:bg-slate-100" aria-label="Sign out"><SignOutIcon /></button>
           </div>
@@ -329,10 +348,11 @@ export function DashboardPage() {
       {/* ── Main content ── */}
       <div id="workspace-content" tabIndex={-1} className="relative z-10 -mt-4 rounded-t-[1.75rem] bg-[var(--ui-canvas)] px-4 pb-5 pt-7 sm:mt-0 sm:rounded-none sm:bg-transparent sm:px-6 sm:py-0 lg:px-8">
         <div className="mx-auto max-w-6xl space-y-4 sm:space-y-6">
-          {showSettings ? (
-            <SettingsPanel onClose={() => setShowSettings(false)} />
-          ) : (
-            <>
+          <div key={`${activeRole}:${activeTab}:${showSettings ? 'settings' : 'workspace'}`} className="ui-view-enter">
+            {showSettings ? (
+              <SettingsPanel onClose={closeSettings} />
+            ) : (
+              <>
               <InstallBanner />
               <NotificationBanner userId={profile.id} />
               <Suspense fallback={<SectionFallback />}>
@@ -346,8 +366,9 @@ export function DashboardPage() {
                   <ParentPortal profile={profile} activeTab={parentTab} onTabChange={handleTabChange} />
                 )}
               </Suspense>
-            </>
-          )}
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -356,7 +377,7 @@ export function DashboardPage() {
         <button
           type="button"
           aria-label="Create event"
-          onClick={() => setCoachTab('create')}
+          onClick={() => handleTabChange('create')}
           className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-4 z-50 flex min-h-12 items-center justify-center gap-2 rounded-full bg-[var(--ui-accent)] px-4 text-white shadow-lg transition active:scale-95 sm:hidden"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">

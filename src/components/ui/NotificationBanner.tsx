@@ -54,27 +54,27 @@ export function NotificationBanner({ userId }: NotificationBannerProps) {
   }
 
   return (
-    <div className="flex items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-      <div className="flex items-center gap-2.5 text-sm text-amber-900">
+    <div className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-start gap-2.5 text-sm leading-5 text-amber-900 sm:items-center">
         <span className="shrink-0 text-amber-600">
           <BellIcon />
         </span>
         <span className="font-medium">Enable push notifications to stay on top of events, attendance, and messages.</span>
       </div>
-      <div className="flex shrink-0 items-center gap-2">
+      <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
         <button
           type="button"
           onClick={handleEnable}
           disabled={loading}
-          className="rounded-xl bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-amber-700 disabled:opacity-60"
+          className="min-h-10 rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-700 disabled:opacity-60"
         >
           {loading ? 'Enabling…' : 'Enable'}
         </button>
         <button
           type="button"
           onClick={handleDismiss}
-          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-amber-500 transition hover:bg-amber-100"
-          aria-label="Dismiss"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-amber-600 transition hover:bg-amber-100"
+          aria-label="Dismiss notification prompt"
         >
           <BellOffIcon />
         </button>
