@@ -129,13 +129,17 @@ The Ambassadors website now links to `/register` and `/login` through
 Its release preserved the existing fixture and graphics updates and did not alter
 the unfinished Downloads checkout.
 
+The application changes are recorded in
+[CRM PR 1](https://github.com/armerson/sport-crm/pull/1).
+
 Database access-control repairs and registration safeguards are deployed. The
 notification endpoint now checks sign-in and team membership. See
 [SECURITY_RELEASE_BLOCKERS.md](SECURITY_RELEASE_BLOCKERS.md) for the exact evidence,
 the revoked old staff invitation and remaining test limits.
 
 The latest quality pass fixes cancelled-event status loading, stale squad/review
-state, notification-permission initialisation and the deletion undo timer.
+state, notification-permission initialisation, unread-message badges and the
+deletion undo timer.
 
 ## Remaining rollout work
 

@@ -45,15 +45,24 @@ Local filenames match the versions recorded by Supabase's migration tool:
 - The complete application lint check and production build pass.
 - Live pre-confirmed disposable accounts verified real sign-in, parent/player
   profile creation, registration completion, admin approval, squad isolation,
-  coach-created events and family attendance responses.
+  coach-created events, family attendance responses and a browser-sent team
+  message visible only to its intended test squad.
 - Live notification checks rejected anonymous and unrelated-team requests. A
   permitted request to a test account with no subscriptions returned zero sent.
 - The public website's 81 tests and site validator passed; joining and sign-in
   links were verified on its production domain.
 
 No real-member messages, notifications or charges were sent during these checks.
-The SQL regression fixtures were rolled back. Disposable live-journey records are
-removed after final browser checks, with cleanup verified separately.
+The SQL regression fixtures were rolled back. All disposable live accounts were
+signed out, then removed. Follow-up queries confirmed zero remaining test users,
+players, teams or messages.
+
+## Repository automation
+
+The release is recorded in [CRM PR 1](https://github.com/armerson/sport-crm/pull/1).
+A verification workflow is prepared locally at `.github/workflows/verify.yml`.
+It could not be pushed because the GitHub OAuth connection lacks the `workflow`
+scope. Application checks passed locally; the release PR also passed Vercel checks.
 
 ## Advisor status and remaining limits
 
