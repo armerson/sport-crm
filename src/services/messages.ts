@@ -145,7 +145,7 @@ export function subscribeToUserProfilesByIds(
 // Send
 // ──────────────────────────────────────────────────────────────
 
-export async function sendTeamMessage(input: MessageFormInput) {
+export async function sendTeamMessage(input: MessageFormInput): Promise<MessageRecord> {
   const client = requireSupabase()
 
   const payload: Record<string, unknown> = {
@@ -157,9 +157,15 @@ export async function sendTeamMessage(input: MessageFormInput) {
   if (input.groupId) payload.group_id = input.groupId
   // club-wide: neither teamId nor groupId — both remain absent from payload
 
-  const { error } = await client.from('messages').insert(payload)
+  const { data, error } = await client
+    .from('messages')
+    .insert(payload)
+    .select('id, team_id, group_id, sender_id, content, created_at')
+    .single()
 
   if (error) {
     throw new Error(error.message)
   }
+
+  return mapMessageRow(data as Record<string, unknown>)
 }

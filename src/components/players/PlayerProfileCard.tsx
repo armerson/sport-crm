@@ -136,7 +136,7 @@ function PlayerAvatar({
           />
           </a>
         ) : (
-          <div className="flex h-24 w-24 items-center justify-center rounded-full bg-[#1565ff]/10 text-3xl font-bold text-[#1565ff] shadow-md ring-2 ring-white sm:h-28 sm:w-28">
+          <div className="flex h-24 w-24 items-center justify-center rounded-full bg-[#1565ff]/10 text-3xl font-bold text-[var(--ui-accent)] shadow-md ring-2 ring-white sm:h-28 sm:w-28">
             {player.name.charAt(0)}
           </div>
         )}
@@ -162,7 +162,7 @@ function PlayerAvatar({
         )}
       </div>
       <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={(e) => void handleFile(e)} />
-      {processing && <p className="text-xs text-[#1565ff]">Removing background…</p>}
+      {processing && <p className="text-xs text-[var(--ui-accent)]">Removing background…</p>}
       {uploading && !processing && <p className="text-xs text-slate-500">Uploading…</p>}
       {error && <p className="text-xs text-rose-600">{error}</p>}
     </div>
@@ -281,7 +281,7 @@ function ProfileEditForm({
 
       {/* IFA COMET registration fields */}
       <div className="rounded-2xl border border-[#1565ff]/20 bg-[#1565ff]/5 p-4 space-y-4">
-        <p className="text-xs font-bold uppercase tracking-wider text-[#1565ff]">IFA COMET Registration</p>
+        <p className="text-xs font-bold uppercase tracking-wider text-[var(--ui-accent)]">IFA COMET Registration</p>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1">
             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide">Gender</label>
@@ -380,7 +380,7 @@ function EmergencyContacts({ playerId, canEdit }: { playerId: string; canEdit: b
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-semibold text-slate-700">Emergency contacts</h4>
         {canEdit && !showForm && (
-          <button type="button" onClick={() => { setForm(blank); setEditingId(null); setShowForm(true) }} className="text-xs font-semibold text-[#1565ff] hover:underline">
+          <button type="button" onClick={() => { setForm(blank); setEditingId(null); setShowForm(true) }} className="text-xs font-semibold text-[var(--ui-accent)] hover:underline">
             + Add contact
           </button>
         )}
@@ -410,18 +410,18 @@ function EmergencyContacts({ playerId, canEdit }: { playerId: string; canEdit: b
       {contacts.length === 0 && !showForm ? (
         <p className="text-sm text-slate-400">No emergency contacts on file.</p>
       ) : (
-        <div className="divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white">
+        <div className="divide-y divide-slate-100 ui-panel">
           {contacts.map((contact) => (
             <div key={contact.id} className="flex items-start justify-between gap-3 px-4 py-3">
               <div>
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-semibold text-slate-900">{contact.name}</p>
-                  {contact.isPrimary && <span className="rounded-full bg-[#1565ff]/10 px-2 py-0.5 text-xs font-semibold text-[#1565ff]">Primary</span>}
+                  {contact.isPrimary && <span className="rounded-full bg-[#1565ff]/10 px-2 py-0.5 text-xs font-semibold text-[var(--ui-accent)]">Primary</span>}
                 </div>
                 <p className="text-xs text-slate-500">{contact.relationship}</p>
                 <div className="mt-1 flex flex-wrap gap-3 text-xs text-slate-600">
-                  <a href={`tel:${contact.phone}`} className="font-medium hover:text-[#1565ff]">{contact.phone}</a>
-                  {contact.email && <a href={`mailto:${contact.email}`} className="hover:text-[#1565ff]">{contact.email}</a>}
+                  <a href={`tel:${contact.phone}`} className="font-medium hover:text-[var(--ui-accent)]">{contact.phone}</a>
+                  {contact.email && <a href={`mailto:${contact.email}`} className="hover:text-[var(--ui-accent)]">{contact.email}</a>}
                 </div>
               </div>
               {canEdit && (
@@ -609,7 +609,7 @@ function IdentityDocuments({
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-semibold text-slate-700">Identity documents</h4>
         {permissions.canUploadDocuments && (
-          <button type="button" onClick={() => inputRef.current?.click()} disabled={uploading} className="text-xs font-semibold text-[#1565ff] hover:underline disabled:opacity-50">
+          <button type="button" onClick={() => inputRef.current?.click()} disabled={uploading} className="text-xs font-semibold text-[var(--ui-accent)] hover:underline disabled:opacity-50">
             {uploading ? 'Uploading…' : '+ Upload document'}
           </button>
         )}
@@ -639,7 +639,7 @@ function IdentityDocuments({
       {documents.length === 0 ? (
         <p className="text-sm text-slate-400">No documents uploaded yet.</p>
       ) : (
-        <div className="divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white">
+        <div className="divide-y divide-slate-100 ui-panel">
           {documents.map((doc) => (
             <div key={doc.id} className="flex items-center justify-between gap-3 px-4 py-3">
               <div>
@@ -656,7 +656,7 @@ function IdentityDocuments({
                 </p>
               </div>
               <div className="flex items-center gap-3">
-                <button type="button" onClick={() => void handleView(doc)} className="text-xs font-semibold text-[#1565ff] hover:underline">
+                <button type="button" onClick={() => void handleView(doc)} className="text-xs font-semibold text-[var(--ui-accent)] hover:underline">
                   View
                 </button>
                 <button type="button" onClick={() => void handleDownload(doc)} className="text-xs font-semibold text-slate-500 hover:text-slate-800 hover:underline">
@@ -854,7 +854,7 @@ export function PlayerProfileCard({ playerId, role, currentUserId }: PlayerProfi
           <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
             <h2 className="text-2xl font-bold text-slate-900">{player.name}</h2>
             {player.jerseyNumber && (
-              <span className="rounded-full bg-[#1565ff]/10 px-2.5 py-0.5 text-sm font-bold text-[#1565ff]">#{player.jerseyNumber}</span>
+              <span className="rounded-full bg-[#1565ff]/10 px-2.5 py-0.5 text-sm font-bold text-[var(--ui-accent)]">#{player.jerseyNumber}</span>
             )}
           </div>
           <div className="mt-1 flex flex-wrap justify-center gap-x-4 gap-y-1 text-sm text-slate-500 sm:justify-start">
@@ -873,7 +873,7 @@ export function PlayerProfileCard({ playerId, role, currentUserId }: PlayerProfi
               <button
                 type="button"
                 onClick={copyCode}
-                className="rounded-lg px-2 py-1 text-xs font-semibold text-[#1565ff] transition hover:bg-slate-100"
+                className="rounded-lg px-2 py-1 text-xs font-semibold text-[var(--ui-accent)] transition hover:bg-slate-100"
                 title="Copy to clipboard"
               >
                 {codeCopied ? '✓ Copied' : 'Copy'}
@@ -892,7 +892,7 @@ export function PlayerProfileCard({ playerId, role, currentUserId }: PlayerProfi
               type="button"
               disabled={exporting}
               onClick={() => void handleCometExport()}
-              className="rounded-xl border border-[#1565ff]/30 bg-[#1565ff]/5 px-4 py-2 text-sm font-semibold text-[#1565ff] transition hover:bg-[#1565ff]/10 disabled:opacity-60"
+              className="rounded-xl border border-[#1565ff]/30 bg-[#1565ff]/5 px-4 py-2 text-sm font-semibold text-[var(--ui-accent)] transition hover:bg-[#1565ff]/10 disabled:opacity-60"
             >
               {exporting ? 'Exporting…' : '⬇ COMET export'}
             </button>
@@ -910,7 +910,7 @@ export function PlayerProfileCard({ playerId, role, currentUserId }: PlayerProfi
               onClick={() => { setActiveSection(tab.value); setEditing(false) }}
               className={`border-b-2 py-3 text-sm font-semibold transition ${
                 activeSection === tab.value
-                  ? 'border-[#1565ff] text-[#1565ff]'
+                  ? 'border-[#1565ff] text-[var(--ui-accent)]'
                   : 'border-transparent text-slate-400 hover:text-slate-600'
               }`}
             >

@@ -39,16 +39,16 @@ export function CoachOverview({ name, events, teams, loading, onSelectEvent, onC
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Your coaching workspace</p>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">Ready for the next session, {name.split(' ')[0]}?</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">Your club day, {name.split(' ')[0]}.</h1>
           <p className="mt-2 text-sm leading-6 text-slate-500">Your squad, the plan and everyone’s availability. All in one place.</p>
         </div>
         <Button onClick={onCreate} disabled={loading || teams.length === 0}>+ Create event</Button>
       </div>
       <div className="grid gap-4 lg:grid-cols-[1.6fr_1fr]">
-        <article className="relative overflow-hidden rounded-3xl bg-[#12243b] p-6 text-white sm:p-7">
+        <article className="ui-feature relative overflow-hidden p-6 text-white sm:p-7">
           <div aria-hidden="true" className="pointer-events-none absolute -right-10 -top-12 h-72 w-52 rotate-12 rounded-[50%] border-[35px] border-white/[0.035]" />
           <div className="relative">
-            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-blue-200"><span className="h-1.5 w-1.5 rounded-full bg-blue-300" />Up next</div>
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-100"><span className="h-1.5 w-1.5 rounded-full bg-emerald-200" />Up next</div>
             {loading ? <p className="py-8 text-sm text-white/70" role="status">Loading your schedule…</p> : next ? <>
               <p className="mt-5 text-xs font-medium text-white/60">{teams.find((team) => team.id === next.teamId)?.name} · {next.type === 'match' ? 'Match' : 'Training'}</p>
               <h2 className="mt-1 text-2xl font-semibold tracking-tight">{next.title}</h2>
@@ -61,7 +61,7 @@ export function CoachOverview({ name, events, teams, loading, onSelectEvent, onC
             </>}
           </div>
         </article>
-        <div className="flex flex-col rounded-3xl border border-slate-200 bg-white p-6">
+        <div className="ui-panel flex flex-col p-6">
           <div className="grid grid-cols-3 gap-3 border-b border-slate-100 pb-5">
             {[['Players', players], ['Teams', teams.length], ['Next 7 days', thisWeek]].map(([label, value]) => <div key={label}><p className="text-2xl font-bold tabular-nums tracking-tight text-slate-950">{loading ? '—' : value}</p><p className="mt-1 text-xs text-slate-500">{label}</p></div>)}
           </div>

@@ -175,12 +175,18 @@ export function useTeamMessages(profile: UserProfile, selectedTarget: string) {
       const tp = parseTarget(target)
 
       try {
-        await sendTeamMessage({
+        const sentMessage = await sendTeamMessage({
           teamId: tp.kind === 'team' ? tp.id : null,
           groupId: tp.kind === 'group' ? tp.id : null,
           senderId: profile.id,
           content,
         })
+
+        // Realtime delivery can lag behind the insert response. Show the
+        // confirmed row immediately and let the subscription reconcile it.
+        setMessages((current) => current.some((message) => message.id === sentMessage.id)
+          ? current
+          : [...current, sentMessage])
 
         // Push notifications: fire-and-forget
         const snippet = `${profile.name}: ${content.slice(0, 80)}${content.length > 80 ? '…' : ''}`

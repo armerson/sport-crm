@@ -21,7 +21,8 @@ export function ConfirmInline({
     return (
       <span className="inline-flex items-center gap-1.5">
         <button
-          className="text-xs font-semibold text-rose-600 transition hover:text-rose-800"
+          className="min-h-11 rounded-lg px-2 text-xs font-semibold text-rose-600 transition hover:text-rose-800"
+          disabled={disabled}
           onClick={() => {
             setPending(false)
             onConfirm()
@@ -32,7 +33,7 @@ export function ConfirmInline({
         </button>
         <span className="text-slate-300">/</span>
         <button
-          className="text-xs font-semibold text-slate-500 transition hover:text-slate-700"
+          className="min-h-11 rounded-lg px-2 text-xs font-semibold text-slate-500 transition hover:text-slate-700"
           onClick={() => setPending(false)}
           type="button"
         >
@@ -44,7 +45,7 @@ export function ConfirmInline({
 
   return (
     <button
-      className="text-xs font-semibold text-slate-500 transition hover:text-rose-600 disabled:opacity-40"
+      className="min-h-11 rounded-lg px-2 text-xs font-semibold text-slate-500 transition hover:text-rose-600 disabled:opacity-40"
       disabled={disabled}
       onClick={() => setPending(true)}
       type="button"

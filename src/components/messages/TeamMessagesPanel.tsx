@@ -85,7 +85,7 @@ export function TeamMessagesPanel({ profile, initialTeamId = '' }: TeamMessagesP
   }
 
   return (
-    <section className="rounded-[2rem] border border-white/70 bg-white/80 p-6 shadow-lg shadow-slate-900/5 backdrop-blur-sm">
+    <section className="ui-panel p-4 sm:p-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <p className="text-sm font-medium text-slate-500">Team messaging</p>
@@ -96,12 +96,12 @@ export function TeamMessagesPanel({ profile, initialTeamId = '' }: TeamMessagesP
                 ? `Conversation · ${activeLabel}`
                 : isAdmin
                   ? 'Club conversations'
-                  : 'Per-team conversation'}
+                  : 'Team conversations'}
           </h2>
           <p className="mt-2 text-sm leading-6 text-slate-600">
             {isAdmin
               ? 'Send to individual teams, named groups, or the whole club.'
-              : 'Admins, coaches, and parents only see messages for the teams they can access.'}
+              : 'Keep plans and updates together. Choose your team to join the conversation.'}
           </p>
         </div>
         <p className="text-sm text-slate-500">
@@ -116,7 +116,7 @@ export function TeamMessagesPanel({ profile, initialTeamId = '' }: TeamMessagesP
       ) : null}
 
       {activeError ? (
-        <div className="mt-5 rounded-3xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">{activeError}</div>
+        <div role="alert" className="mt-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">{activeError}</div>
       ) : null}
 
       {/* Announcements panel for coaches and parents */}
@@ -133,7 +133,7 @@ export function TeamMessagesPanel({ profile, initialTeamId = '' }: TeamMessagesP
           <select
             id="msg-target-select"
             disabled={loadingTeams}
-            className="mt-1.5 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#f18a3f] focus:ring-4 focus:ring-[#f18a3f]/15 disabled:cursor-wait disabled:opacity-60"
+            className="ui-input mt-1.5"
             value={selectedTarget}
             onChange={(e) => setSelectedTarget(e.target.value)}
           >
@@ -162,7 +162,7 @@ export function TeamMessagesPanel({ profile, initialTeamId = '' }: TeamMessagesP
           <label className="block text-sm font-medium text-slate-700" htmlFor="msg-team-select">Active team</label>
           <select
             id="msg-team-select"
-            className="mt-1.5 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#f18a3f] focus:ring-4 focus:ring-[#f18a3f]/15"
+            className="ui-input mt-1.5"
             value={selectedTarget}
             onChange={(e) => setSelectedTarget(e.target.value)}
           >
@@ -174,14 +174,14 @@ export function TeamMessagesPanel({ profile, initialTeamId = '' }: TeamMessagesP
         </div>
       ) : null}
 
-      <div className="mt-6 grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
+      <div className="mt-6 space-y-4">
         {/* Conversation thread */}
-        <article className="rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-5">
+        <article className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 sm:p-5">
           <div className="flex items-center justify-between gap-3">
             <h3 className="text-lg font-semibold text-slate-950">Conversation</h3>
             <p className="text-sm text-slate-500">{loadingMessages ? 'Loading…' : `${messages.length} messages`}</p>
           </div>
-          <div className="mt-4 max-h-[28rem] space-y-3 overflow-y-auto pr-1">
+          <div className="mt-4 max-h-[32rem] min-h-40 space-y-3 overflow-y-auto pr-1">
             {messages.length > 0 ? (
               messages.map((message) => {
                 const isCurrentUser = message.senderId === profile.id
@@ -191,23 +191,23 @@ export function TeamMessagesPanel({ profile, initialTeamId = '' }: TeamMessagesP
                   <div
                     key={message.id}
                     className={`rounded-2xl px-4 py-3 ${
-                      isCurrentUser ? 'ml-6 bg-[#1565ff] text-white' : 'mr-6 bg-white text-slate-900'
+                      isCurrentUser ? 'ml-6 bg-[var(--ui-accent)] text-white' : 'mr-6 bg-white text-slate-900'
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-3 text-xs font-semibold uppercase tracking-[0.12em]">
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-medium">
                       <span className={isCurrentUser ? 'text-white/70' : 'text-slate-500'}>
                         {isCurrentUser ? 'You' : sender?.name ?? 'Club member'}
                       </span>
                       <span className={isCurrentUser ? 'text-white/65' : 'text-slate-400'}>{formatDateTime(message.timestamp)}</span>
                     </div>
-                    <p className={`mt-2 text-sm leading-6 ${isCurrentUser ? 'text-white' : 'text-slate-700'}`}>{message.content}</p>
+                    <p className={`mt-2 whitespace-pre-wrap break-words text-sm leading-6 ${isCurrentUser ? 'text-white' : 'text-slate-700'}`}>{message.content}</p>
                   </div>
                 )
               })
             ) : (
               <div className="rounded-2xl border border-dashed border-slate-300 px-4 py-10 text-center text-sm text-slate-500">
-                {activeTarget
-                  ? 'No messages yet in this conversation.'
+                {loadingMessages ? 'Loading conversation…' : activeTarget
+                  ? 'No messages yet. Start the conversation below.'
                   : isAdmin
                     ? 'Choose a destination to open the conversation.'
                     : 'Choose a team to open the conversation.'}
@@ -217,7 +217,7 @@ export function TeamMessagesPanel({ profile, initialTeamId = '' }: TeamMessagesP
         </article>
 
         {/* Send form */}
-        <article className="rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-5">
+        <article className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 sm:p-5">
           <h3 className="text-lg font-semibold text-slate-950">New message</h3>
           <p className="mt-2 text-sm leading-6 text-slate-600">
             {activeTarget === 'club'
@@ -234,7 +234,7 @@ export function TeamMessagesPanel({ profile, initialTeamId = '' }: TeamMessagesP
               <span>Message</span>
               <textarea
                 id="team-message-draft"
-                className="min-h-36 w-full rounded-2xl border border-white/60 bg-white/90 px-4 py-3 text-base text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[#f18a3f] focus:ring-4 focus:ring-[#f18a3f]/15"
+                className="ui-input min-h-32 resize-y"
                 onChange={(e) => {
                   setDraft(e.target.value)
                   if (activeTarget) {
@@ -250,7 +250,7 @@ export function TeamMessagesPanel({ profile, initialTeamId = '' }: TeamMessagesP
             </label>
             <Button
               className="w-full"
-              disabled={!activeTarget || !canSend}
+              disabled={!activeTarget || !canSend || draft.trim().length < 2}
               loading={isSubmitting}
               type="submit"
             >

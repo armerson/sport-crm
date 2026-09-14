@@ -372,7 +372,8 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
 
   return (
     <section className="space-y-5">
-      <div className="hidden sm:block">
+      <div className="ui-workspace-navigation hidden sm:block">
+        <p className="ui-navigation-label">Workspace</p>
         <TabNav tabs={ADMIN_TABS} active={activeTab} onChange={setActiveTab} />
       </div>
 

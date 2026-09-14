@@ -86,7 +86,8 @@ export function PlayerPortal({ profile, activeTab, onTabChange }: PlayerPortalPr
 
   return (
     <section className="space-y-5">
-      <div className="hidden sm:block">
+      <div className="ui-workspace-navigation hidden sm:block">
+        <p className="ui-navigation-label">Workspace</p>
         <TabNav tabs={PLAYER_TABS} active={activeTab} onChange={onTabChange} />
       </div>
 
@@ -179,7 +180,7 @@ export function PlayerPortal({ profile, activeTab, onTabChange }: PlayerPortalPr
             </article>
           </div>
 
-          <section className="rounded-[2rem] border border-white/70 bg-white/80 p-6 shadow-lg shadow-slate-900/5 backdrop-blur-sm">
+          <section className="ui-panel p-6 shadow-lg shadow-slate-900/5 backdrop-blur-sm">
             <div className="flex items-end justify-between gap-3">
               <h2 className="text-2xl font-semibold tracking-tight text-slate-950">Your events</h2>
               <p className="text-sm text-slate-500">

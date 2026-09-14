@@ -256,7 +256,7 @@ export function AuthPage() {
         />
 
         {/* Right: auth card */}
-        <section className="rounded-[2rem] border border-white/60 bg-white/75 p-5 shadow-xl shadow-slate-900/5 backdrop-blur-xl sm:p-8">
+        <section className="ui-panel p-5 sm:p-8">
 
           {/* Tab switcher */}
           <div className="flex rounded-2xl bg-slate-100/90 p-1">
