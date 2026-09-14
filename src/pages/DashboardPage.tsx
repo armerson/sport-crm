@@ -199,7 +199,8 @@ export function DashboardPage() {
     .toUpperCase()
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[#f5f7fa] pb-24 sm:pb-10">
+    <main className="ui-workspace min-h-screen overflow-x-hidden pb-24 sm:pb-10">
+      <a href="#workspace-content" className="ui-skip">Skip to workspace</a>
       {/* ── Mobile header ── */}
       <header className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:hidden" style={{ backgroundColor: clubSettings.primaryColor }}>
         <div className="flex items-center gap-2.5">
@@ -268,7 +269,7 @@ export function DashboardPage() {
       </header>
 
       {/* Desktop workspace header */}
-      <header className="mb-7 hidden border-b border-slate-200/80 bg-white sm:block">
+      <header className="ui-workspace-header mb-8 hidden sm:block">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-5 px-8 py-5">
           <div className="flex min-w-0 items-center gap-3">
             {clubSettings.logoUrl ? <img src={clubSettings.logoUrl} alt="" className="h-11 w-11 object-contain" /> : (
@@ -289,7 +290,7 @@ export function DashboardPage() {
       </header>
 
       {/* ── Main content ── */}
-      <div className="px-4 py-4 sm:px-6 sm:py-0 lg:px-8">
+      <div id="workspace-content" tabIndex={-1} className="px-4 py-5 sm:px-6 sm:py-0 lg:px-8">
         <div className="mx-auto max-w-6xl space-y-4 sm:space-y-6">
           {showSettings ? (
             <SettingsPanel onClose={() => setShowSettings(false)} />
@@ -319,7 +320,7 @@ export function DashboardPage() {
           type="button"
           aria-label="Create event"
           onClick={() => setCoachTab('create')}
-          className="fixed bottom-[4.5rem] right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-[#1565ff] text-white shadow-lg shadow-[#1565ff]/40 transition active:scale-95 hover:bg-[#0d4ed8] sm:hidden"
+          className="fixed bottom-[4.5rem] right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--ui-accent)] text-white shadow-lg transition active:scale-95 hover:bg-[#0d4ed8] sm:hidden"
         >
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
             <line x1="12" y1="5" x2="12" y2="19" />

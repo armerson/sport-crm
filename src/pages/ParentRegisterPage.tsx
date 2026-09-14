@@ -139,22 +139,25 @@ export function ParentRegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#1565ff] to-slate-900 px-4 py-10">
+    <div className="min-h-screen bg-[var(--ui-canvas)] px-4 py-10">
       <div className="mx-auto max-w-lg">
-        <div className="mb-6 text-center text-white">
-          <p className="text-sm font-semibold uppercase tracking-widest text-white/60">{club.name}</p>
+        <div className="mb-6 text-center text-slate-900">
+          <p className="text-sm font-semibold uppercase tracking-widest text-slate-500">{club.name}</p>
           <h1 className="mt-2 text-2xl font-bold">Register your child</h1>
-          <p className="mt-1 text-sm text-white/70">Create your family account, then add your children.</p>
+          <p className="mt-1 text-sm text-slate-600">Create your family account, then add your children.</p>
         </div>
 
-        <div className="rounded-[1.75rem] border border-white/20 bg-white p-6 shadow-xl">
+        <ol aria-label="Registration progress" className="mb-5 flex justify-between gap-2 text-xs font-semibold text-slate-600">
+          {['Account', 'Player details', 'Club review'].map((label, index) => <li key={label} aria-current={(step === 'account' || step === 'confirm-email' ? 0 : step === 'done' ? 2 : 1) === index ? 'step' : undefined} className="flex items-center gap-2"><span className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white">{index + 1}</span>{label}</li>)}
+        </ol>
+        <div className="ui-panel p-6">
           {metadataError || authError ? <p role="alert" className="mb-4 text-sm text-rose-700">{metadataError ?? authError}</p> : null}
           {authLoading || loadingMeta ? <p role="status" className="text-sm text-slate-500">Loading registration…</p> : null}
           {!authLoading && !loadingMeta && step === 'account' && !canProceedChildren ? (
             <form className="space-y-4" onSubmit={handleAccount}>
               <p className="text-sm text-slate-600">
                 Create a parent account. Already have one?{' '}
-                <Link className="font-semibold text-[#1565ff] hover:underline" to={`/login?next=${encodeURIComponent('/register/parent')}`}>
+                <Link className="font-semibold text-[var(--ui-accent)] hover:underline" to={`/login?next=${encodeURIComponent('/register/parent')}`}>
                   Sign in
                 </Link>
               </p>
@@ -246,7 +249,7 @@ export function ParentRegisterPage() {
           ) : null}
         </div>
 
-        <p className="mt-6 text-center text-xs text-white/50">
+        <p className="mt-6 text-center text-xs text-slate-500">
           Your club will review the registration and help connect your family to the right teams.
         </p>
       </div>

@@ -7,7 +7,7 @@ export function RegistrationLandingPage() {
   const websiteUrl = publicWebsiteUrl(import.meta.env.VITE_CLUB_WEBSITE_URL)
   const initials = settings.name.split(' ').map((part) => part[0]).join('').slice(0, 3).toUpperCase()
   return (
-    <main className="min-h-screen bg-[#f5f7fa] px-5 py-6 sm:py-10">
+    <main className="ui-registration min-h-screen px-5 py-6 sm:py-10">
       <div className="mx-auto max-w-4xl">
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3 font-bold text-slate-900">
@@ -16,8 +16,8 @@ export function RegistrationLandingPage() {
           </div>
           <Link to="/login" className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700">Already a member? Sign in →</Link>
         </header>
-        <section className="mt-8 overflow-hidden rounded-[2rem] bg-[#12243b] px-6 py-10 text-white sm:px-10 sm:py-14">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-200">Your club. Your community.</p>
+        <section className="ui-feature mt-8 overflow-hidden px-6 py-10 text-white sm:px-10 sm:py-14">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-100">Your club. Your community.</p>
           <h1 className="mt-4 text-4xl font-bold tracking-tight sm:text-5xl">Your place in the club<br />starts here.</h1>
           <p className="mt-5 max-w-lg text-base leading-7 text-slate-300">Be part of the team. Create your account, tell us who’s playing, and we’ll help you find the right team.</p>
         </section>
@@ -28,7 +28,7 @@ export function RegistrationLandingPage() {
             {[
               { kind: 'parent', number: '01', title: 'My child or children', description: 'For parents and guardians registering players under 18. Manage your children from one family account.', action: 'Register as a parent' },
               { kind: 'player', number: '02', title: 'Myself as a player', description: 'For players aged 18 and over. Manage your own schedule, team updates and club payments.', action: 'Register as a player' },
-            ].map((route) => <Link key={route.kind} to={`/login?mode=register&kind=${route.kind}`} className="group flex flex-col rounded-3xl border border-slate-200 bg-white p-6 transition hover:border-blue-400 hover:shadow-lg hover:shadow-slate-900/5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-600">
+            ].map((route) => <Link key={route.kind} to={`/login?mode=register&kind=${route.kind}`} className="ui-registration-route group flex flex-col rounded-3xl border border-slate-200 bg-white p-6 transition hover:border-blue-400 hover:shadow-lg hover:shadow-slate-900/5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-600">
               <span style={{ color: settings.primaryColor }} className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-xs font-bold">{route.number}</span>
               <h3 className="mt-5 text-xl font-semibold text-slate-950">{route.title}</h3>
               <p className="mb-6 mt-2 text-sm leading-6 text-slate-500">{route.description}</p>

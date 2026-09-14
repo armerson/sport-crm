@@ -8,15 +8,6 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant
 }
 
-const variantClasses: Record<ButtonVariant, string> = {
-  primary:
-    'bg-[var(--club-color,#1565ff)] text-white shadow-sm hover:brightness-90 focus-visible:outline-[var(--club-color,#1565ff)]',
-  secondary:
-    'bg-white text-slate-900 ring-1 ring-slate-200 hover:bg-slate-50 focus-visible:outline-slate-400',
-  ghost:
-    'bg-transparent text-slate-700 hover:bg-white/70 focus-visible:outline-slate-400',
-}
-
 export function Button({
   children,
   className = '',
@@ -27,11 +18,13 @@ export function Button({
 }: ButtonProps) {
   return (
     <button
-      className={`inline-flex items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60 ${variantClasses[variant]} ${className}`}
+      className={`ui-button ui-button-${variant} ${className}`}
+      aria-busy={loading || undefined}
       disabled={disabled || loading}
       {...props}
     >
-      {loading ? 'Please wait...' : children}
+      {loading && <span aria-hidden="true" className="ui-spinner" />}
+      {children}
     </button>
   )
 }

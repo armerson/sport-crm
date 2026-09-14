@@ -48,6 +48,8 @@ const GuestCampSuccessPage = lazy(async () => {
   return { default: module.GuestCampSuccessPage }
 })
 
+const UiPreview = import.meta.env.DEV ? lazy(() => import('./dev/UiPreview.tsx')) : null
+
 function RouteFallback() {
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
@@ -62,6 +64,7 @@ function App() {
   return (
     <Suspense fallback={<RouteFallback />}>
       <Routes>
+        {UiPreview && <Route path="/ui-preview" element={<UiPreview />} />}
         <Route element={<PublicOnlyRoute />}>
           <Route path="/login" element={<AuthPage />} />
         </Route>

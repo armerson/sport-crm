@@ -271,6 +271,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
   const [selectedEventId, setSelectedEventId] = useState('')
   const [scheduleFilter, setScheduleFilter] = useState<'upcoming' | 'past' | 'all'>('upcoming')
   const [eventSearch, setEventSearch] = useState('')
+  const [squadSearch, setSquadSearch] = useState('')
   const [attendanceSearch, setAttendanceSearch] = useState('')
   const [attendanceFilter, setAttendanceFilter] = useState('all')
   const [squadViewPlayerId, setSquadViewPlayerId] = useState<string | null>(null)
@@ -382,6 +383,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
     const team = teams.find((candidate) => candidate.id === event.teamId)
     return matchesPeriod && `${event.title} ${event.location} ${team?.name ?? ''}`.toLowerCase().includes(eventSearch.trim().toLowerCase())
   })
+  const visibleSquad = players.filter((player) => `${player.name} ${player.jerseyNumber ?? ''}`.toLowerCase().includes(squadSearch.trim().toLowerCase()))
   const visibleAttendance = attendance.filter((entry) => (attendanceFilter === 'all' || entry.status === attendanceFilter)
     && (playersById.get(entry.playerId)?.name ?? '').toLowerCase().includes(attendanceSearch.trim().toLowerCase()))
 
@@ -563,7 +565,8 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
 
   return (
     <section className="space-y-5">
-      <div className="hidden sm:block">
+      <div className="ui-workspace-navigation hidden sm:block">
+        <p className="ui-navigation-label">Workspace</p>
         <TabNav tabs={COACH_TABS} active={activeTab} onChange={setActiveTab} />
       </div>
 
@@ -911,7 +914,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                         return (
                           <div key={entry.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3">
                             <div>
-                              <p className="font-medium text-slate-950">{player?.name ?? 'Unknown player'}</p>
+                              <p className="font-medium text-slate-950">{player?.name ?? 'Unknown player'}</p><p className="mt-1 text-xs font-medium text-slate-600">{entry.status === 'yes' ? 'Going' : entry.status === 'no' ? 'Not going' : 'Awaiting response'}</p>
                               {player?.dob ? (
                                 <p className="text-sm text-slate-500">{formatDate(player.dob)}</p>
                               ) : null}
@@ -923,7 +926,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                                 aria-label={`Mark ${player?.name ?? 'player'} as going`}
                                 aria-pressed={entry.status === 'yes'}
                                 onClick={() => void updateAttendance(entry.id, entry.status === 'yes' ? 'pending' : 'yes')}
-                                className={`flex h-9 w-9 items-center justify-center rounded-xl text-base transition active:scale-95 ${
+                                className={`flex h-11 w-11 items-center justify-center rounded-xl text-base transition active:scale-95 ${
                                   entry.status === 'yes'
                                     ? 'bg-emerald-500 text-white shadow-sm'
                                     : 'bg-slate-200 text-slate-400 hover:bg-emerald-100 hover:text-emerald-600'
@@ -937,7 +940,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                                 aria-label={`Mark ${player?.name ?? 'player'} as not going`}
                                 aria-pressed={entry.status === 'no'}
                                 onClick={() => void updateAttendance(entry.id, entry.status === 'no' ? 'pending' : 'no')}
-                                className={`flex h-9 w-9 items-center justify-center rounded-xl text-base transition active:scale-95 ${
+                                className={`flex h-11 w-11 items-center justify-center rounded-xl text-base transition active:scale-95 ${
                                   entry.status === 'no'
                                     ? 'bg-rose-500 text-white shadow-sm'
                                     : 'bg-slate-200 text-slate-400 hover:bg-rose-100 hover:text-rose-500'
@@ -1643,7 +1646,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
       {activeTab === 'squad' ? (
         <section className="space-y-5">
           <div>
-            <h2 className="text-2xl font-semibold tracking-tight text-slate-950">Squad</h2>
+            <h2 className="text-2xl font-semibold tracking-tight text-slate-950">Your squad</h2>
             <p className="mt-1 text-sm text-slate-500">Player profiles, emergency contacts, and identity documents for your team.</p>
           </div>
 
@@ -1651,7 +1654,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
             <div className="max-w-sm">
               <SelectField
                 label="Team"
-                onChange={(event) => { setSelectedTeamId(event.target.value); setSquadViewPlayerId(null) }}
+                onChange={(event) => { setSelectedTeamId(event.target.value); setSquadViewPlayerId(null); setSquadSearch('') }}
                 options={[
                   { label: loadingTeams ? 'Loading teams...' : teams.length > 0 ? 'Choose a team' : 'No teams assigned', value: '' },
                   ...teams.map((team) => ({ label: `${team.name} (${team.ageGroup})`, value: team.id })),
@@ -1665,6 +1668,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
             <InviteButton teamId={activeTeamId} teamName={selectedTeam?.name ?? ''} role="parent" />
           ) : null}
 
+          {activeTeamId && !squadViewPlayerId && !loadingPlayers && players.length > 0 ? <div className="ui-panel p-4"><TextField label="Find a player" type="search" placeholder="Search by name or shirt number" value={squadSearch} onChange={(event) => setSquadSearch(event.target.value)} /><p role="status" className="mt-2 text-xs text-slate-500">{visibleSquad.length} of {players.length} players</p></div> : null}
           {!activeTeamId ? (
             <div className="rounded-2xl border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-500">
               Select a team to view the squad.
@@ -1701,7 +1705,8 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
             </div>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {[...players]
+              {visibleSquad.length === 0 ? <p className="ui-panel p-6 text-sm text-slate-600 sm:col-span-2 lg:col-span-3">No matching players. Try another name or shirt number.</p> : null}
+              {[...visibleSquad]
                 .sort((a, b) => {
                   if (a.jerseyNumber != null && b.jerseyNumber != null) return a.jerseyNumber - b.jerseyNumber
                   if (a.jerseyNumber != null) return -1
@@ -1713,7 +1718,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                   key={player.id}
                   type="button"
                   onClick={() => setSquadViewPlayerId(player.id)}
-                  className="rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-[#1565ff]/30 hover:shadow-md"
+                  className="ui-panel p-5 text-left transition hover:border-[var(--ui-accent)] hover:shadow-md"
                 >
                   <div className="flex items-center gap-3">
                     <div className="relative h-11 w-11 shrink-0">
