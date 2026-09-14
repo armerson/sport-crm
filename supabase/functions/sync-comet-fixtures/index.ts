@@ -138,7 +138,9 @@ Deno.serve(async (request) => {
     }]
   })
 
-  if (valid.length === 0) return json(request, { error: 'No valid fixtures were returned for this team and competition.' }, 422)
+  if (valid.length === 0) {
+    return json(request, { synced: 0, added: 0, updated: 0, results: 0 })
+  }
 
   const { data: existing } = await service
     .from('events')

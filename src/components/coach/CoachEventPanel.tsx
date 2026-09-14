@@ -369,7 +369,9 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
     setSyncingComet(true)
     try {
       const result = await syncComet(selectedTeam.id)
-      setSuccessMessage(`COMET synced: ${result.added} new, ${result.updated} updated.`)
+      setSuccessMessage(result.synced === 0
+        ? 'COMET is connected. No fixtures are available for this competition yet.'
+        : `COMET synced: ${result.added} new, ${result.updated} updated.`)
     } catch (syncError) {
       setLocalError(syncError instanceof Error ? syncError.message : 'Unable to sync COMET fixtures.')
     } finally {
