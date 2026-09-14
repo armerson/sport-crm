@@ -46,3 +46,12 @@ select,
 textarea {
   font: inherit;
 }
+
+/* Consistent keyboard access, including icon-only controls. */
+:where(button, a, select, input, textarea):focus-visible {
+  outline: 2px solid var(--club-color, #1565ff);
+  outline-offset: 3px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}

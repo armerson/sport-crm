@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   createPost,
   deletePost,
@@ -52,11 +52,7 @@ export function PostsManageSection({ profile, teams }: PostsManageSectionProps) 
   const fileRef = useRef<HTMLInputElement>(null)
   const { settings: clubSettings } = useClubSettings()
 
-  useEffect(() => {
-    void loadPosts()
-  }, [])
-
-  async function loadPosts() {
+  const loadPosts = useCallback(async () => {
     try {
       const data = await fetchAllPostsAdmin(profile.id)
       setPosts(data)
@@ -65,7 +61,9 @@ export function PostsManageSection({ profile, teams }: PostsManageSectionProps) 
     } finally {
       setLoading(false)
     }
-  }
+  }, [profile.id])
+
+  useEffect(() => { void loadPosts() }, [loadPosts])
 
   function openCreate() {
     setEditingPost(null)

@@ -1,7 +1,8 @@
 import { Suspense, lazy, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Button } from '../components/ui/Button.tsx'
-import { BottomNav, ADMIN_BOTTOM_NAV, COACH_BOTTOM_NAV, PARENT_BOTTOM_NAV, PLAYER_BOTTOM_NAV } from '../components/ui/BottomNav.tsx'
+import { availableRoles, resolveWorkspaceRole } from '../utils/workspace.ts'
+import { BottomNav } from '../components/ui/BottomNav.tsx'
+import { ADMIN_BOTTOM_NAV, COACH_BOTTOM_NAV, PARENT_BOTTOM_NAV, PLAYER_BOTTOM_NAV } from '../components/ui/bottomNavItems.tsx'
 import { InstallBanner } from '../components/ui/InstallBanner.tsx'
 import { NotificationBanner } from '../components/ui/NotificationBanner.tsx'
 import { NotificationBell } from '../components/ui/NotificationBell.tsx'
@@ -35,8 +36,6 @@ const PlayerPortal = lazy(async () => {
   const module = await import('../components/player/PlayerPortal.tsx')
   return { default: module.PlayerPortal }
 })
-
-const ROLE_ORDER: UserRole[] = ['admin', 'coach', 'player', 'parent']
 
 const ROLE_LABELS: Record<UserRole, string> = {
   admin: 'Admin',
@@ -91,14 +90,6 @@ function GearIcon() {
   )
 }
 
-/** Returns the user's highest-privilege role (admin > coach > player > parent). */
-function defaultRole(roles: UserRole[]): UserRole {
-  for (const role of ROLE_ORDER) {
-    if (roles.includes(role)) return role
-  }
-  return 'parent'
-}
-
 // Prefetch the role panels lazily once the page is idle.
 // This means the first tab switch after login is instant rather than waiting for a network fetch.
 function prefetchPanels() {
@@ -132,32 +123,17 @@ export function DashboardPage() {
   // Club branding — name, logo, primary colour
   const { settings: clubSettings } = useClubSettings()
 
-  // Unread messages badge — uses the profile's own team memberships
-  const hasUnreadMessages = useUnreadMessages(profile?.id ?? '', profile?.teams ?? [])
-
-  // Active role view — initialised to the user's highest-privilege role.
-  const [activeRole, setActiveRole] = useState<UserRole>(() =>
-    profile ? defaultRole(profile.roles) : 'parent',
-  )
-
-  // Deep link: /parent → /?view=parent (see App.tsx). Must run before any early return — conditional hooks break React.
-  useEffect(() => {
-    if (!profile) return
-    const v = searchParams.get('view')
-    if (!v) return
-    if (v === 'parent' && (profile.roles.includes('parent') || profile.children.length > 0)) {
-      setActiveRole('parent')
-    } else if (v === 'coach' && profile.roles.includes('coach')) {
-      setActiveRole('coach')
-    } else if (v === 'admin' && profile.roles.includes('admin')) {
-      setActiveRole('admin')
-    }
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev)
-      next.delete('view')
+  const activeRole = profile ? resolveWorkspaceRole(profile, searchParams.get('view')) : 'parent'
+  const activeTab = activeRole === 'admin' ? adminTab : activeRole === 'coach' ? coachTab : activeRole === 'player' ? playerTab : parentTab
+  const hasUnreadMessages = useUnreadMessages(profile?.id ?? '', activeTab === 'messages' && !showSettings)
+  function setActiveRole(role: UserRole) {
+    setShowSettings(false)
+    setSearchParams((previous) => {
+      const next = new URLSearchParams(previous)
+      next.set('view', role)
       return next
-    }, { replace: true })
-  }, [profile, searchParams, setSearchParams])
+    })
+  }
 
   if (authLoading) {
     return (
@@ -187,14 +163,7 @@ export function DashboardPage() {
     )
   }
 
-  // Sorted roles for the switcher. DB `roles` may omit `parent` even when `player_parents`
-  // links exist — still offer Parent (and Player when linked) so multi-hat users can switch.
-  const sortedRoles = ROLE_ORDER.filter((r) => {
-    if (profile.roles.includes(r)) return true
-    if (r === 'parent' && profile.children.length > 0) return true
-    if (r === 'player' && profile.linkedPlayerId) return true
-    return false
-  })
+  const sortedRoles = availableRoles(profile)
   const hasMultipleRoles = sortedRoles.length > 1
 
   const isAdmin = activeRole === 'admin'
@@ -203,7 +172,6 @@ export function DashboardPage() {
 
   const activeContent = roleContent[activeRole]
 
-  const activeTab = isAdmin ? adminTab : isCoach ? coachTab : isPlayer ? playerTab : parentTab
   const bottomNavItems = isAdmin
     ? ADMIN_BOTTOM_NAV
     : isCoach
@@ -213,6 +181,7 @@ export function DashboardPage() {
         : PARENT_BOTTOM_NAV
 
   function handleTabChange(value: string) {
+    setShowSettings(false)
     if (value === 'messages') markMessagesRead(profile?.id ?? '')
     if (isAdmin) setAdminTab(value as AdminTab)
     else if (isCoach) setCoachTab(value as CoachTab)
@@ -230,9 +199,9 @@ export function DashboardPage() {
     .toUpperCase()
 
   return (
-    <main className="min-h-screen overflow-x-hidden pb-20 sm:pb-0">
+    <main className="min-h-screen overflow-x-hidden bg-[#f5f7fa] pb-24 sm:pb-10">
       {/* ── Mobile header ── */}
-      <header className="flex items-center justify-between px-4 py-3 sm:hidden" style={{ backgroundColor: clubSettings.primaryColor }}>
+      <header className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:hidden" style={{ backgroundColor: clubSettings.primaryColor }}>
         <div className="flex items-center gap-2.5">
           {clubSettings.logoUrl ? (
             <img src={clubSettings.logoUrl} alt={clubSettings.name} className="h-8 w-8 rounded-xl object-cover" />
@@ -298,68 +267,26 @@ export function DashboardPage() {
         </div>
       </header>
 
-      {/* ── Desktop header ── */}
-      <div className="hidden px-6 py-6 sm:block lg:px-8">
-        <div className="mx-auto max-w-6xl">
-          <header className="overflow-hidden rounded-[2rem] p-6 text-white shadow-2xl sm:p-8" style={{ backgroundColor: clubSettings.primaryColor, boxShadow: `0 25px 50px -12px ${clubSettings.primaryColor}33` }}>
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-              <div className="space-y-2">
-                <div className="flex items-center gap-3">
-                  {clubSettings.logoUrl ? (
-                    <img src={clubSettings.logoUrl} alt={clubSettings.name} className="h-10 w-10 rounded-xl object-cover ring-2 ring-white/30" />
-                  ) : null}
-                  <span className="text-xs font-semibold uppercase tracking-widest text-white/50">{clubSettings.name}</span>
-                </div>
-                <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{activeContent.title}</h1>
-                <p className="max-w-2xl text-sm leading-6 text-white/80 sm:text-base">{activeContent.summary}</p>
-                {hasMultipleRoles ? (
-                  <div className="flex gap-1 pt-2">
-                    {sortedRoles.map((role) => (
-                      <button
-                        key={role}
-                        type="button"
-                        onClick={() => setActiveRole(role)}
-                        className={`rounded-full px-3.5 py-1.5 text-xs font-semibold capitalize transition ${
-                          activeRole === role
-                            ? 'bg-white text-[#1565ff]'
-                            : 'border border-white/30 text-white/70 hover:border-white/60 hover:text-white'
-                        }`}
-                      >
-                        {ROLE_LABELS[role]}
-                      </button>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-              <div className="flex flex-col items-start gap-3 rounded-3xl border border-white/15 bg-white/10 p-5 backdrop-blur-sm sm:min-w-72">
-                <p className="text-sm text-white/75">Signed in as</p>
-                <div>
-                  <p className="text-xl font-semibold">{profile.name}</p>
-                  <p className="text-sm text-white/75">
-                    {sortedRoles.map((r) => ROLE_LABELS[r]).join(' · ')}
-                  </p>
-                </div>
-                <div className="flex w-full gap-2">
-                  <NotificationBell
-                    hasUnread={hasUnreadMessages}
-                    onClick={() => {
-                      markMessagesRead(profile.id)
-                      handleTabChange('messages')
-                    }}
-                    className="h-9 w-9"
-                  />
-                  <Button className="flex-1" onClick={() => setShowSettings(true)} variant="secondary">
-                    Settings
-                  </Button>
-                  <Button className="flex-1" onClick={() => void signOutUser()} variant="secondary">
-                    Sign out
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </header>
+      {/* Desktop workspace header */}
+      <header className="mb-7 hidden border-b border-slate-200/80 bg-white sm:block">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-5 px-8 py-5">
+          <div className="flex min-w-0 items-center gap-3">
+            {clubSettings.logoUrl ? <img src={clubSettings.logoUrl} alt="" className="h-11 w-11 object-contain" /> : (
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl text-lg font-bold text-white" style={{ backgroundColor: clubSettings.primaryColor }}>{clubSettings.name.charAt(0)}</span>
+            )}
+            <div><p className="font-bold tracking-tight text-slate-950">{clubSettings.name}</p><p className="text-xs text-slate-500">{activeContent.title}</p></div>
+          </div>
+          <div className="flex items-center gap-3">
+            {hasMultipleRoles ? <select aria-label="Workspace" value={activeRole} onChange={(event) => setActiveRole(event.target.value as UserRole)} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium">
+              {sortedRoles.map((role) => <option key={role} value={role}>{ROLE_LABELS[role]} workspace</option>)}
+            </select> : null}
+            <NotificationBell hasUnread={hasUnreadMessages} onClick={() => handleTabChange('messages')} className="h-10 w-10 !bg-slate-100 !text-slate-600" />
+            <button type="button" onClick={() => setShowSettings(true)} className="rounded-xl p-3 text-slate-500 hover:bg-slate-100" aria-label="Settings"><GearIcon /></button>
+            <div className="flex items-center gap-2 border-l border-slate-200 pl-4"><span className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-700">{initials}</span><span className="max-w-36 truncate text-sm font-semibold">{profile.name}</span></div>
+            <button type="button" onClick={() => void signOutUser()} className="rounded-xl p-3 text-slate-500 hover:bg-slate-100" aria-label="Sign out"><SignOutIcon /></button>
+          </div>
         </div>
-      </div>
+      </header>
 
       {/* ── Main content ── */}
       <div className="px-4 py-4 sm:px-6 sm:py-0 lg:px-8">
@@ -372,13 +299,13 @@ export function DashboardPage() {
               <NotificationBanner userId={profile.id} />
               <Suspense fallback={<SectionFallback />}>
                 {isAdmin ? (
-                  <AdminClubPanel activeTab={adminTab} onTabChange={(t) => setAdminTab(t)} />
+                  <AdminClubPanel activeTab={adminTab} onTabChange={handleTabChange} />
                 ) : isCoach ? (
-                  <CoachEventPanel coachId={profile.id} profile={profile} activeTab={coachTab} onTabChange={(t) => setCoachTab(t)} />
+                  <CoachEventPanel coachId={profile.id} profile={profile} activeTab={coachTab} onTabChange={handleTabChange} />
                 ) : isPlayer ? (
-                  <PlayerPortal profile={profile} activeTab={playerTab} onTabChange={(t) => setPlayerTab(t)} />
+                  <PlayerPortal profile={profile} activeTab={playerTab} onTabChange={handleTabChange} />
                 ) : (
-                  <ParentPortal profile={profile} activeTab={parentTab} onTabChange={(t) => setParentTab(t)} />
+                  <ParentPortal profile={profile} activeTab={parentTab} onTabChange={handleTabChange} />
                 )}
               </Suspense>
             </>

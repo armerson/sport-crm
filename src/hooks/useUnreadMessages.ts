@@ -1,62 +1,56 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase.ts'
 
-function storageKey(profileId: string) {
-  return `msgs_last_read_${profileId}`
+const readEvent = 'clubos:messages-read'
+function storageKey(profileId: string) { return `msgs_last_read_${profileId}` }
+function getLastRead(profileId: string): string {
+  try {
+    const value = localStorage.getItem(storageKey(profileId))
+    if (value && Number.isFinite(Date.parse(value))) return new Date(value).toISOString()
+  } catch { /* Storage is optional. */ }
+  return new Date(0).toISOString()
 }
-
-function getLastRead(profileId: string): Date {
-  const stored = localStorage.getItem(storageKey(profileId))
-  return stored ? new Date(stored) : new Date(0)
+function saveReadTime(profileId: string) {
+  try { localStorage.setItem(storageKey(profileId), new Date().toISOString()) } catch { /* Storage is optional. */ }
 }
-
 export function markMessagesRead(profileId: string) {
-  localStorage.setItem(storageKey(profileId), new Date().toISOString())
+  if (!profileId) return
+  saveReadTime(profileId)
+  window.dispatchEvent(new CustomEvent(readEvent, { detail: profileId }))
 }
 
-/**
- * Returns true if any message across the given teamIds arrived after the user
- * last opened the Messages tab. Uses a lightweight Supabase realtime channel.
- */
-export function useUnreadMessages(profileId: string, teamIds: string[]): boolean {
-  const [hasUnread, setHasUnread] = useState(false)
-  const lastChecked = useRef<Date>(getLastRead(profileId))
-
+/** RLS supplies the user's visible conversations, including parents and players. */
+export function useUnreadMessages(profileId: string, isViewingMessages = false): boolean {
+  const [result, setResult] = useState<{ profileId: string; unread: boolean } | null>(null)
   useEffect(() => {
-    if (!supabase || teamIds.length === 0) return
-
-    // Re-read stored timestamp each time teamIds change
-    lastChecked.current = getLastRead(profileId)
-
-    // Check existing messages since last read (one-shot query)
-    void supabase
-      .from('messages')
-      .select('id', { count: 'exact', head: true })
-      .in('team_id', teamIds)
-      .gt('created_at', lastChecked.current.toISOString())
-      .then(({ count }) => {
-        if ((count ?? 0) > 0) setHasUnread(true)
+    if (!supabase || !profileId) return
+    let current = true
+    let revision = 0
+    if (isViewingMessages) saveReadTime(profileId)
+    const onRead = (event: Event) => {
+      if ((event as CustomEvent<string>).detail !== profileId) return
+      revision += 1
+      setResult({ profileId, unread: false })
+    }
+    window.addEventListener(readEvent, onRead)
+    const requestRevision = revision
+    void supabase.from('messages').select('id', { count: 'exact', head: true })
+      .neq('sender_id', profileId).gt('created_at', getLastRead(profileId))
+      .then(({ count, error }) => {
+        if (current && revision === requestRevision && !error) setResult({ profileId, unread: !isViewingMessages && (count ?? 0) > 0 })
       })
-
-    // Subscribe to new messages in realtime
-    const channel = supabase
-      .channel(`unread-msgs-${profileId}`)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'messages' },
-        (payload) => {
-          const teamId = (payload.new as Record<string, unknown>).team_id as string
-          if (teamIds.includes(teamId)) {
-            setHasUnread(true)
-          }
-        },
-      )
-      .subscribe()
-
+    const channel = supabase.channel(`unread-msgs-${profileId}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
+        if (payload.new.sender_id === profileId) return
+        revision += 1
+        if (isViewingMessages) saveReadTime(profileId)
+        else setResult({ profileId, unread: true })
+      }).subscribe()
     return () => {
+      current = false
+      window.removeEventListener(readEvent, onRead)
       void supabase?.removeChannel(channel)
     }
-  }, [profileId, teamIds.join(',')])
-
-  return hasUnread
+  }, [profileId, isViewingMessages])
+  return !isViewingMessages && result?.profileId === profileId && result.unread
 }

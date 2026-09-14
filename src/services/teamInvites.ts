@@ -40,8 +40,9 @@ export async function createTeamInvite(teamId: string, role: 'parent' | 'coach')
 /** Called after authentication to process a pending invite code. */
 export async function applyTeamInvite(code: string): Promise<void> {
   const client = requireSupabase()
-  const { error } = await client.rpc('use_team_invite', { p_code: code })
+  const { data, error } = await client.rpc('use_team_invite', { p_code: code })
   if (error) throw new Error(error.message)
+  if (data && typeof data === 'object' && 'error' in data) throw new Error(String(data.error))
 }
 
 // ── Club-level invites ────────────────────────────────────────────

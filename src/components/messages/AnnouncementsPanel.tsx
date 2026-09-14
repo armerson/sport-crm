@@ -9,7 +9,7 @@ interface AnnouncementsPanelProps {
   profile: UserProfile
 }
 
-export function AnnouncementsPanel({ profile: _profile }: AnnouncementsPanelProps) {
+export function AnnouncementsPanel({ profile }: AnnouncementsPanelProps) {
   const { announcements, loading } = useAnnouncements()
   const [senders, setSenders] = useState<UserProfile[]>([])
   const [open, setOpen] = useState(true)
@@ -20,13 +20,13 @@ export function AnnouncementsPanel({ profile: _profile }: AnnouncementsPanelProp
   )
 
   useEffect(() => {
-    if (senderIds.length === 0) { setSenders([]); return undefined }
+    if (senderIds.length === 0) return undefined
     return subscribeToUserProfilesByIds(senderIds, setSenders, () => undefined)
   }, [senderIds])
 
   if (!loading && announcements.length === 0) return null
 
-  const senderById = new Map(senders.map((s) => [s.id, s]))
+  const senderById = new Map([...senders, profile].map((s) => [s.id, s]))
 
   return (
     <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-4">

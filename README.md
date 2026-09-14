@@ -2,6 +2,18 @@
 
 Sports Club CRM is a Vite + React app for club admins, coaches, and parents. The app now runs on Supabase for auth, data storage, realtime refresh, and privileged provisioning.
 
+For a plain-English explanation of the product, roles, separate club apps and
+current progress, read [PRODUCT_OVERVIEW.md](PRODUCT_OVERVIEW.md).
+
+## Club websites
+
+ClubOS is a standalone management app. Initially, each club has its own branded
+deployment and separate Supabase backend. Public websites link into registration
+and member sign-in; they do not host the CRM or access private club records.
+
+See [Website integration](WEBSITE_INTEGRATION.md) for entry points, configuration
+and release order. Set `VITE_CLUB_WEBSITE_URL` to show that club’s website link.
+
 ## Stack
 
 - React 19 with Vite and TypeScript
@@ -36,36 +48,13 @@ Required frontend variables:
 
 ## Supabase Setup
 
-1. Create a Supabase project.
-2. Enable Email auth in Supabase Auth.
-3. Apply the SQL schema in [supabase/migrations/20260402170000_initial_schema.sql](supabase/migrations/20260402170000_initial_schema.sql).
-4. Deploy the edge function in [supabase/functions/provision-club-user/index.ts](supabase/functions/provision-club-user/index.ts).
-5. Set `APP_BASE_URL` for the edge function using [supabase/functions/.env.example](supabase/functions/.env.example).
+See [CLUB_SETUP.md](CLUB_SETUP.md) for the separate-club deployment checklist.
+Apply the complete migration history, including the September access-control and
+registration repairs. The initial April migration alone no longer supports the app.
+First-admin access uses the `profiles.roles` array, not the retired `role` column.
 
-Core database tables:
-
-- `profiles`
-- `teams`
-- `players`
-- `team_coaches`
-- `player_teams`
-- `player_parents`
-- `events`
-- `attendance`
-- `messages`
-- `audit_logs`
-
-## Supabase Launch Checklist
-
-1. Create the Supabase project.
-2. In Supabase Auth, enable Email sign-in.
-3. Run the SQL in [supabase/migrations/20260402170000_initial_schema.sql](supabase/migrations/20260402170000_initial_schema.sql).
-4. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` to `.env.local`.
-5. Add the same two variables in Vercel.
-6. Set `APP_BASE_URL` for the provisioning edge function using [supabase/functions/.env.example](supabase/functions/.env.example).
-7. Deploy the edge function in [supabase/functions/provision-club-user/index.ts](supabase/functions/provision-club-user/index.ts).
-8. Create the first admin user in Supabase Auth, then set that user's `profiles.role` to `admin` in the database.
-9. Open the app locally or on Vercel and verify admin, coach, parent, attendance, and messaging flows.
+See [SECURITY_RELEASE_BLOCKERS.md](SECURITY_RELEASE_BLOCKERS.md) for the repaired
+access boundaries, deployed migrations and remaining verification limits.
 
 ## Auth And Roles
 
@@ -122,9 +111,10 @@ npm run dev
 
 ## Validation
 
-Current frontend validation passes:
+Frontend validation commands (repository-wide lint has pre-existing failures):
 
 - `npm run build`
+- `npm test` (Node 24+)
 - `npm run lint`
 
 ## Legacy Cleanup

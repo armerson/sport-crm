@@ -1,7 +1,8 @@
-import { Navigate, Outlet } from 'react-router-dom'
+import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth.ts'
 
 export function ProtectedRoute() {
+  const location = useLocation()
   const { currentUser, loading } = useAuth()
 
   if (loading) {
@@ -15,7 +16,7 @@ export function ProtectedRoute() {
   }
 
   if (!currentUser) {
-    return <Navigate replace to="/login" />
+    return <Navigate replace to={`/login?next=${encodeURIComponent(location.pathname + location.search + location.hash)}`} />
   }
 
   return <Outlet />

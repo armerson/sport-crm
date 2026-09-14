@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTeamMessages } from '../../hooks/useTeamMessages.ts'
 import { AnnouncementsPanel } from './AnnouncementsPanel.tsx'
 import type { UserProfile } from '../../types/auth.ts'
@@ -6,12 +6,13 @@ import { formatDateTime } from '../../utils/date.ts'
 import { Button } from '../ui/Button.tsx'
 
 interface TeamMessagesPanelProps {
+  initialTeamId?: string
   profile: UserProfile
 }
 
-export function TeamMessagesPanel({ profile }: TeamMessagesPanelProps) {
-  const [selectedTarget, setSelectedTarget] = useState('')
-  const [draft, setDraft] = useState('')
+export function TeamMessagesPanel({ profile, initialTeamId = '' }: TeamMessagesPanelProps) {
+  const [selectedTarget, setSelectedTarget] = useState(initialTeamId)
+  const [drafts, setDrafts] = useState<Record<string, string>>({})
   const [localError, setLocalError] = useState<string | null>(null)
 
   const {
@@ -29,12 +30,14 @@ export function TeamMessagesPanel({ profile }: TeamMessagesPanelProps) {
     teams,
   } = useTeamMessages(profile, selectedTarget)
 
-  // Restore draft from localStorage when the active target changes
-  useEffect(() => {
-    if (!activeTarget) return
-    const saved = localStorage.getItem(`msg-draft-${activeTarget}`)
-    setDraft(saved ?? '')
-  }, [activeTarget])
+  const draftKey = `msg-draft-${profile.id}-${activeTarget}`
+  const savedDraft = useMemo(() => {
+    try { return localStorage.getItem(draftKey) ?? '' } catch { return '' }
+  }, [draftKey])
+  const draft = drafts[draftKey] ?? savedDraft
+  function setDraft(value: string) {
+    setDrafts((previous) => ({ ...previous, [draftKey]: value }))
+  }
 
   const isAdmin = profile.roles.includes('admin')
   const isCoachOrParent = !isAdmin
@@ -75,7 +78,7 @@ export function TeamMessagesPanel({ profile }: TeamMessagesPanelProps) {
     try {
       await sendMessage(activeTarget, draft.trim())
       setDraft('')
-      localStorage.removeItem(`msg-draft-${activeTarget}`)
+      try { localStorage.removeItem(draftKey) } catch { /* Storage may be unavailable. */ }
     } catch {
       // Hook exposes a user-facing error.
     }
@@ -235,11 +238,10 @@ export function TeamMessagesPanel({ profile }: TeamMessagesPanelProps) {
                 onChange={(e) => {
                   setDraft(e.target.value)
                   if (activeTarget) {
-                    if (e.target.value) {
-                      localStorage.setItem(`msg-draft-${activeTarget}`, e.target.value)
-                    } else {
-                      localStorage.removeItem(`msg-draft-${activeTarget}`)
-                    }
+                    try {
+                      if (e.target.value) localStorage.setItem(draftKey, e.target.value)
+                      else localStorage.removeItem(draftKey)
+                    } catch { /* Keep the in-memory draft when storage is unavailable. */ }
                   }
                 }}
                 placeholder={canSend ? 'Write your message…' : 'Select a destination to send a message…'}

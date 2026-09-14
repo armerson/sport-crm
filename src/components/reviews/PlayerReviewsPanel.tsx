@@ -15,14 +15,17 @@ interface PlayerReviewsPanelProps {
   coachId: string
 }
 
-export function PlayerReviewsPanel({ playerId, playerName, teamId, coachId }: PlayerReviewsPanelProps) {
+export function PlayerReviewsPanel(props: PlayerReviewsPanelProps) {
+  return <PlayerReviewsContent key={`${props.playerId}:${props.teamId}`} {...props} />
+}
+
+function PlayerReviewsContent({ playerId, playerName, teamId, coachId }: PlayerReviewsPanelProps) {
   const [reviews, setReviews] = useState<PlayerReview[]>([])
   const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState<string | 'new' | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    setLoading(true)
     fetchPlayerReviews(playerId)
       .then(setReviews)
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load'))

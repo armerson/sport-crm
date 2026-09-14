@@ -1,3 +1,5 @@
+import { completeRegistration, selfServiceRoles } from '../services/registrationCompletion.ts'
+import { safeReturnPath } from '../utils/workspace.ts'
 import {
   createContext,
   useEffect,
@@ -74,7 +76,7 @@ async function loadUserProfile(user: User): Promise<UserProfile> {
       id: user.id,
       name: (user.user_metadata.name as string | undefined) ?? 'Club Member',
       email: user.email ?? '',
-      roles: normalizeRoles(user.user_metadata.roles ?? user.user_metadata.role),
+      roles: selfServiceRoles(user.user_metadata),
       teams: [],
       children: [],
       linkedPlayerId: null,
@@ -108,57 +110,17 @@ async function loadUserProfile(user: User): Promise<UserProfile> {
   }
 }
 
-/** Runs signup RPCs using auth metadata (works after email confirmation). */
+/** Complete signup only after the auth listener has released its session lock. */
 async function completePendingRegistration(user: User, profile: UserProfile): Promise<boolean> {
   if (!supabase) return false
-
-  const meta = user.user_metadata as Record<string, unknown>
-  let changed = false
-
-  // Process a pending team invite (stored in sessionStorage by JoinPage after signup/signin)
-  const pendingInviteCode = sessionStorage.getItem('pending_invite_code')
-  if (pendingInviteCode) {
-    sessionStorage.removeItem('pending_invite_code')
-    await supabase.rpc('use_team_invite', { p_code: pendingInviteCode }).then(() => undefined, () => undefined)
-    changed = true
-  }
-
-  const pendingClubCode = sessionStorage.getItem('pending_club_invite_code')
-  if (pendingClubCode) {
-    sessionStorage.removeItem('pending_club_invite_code')
-    await supabase.rpc('use_club_invite', { p_code: pendingClubCode }).then(() => undefined, () => undefined)
-    changed = true
-  }
-
-  const signupChildren = meta.signup_children as Array<{ name: string; dob: string }> | undefined
-  if (profile.roles.includes('parent') && signupChildren?.length && profile.children.length === 0) {
-    const { error } = await supabase.rpc('register_signup_children', {
-      children: signupChildren,
-    })
-    if (!error) {
-      await supabase.auth.updateUser({ data: { signup_children: null } })
-      changed = true
-    }
-  }
-
-  if (
-    profile.roles.includes('player')
-    && !profile.linkedPlayerId
-    && meta.signup_account === 'player'
-    && typeof meta.player_dob === 'string'
-    && meta.player_dob.length > 0
-  ) {
-    const { error } = await supabase.rpc('register_self_as_player', {
-      p_name: profile.name.trim(),
-      p_dob: meta.player_dob,
-    })
-    if (!error) {
-      await supabase.auth.updateUser({ data: { signup_account: null, player_dob: null } })
-      changed = true
-    }
-  }
-
-  return changed
+  const client = supabase
+  let storage: Storage | undefined
+  try { storage = window.sessionStorage } catch { /* Optional browser storage. */ }
+  return completeRegistration(user.user_metadata, profile, {
+    rpc: (name, args) => client.rpc(name, args),
+    clearMetadata: (data) => client.auth.updateUser({ data }),
+    storage,
+  })
 }
 
 function getAuthMessage(error: unknown): string {
@@ -204,6 +166,7 @@ async function syncSessionProfile(
   setProfile: (profile: UserProfile | null) => void,
   setError: (error: string | null) => void,
   setLoading: (loading: boolean) => void,
+  isCurrent: () => boolean = () => true,
 ) {
   const user = session?.user ?? null
   setCurrentUser(user)
@@ -220,31 +183,26 @@ async function syncSessionProfile(
   if (cached) {
     setProfile(cached)
     setLoading(false)
-    // Refresh in the background to pick up any role or team changes.
-    void (async () => {
-      try {
-        const nextProfile = await loadUserProfile(user)
-        writeCachedProfile(user.id, nextProfile)
-        setProfile(nextProfile)
-      } catch { /* silent — user already has a working profile */ }
-    })()
-    return
   }
 
   try {
     let nextProfile = await loadUserProfile(user)
+    if (!isCurrent()) return
     const ranRegistration = await completePendingRegistration(user, nextProfile)
     if (ranRegistration) {
       nextProfile = await loadUserProfile(user)
     }
+    if (!isCurrent()) return
     writeCachedProfile(user.id, nextProfile)
     setProfile(nextProfile)
     setError(null)
   } catch (authError) {
+    if (!isCurrent()) return
+    clearCachedProfile()
     setProfile(null)
     setError(getAuthMessage(authError))
   } finally {
-    setLoading(false)
+    if (isCurrent()) setLoading(false)
   }
 }
 
@@ -259,19 +217,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return undefined
     }
 
-    // onAuthStateChange fires INITIAL_SESSION immediately on subscription,
-    // covering the same case as getSession(). Using only one listener avoids
-    // a double-call to syncSessionProfile (and the resulting 6 parallel DB
-    // connections) that was causing ~15 s load times on the Nano plan.
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      void syncSessionProfile(session, setCurrentUser, setProfile, setError, setLoading)
+    let active = true
+    let revision = 0
+    let previousUserId: string | null = null
+    let queue = Promise.resolve()
+    const timers = new Set<ReturnType<typeof setTimeout>>()
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const currentRevision = ++revision
+      // Do not call auth methods from inside the auth event callback. Queue work
+      // outside the callback and serialize it so metadata updates cannot re-enter.
+      if (!session) {
+        previousUserId = null
+        clearCachedProfile()
+        setCurrentUser(null)
+        setProfile(null)
+        setLoading(false)
+        setError(null)
+        return
+      }
+      if (previousUserId !== session.user.id) setLoading(true)
+      previousUserId = session.user.id
+      const timer = setTimeout(() => {
+        timers.delete(timer)
+        const isCurrent = () => active && currentRevision === revision
+        queue = queue.then(async () => {
+          if (isCurrent()) await syncSessionProfile(session, setCurrentUser, setProfile, setError, setLoading, isCurrent)
+        }).catch(() => { if (isCurrent()) { setError('Unable to finish sign-in. Please try again.'); setLoading(false) } })
+      }, 0)
+      timers.add(timer)
     })
-
     return () => {
+      active = false
+      timers.forEach(clearTimeout)
       subscription.unsubscribe()
     }
+
   }, [])
 
   const value = useMemo<AuthContextValue>(
@@ -304,22 +284,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         roles,
         signupChildren,
         playerDob,
+        emailRedirectPath,
       }: SignUpInput) => {
         if (!supabase) {
           setError(supabaseConfigError)
-          return
+          throw new Error(supabaseConfigError)
         }
 
         setError(null)
 
         const isPlayer = roles.includes('player')
+        const signupRoles = isPlayer ? ['player'] : ['parent']
         const { data, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
           options: {
+            emailRedirectTo: `${window.location.origin}${safeReturnPath(emailRedirectPath ?? '/')}`,
             data: {
               name,
-              roles,
+              roles: signupRoles,
               signup_children: !isPlayer && signupChildren?.length ? signupChildren : undefined,
               signup_account: isPlayer ? 'player' : undefined,
               player_dob: isPlayer ? playerDob : undefined,
@@ -333,20 +316,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           throw new Error(message)
         }
 
-        if (data.user && data.session) {
-          const { error: profileError } = await supabase.from('profiles').upsert({
-            id: data.user.id,
-            name,
-            email,
-            roles,
-          })
-
-          if (profileError) {
-            const message = getAuthMessage(profileError)
-            setError(message)
-            throw new Error(message)
-          }
-        }
+        return { requiresEmailConfirmation: !data.session }
       },
       resetPassword: async (email: string) => {
         if (!supabase) {

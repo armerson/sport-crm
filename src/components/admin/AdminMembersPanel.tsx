@@ -440,15 +440,14 @@ function DuplicatesView({ teams }: { teams: TeamRecord[] }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  function load() {
-    setLoading(true)
-    fetchDuplicatePlayers()
-      .then(setGroups)
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Load failed'))
-      .finally(() => setLoading(false))
-  }
-
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    let current = true
+    void fetchDuplicatePlayers()
+      .then((next) => { if (current) setGroups(next) })
+      .catch((err: unknown) => { if (current) setError(err instanceof Error ? err.message : 'Load failed') })
+      .finally(() => { if (current) setLoading(false) })
+    return () => { current = false }
+  }, [])
 
   function handleMerged(groupName: string) {
     setGroups((prev) => prev.filter((g) => g.name !== groupName))

@@ -169,13 +169,13 @@ export async function approvePendingPlayerToTeam(playerId: string, teamId: strin
     throw new Error('This registration is not pending approval.')
   }
 
-  const { error: updateError } = await client.from('players').update({ status: 'active' }).eq('id', playerId)
-  if (updateError) throw new Error(updateError.message)
-
-  const { error: insertError } = await client.from('player_teams').insert({ player_id: playerId, team_id: teamId })
-  if (insertError) {
-    await client.from('players').update({ status: 'pending' }).eq('id', playerId)
-    throw new Error(insertError.message)
+  const { error: approvalError } = await client.rpc('admin_approve_pending_player', {
+    p_player_id: playerId,
+    p_team_id: teamId,
+  })
+  if (approvalError) {
+    if (rpcMissingOrSchemaError(approvalError)) throw new Error('Registration approval needs a club system update. Please contact your administrator.')
+    throw new Error(approvalError.message)
   }
 
   const { data: teamRow } = await client.from('teams').select('name').eq('id', teamId).single()

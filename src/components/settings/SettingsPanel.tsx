@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useAuth } from '../../hooks/useAuth.ts'
 import {
   isPushSupported,
@@ -126,14 +126,10 @@ function SectionProfile({ onBack }: { onBack: () => void }) {
 
 function SectionNotifications({ onBack }: { onBack: () => void }) {
   const { profile } = useAuth()
-  const [permission, setPermission] = useState<NotificationPermission>('default')
+  const [permission, setPermission] = useState<NotificationPermission>(getNotificationPermission)
   const [subscribing, setSubscribing] = useState(false)
   const [done, setDone] = useState(false)
   const pushSupported = isPushSupported()
-
-  useEffect(() => {
-    setPermission(getNotificationPermission())
-  }, [])
 
   async function handleEnable() {
     if (!profile) return

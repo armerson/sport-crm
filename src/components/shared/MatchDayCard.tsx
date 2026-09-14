@@ -88,14 +88,15 @@ export function MatchDayCard({
   const [localAway, setLocalAway] = useState(awayScore ?? 0)
 
   const kickoff = new Date(event.dateTime)
+  const kickoffHour = kickoff.getHours()
   const kickoffTime = kickoff.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
   const isMatch = event.type === 'match'
 
   useEffect(() => {
     if (event.lat != null && event.lng != null) {
-      void fetchWeather(event.lat, event.lng, kickoff.getHours()).then(setWeather)
+      void fetchWeather(event.lat, event.lng, kickoffHour).then(setWeather)
     }
-  }, [event.lat, event.lng])
+  }, [event.lat, event.lng, kickoffHour])
 
   const myAttendance = attendance[0]
   const rsvpStatus = myAttendance?.status ?? null

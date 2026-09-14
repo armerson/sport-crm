@@ -10,13 +10,11 @@ import type { MessageRecord } from '../types/club.ts'
  */
 export function useAnnouncements() {
   const [announcements, setAnnouncements] = useState<MessageRecord[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(isSupabaseConfigured)
+  const [error, setError] = useState<string | null>(isSupabaseConfigured ? null : supabaseConfigError)
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
-      setLoading(false)
-      setError(supabaseConfigError)
       return undefined
     }
 

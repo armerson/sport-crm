@@ -1,7 +1,9 @@
-import { Navigate, Outlet } from 'react-router-dom'
+import { safeReturnPath } from '../utils/workspace.ts'
+import { Navigate, Outlet, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth.ts'
 
 export function PublicOnlyRoute() {
+  const [params] = useSearchParams()
   const { currentUser, loading } = useAuth()
 
   if (loading) {
@@ -15,7 +17,7 @@ export function PublicOnlyRoute() {
   }
 
   if (currentUser) {
-    return <Navigate replace to="/" />
+    return <Navigate replace to={safeReturnPath(params.get('next'))} />
   }
 
   return <Outlet />

@@ -226,20 +226,15 @@ export function PostFeed({ profile, teamIds = [] }: PostFeedProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const teamIdsKey = [...teamIds].sort().join(',')
   useEffect(() => {
-    void loadFeed()
-  }, [profile.id, teamIds.join(',')])
-
-  async function loadFeed() {
-    try {
-      const data = await fetchFeed(profile.id, teamIds)
-      setPosts(data)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load posts.')
-    } finally {
-      setLoading(false)
-    }
-  }
+    let current = true
+    void fetchFeed(profile.id, teamIdsKey ? teamIdsKey.split(',') : [])
+      .then((data) => { if (current) setPosts(data) })
+      .catch((err: unknown) => { if (current) setError(err instanceof Error ? err.message : 'Failed to load posts.') })
+      .finally(() => { if (current) setLoading(false) })
+    return () => { current = false }
+  }, [profile.id, teamIdsKey])
 
   function handleLikeToggle(postId: string, liked: boolean) {
     // Optimistic update

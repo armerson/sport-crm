@@ -1,3 +1,4 @@
+import { CoachOverview } from './CoachOverview.tsx'
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
 import { useAttendanceStats } from '../../hooks/useAttendanceStats.ts'
 import { useCoachClubData } from '../../hooks/useCoachClubData.ts'
@@ -135,6 +136,7 @@ function CoachEventCard({
             <div className="flex min-w-0 items-center gap-1.5 pr-6">
               <p className="truncate text-sm font-semibold leading-snug">{event.title}</p>
               {event.recurrenceGroupId ? <RecurringBadge /> : null}
+              {event.eventStatus === 'cancelled' ? <span className="rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700">Cancelled</span> : null}
             </div>
             <p className={`text-xs ${active ? 'text-white/70' : 'text-slate-500'}`}>
               {formatDateTimeRelative(event.dateTime)}
@@ -267,6 +269,10 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
   }
   const [selectedTeamId, setSelectedTeamId] = useState('')
   const [selectedEventId, setSelectedEventId] = useState('')
+  const [scheduleFilter, setScheduleFilter] = useState<'upcoming' | 'past' | 'all'>('upcoming')
+  const [eventSearch, setEventSearch] = useState('')
+  const [attendanceSearch, setAttendanceSearch] = useState('')
+  const [attendanceFilter, setAttendanceFilter] = useState('all')
   const [squadViewPlayerId, setSquadViewPlayerId] = useState<string | null>(null)
   const [localError, setLocalError] = useState<string | null>(null)
   type PendingDelete =
@@ -370,6 +376,23 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
     [players, lineupByPlayerId],
   )
 
+  const visibleEvents = events.filter((event) => {
+    const isPast = new Date(event.dateTime) < new Date()
+    const matchesPeriod = scheduleFilter === 'all' || (scheduleFilter === 'past' ? isPast : !isPast && event.eventStatus !== 'cancelled')
+    const team = teams.find((candidate) => candidate.id === event.teamId)
+    return matchesPeriod && `${event.title} ${event.location} ${team?.name ?? ''}`.toLowerCase().includes(eventSearch.trim().toLowerCase())
+  })
+  const visibleAttendance = attendance.filter((entry) => (attendanceFilter === 'all' || entry.status === attendanceFilter)
+    && (playersById.get(entry.playerId)?.name ?? '').toLowerCase().includes(attendanceSearch.trim().toLowerCase()))
+
+  function selectEvent(event: import('../../types/club.ts').EventRecord) {
+    // Selecting from all teams must also load this event's squad.
+    setSelectedTeamId(event.teamId)
+    setSelectedEventId(event.id)
+    setAttendanceSearch('')
+    setAttendanceFilter('all')
+  }
+
   const activeError = localError ?? error
 
   async function handleCreateEvent(event: React.FormEvent<HTMLFormElement>) {
@@ -425,7 +448,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
       : ''
     setEditValues({ title: event.title, type: event.type, dateTime: localDt, location: event.location, opponent: event.opponent ?? '' })
     setEditingEventId(eventId)
-    setSelectedEventId(eventId)
+    selectEvent(event)
   }
 
   async function handleUpdateEvent(e: React.FormEvent<HTMLFormElement>) {
@@ -559,17 +582,19 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
       {/* SCHEDULE TAB */}
       {activeTab === 'schedule' ? (
         <section className="space-y-5">
+          {!activeEventId ? <CoachOverview name={profile.name} events={events} teams={teams} loading={loadingTeams || loadingEvents}
+            onSelectEvent={selectEvent} onCreate={() => setActiveTab('create')} onSquad={() => setActiveTab('squad')} onMessages={() => setActiveTab('messages')} /> : null}
           {/* ── Match day hero card ── */}
           {(() => {
             const todayStart = new Date(); todayStart.setHours(0,0,0,0)
             const todayEnd   = new Date(); todayEnd.setHours(23,59,59,999)
             const todayEvent = events.find((e) => {
               const d = new Date(e.dateTime)
-              return d >= todayStart && d <= todayEnd
+              return e.type === 'match' && e.eventStatus !== 'cancelled' && d >= todayStart && d <= todayEnd
             })
             if (!todayEvent) return null
             const result = resultByEventId.get(todayEvent.id)
-            const teamName = (selectedTeam ?? (isSingleTeamCoach ? teams[0] : null))?.name
+            const teamName = teams.find((team) => team.id === todayEvent.teamId)?.name
             return (
               <MatchDayCard
                 event={todayEvent}
@@ -638,7 +663,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                   })()}
                 </div>
                 <div className="flex items-center gap-3">
-                  <p className="text-sm text-slate-500">{loadingEvents ? 'Loading...' : `${events.length} events`}</p>
+                  <p className="text-sm text-slate-500">{loadingEvents ? 'Loading...' : `${visibleEvents.length} events`}</p>
                   {(activeTeamId || isSingleTeamCoach) ? (
                     <button
                       type="button"
@@ -655,9 +680,13 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                 </div>
               </div>
 
+              <div className="mt-4 space-y-3">
+                <TextField label="Find an event" type="search" placeholder="Search events, teams or locations" value={eventSearch} onChange={(event) => setEventSearch(event.target.value)} />
+                <TabNav tabs={[{ label: 'Upcoming', value: 'upcoming' }, { label: 'Past', value: 'past' }, { label: 'All', value: 'all' }]} active={scheduleFilter} onChange={setScheduleFilter} />
+              </div>
               <div className="mt-4 space-y-5">
-                {events.length > 0 ? (
-                  groupByWeek(events, true).map(({ bucket, label, items: bucketEvents }) => (
+                {loadingEvents ? <p role="status" className="py-8 text-center text-sm text-slate-500">Loading your events…</p> : visibleEvents.length > 0 ? (
+                  groupByWeek(visibleEvents, true).map(({ bucket, label, items: bucketEvents }) => (
                     <div key={bucket}>
                       <p className={`mb-2 text-[11px] font-bold uppercase tracking-widest ${bucket === 'past' ? 'text-slate-400' : bucket === 'today' ? 'text-[#1565ff]' : 'text-slate-500'}`}>
                         {label}
@@ -676,7 +705,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                                 event={clubEvent}
                                 active={activeEventId === clubEvent.id}
                                 counts={attendanceCounts.get(clubEvent.id)}
-                                onSelect={() => setSelectedEventId(clubEvent.id)}
+                                onSelect={() => selectEvent(clubEvent)}
                                 onEdit={() => startEditingEvent(clubEvent.id)}
                                 onDelete={() => handleDeleteEvent(clubEvent.id)}
                                 onDeleteSeries={clubEvent.recurrenceGroupId
@@ -693,9 +722,9 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                   <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-10 text-center">
                     <p className="text-2xl">📅</p>
                     <p className="mt-2 text-sm font-medium text-slate-500">
-                      {teams.length === 0 ? 'No teams assigned yet.' : 'No events yet.'}
+                      {teams.length === 0 ? 'No teams assigned yet.' : events.length ? 'No events match this view.' : 'No events yet.'}
                     </p>
-                    {activeTeamId || isSingleTeamCoach ? (
+                    {events.length > 0 ? <button type="button" className="mt-3 text-sm font-semibold text-blue-700" onClick={() => { setEventSearch(''); setScheduleFilter('all') }}>Show all events</button> : activeTeamId || isSingleTeamCoach ? (
                       <button
                         className="mt-3 text-sm font-semibold text-[#1565ff] underline underline-offset-2"
                         onClick={() => setActiveTab('create')}
@@ -789,9 +818,9 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                 </>
               ) : (
                 <>
-              <h2 className="text-xl font-semibold text-slate-950">Attendance</h2>
+              <h2 className="text-xl font-semibold text-slate-950">{activeEvent?.title ?? 'Attendance'}</h2>
               <p className="mt-1 text-sm text-slate-500">
-                {activeEventId ? 'Responses for the selected event.' : 'Select an event to view attendance.'}
+                {activeEvent ? `${selectedTeam?.name ?? ''} · ${formatDateTimeRelative(activeEvent.dateTime)}` : 'Select an event to view attendance.'}
               </p>
 
               {/* Location map for active event */}
@@ -803,17 +832,17 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
 
               {activeEventId ? (
                 <>
-                  <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-3xl bg-[#1565ff] p-4 text-white">
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">Going</p>
+                  <div className="mt-4 grid grid-cols-3 gap-2">
+                    <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-3 text-emerald-900">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Going</p>
                       <p className="mt-2 text-3xl font-semibold">{activeEventCounts.yes}</p>
                     </div>
-                    <div className="rounded-3xl bg-[#f18a3f] p-4 text-slate-950">
+                    <div className="rounded-2xl border border-amber-100 bg-amber-50 p-3 text-amber-900">
                       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-900/70">Pending</p>
                       <p className="mt-2 text-3xl font-semibold">{activeEventCounts.pending}</p>
                     </div>
-                    <div className="rounded-3xl bg-slate-950 p-4 text-white">
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">Not going</p>
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-slate-900">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Not going</p>
                       <p className="mt-2 text-3xl font-semibold">{activeEventCounts.no}</p>
                     </div>
                   </div>
@@ -833,7 +862,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                                 ? `Reminder sent to ${count} parent${count === 1 ? '' : 's'}.`
                                 : 'No parents with push notifications enabled.'
                             )
-                          }).finally(() => setSendingReminder(false))
+                          }).catch(() => setReminderMsg('The reminder could not be sent. Please try again.')).finally(() => setSendingReminder(false))
                         }}
                         className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800 transition hover:bg-amber-100 disabled:opacity-60"
                       >
@@ -868,14 +897,19 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                     </div>
                   )}
 
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <TextField label="Find a player" type="search" placeholder="Player name" value={attendanceSearch} onChange={(event) => setAttendanceSearch(event.target.value)} />
+                    <SelectField label="Response" value={attendanceFilter} onChange={(event) => setAttendanceFilter(event.target.value)} options={[{ label: 'All responses', value: 'all' }, { label: 'Going', value: 'yes' }, { label: 'Awaiting response', value: 'pending' }, { label: 'Not going', value: 'no' }]} />
+                  </div>
                   <div className="mt-3 space-y-2">
-                    {loadingAttendance ? (
+                    {!loadingAttendance && attendance.length > 0 && visibleAttendance.length === 0 ? <p className="py-4 text-sm text-slate-500">No players match these filters.</p> : null}
+                    {loadingAttendance || loadingPlayers ? (
                       <p className="text-sm text-slate-500">Loading responses...</p>
                     ) : attendance.length > 0 ? (
-                      attendance.map((entry) => {
+                      visibleAttendance.map((entry) => {
                         const player = playersById.get(entry.playerId)
                         return (
-                          <div key={entry.id} className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
+                          <div key={entry.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3">
                             <div>
                               <p className="font-medium text-slate-950">{player?.name ?? 'Unknown player'}</p>
                               {player?.dob ? (
@@ -885,7 +919,9 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                             <div className="flex items-center gap-1.5">
                               <button
                                 type="button"
-                                title="Present"
+                                title="Going"
+                                aria-label={`Mark ${player?.name ?? 'player'} as going`}
+                                aria-pressed={entry.status === 'yes'}
                                 onClick={() => void updateAttendance(entry.id, entry.status === 'yes' ? 'pending' : 'yes')}
                                 className={`flex h-9 w-9 items-center justify-center rounded-xl text-base transition active:scale-95 ${
                                   entry.status === 'yes'
@@ -897,7 +933,9 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                               </button>
                               <button
                                 type="button"
-                                title="Absent"
+                                title="Not going"
+                                aria-label={`Mark ${player?.name ?? 'player'} as not going`}
+                                aria-pressed={entry.status === 'no'}
                                 onClick={() => void updateAttendance(entry.id, entry.status === 'no' ? 'pending' : 'no')}
                                 className={`flex h-9 w-9 items-center justify-center rounded-xl text-base transition active:scale-95 ${
                                   entry.status === 'no'
@@ -1457,7 +1495,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                       const outcome = r.homeScore > r.awayScore ? 'W' : r.homeScore === r.awayScore ? 'D' : 'L'
                       const colour = outcome === 'W' ? 'text-emerald-600' : outcome === 'D' ? 'text-amber-600' : 'text-rose-600'
                       return (
-                        <div key={match.id} className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
+                        <div key={match.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3">
                           <div>
                             <p className="text-sm font-semibold text-slate-900">{match.title}</p>
                             <p className="text-xs text-slate-500">{new Date(match.dateTime).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
@@ -1712,7 +1750,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
 
       {activeTab === 'messages' ? (
         <Suspense fallback={<SectionFallback />}>
-          <TeamMessagesPanel profile={profile} />
+          <TeamMessagesPanel profile={profile} initialTeamId={activeTeamId} />
         </Suspense>
       ) : null}
 

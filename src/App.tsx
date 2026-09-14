@@ -3,6 +3,11 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { ProtectedRoute } from './router/ProtectedRoute.tsx'
 import { PublicOnlyRoute } from './router/PublicOnlyRoute.tsx'
 
+const RegistrationLandingPage = lazy(async () => {
+  const module = await import('./pages/RegistrationLandingPage.tsx')
+  return { default: module.RegistrationLandingPage }
+})
+
 const AuthPage = lazy(async () => {
   const module = await import('./pages/AuthPage.tsx')
   return { default: module.AuthPage }
@@ -63,6 +68,7 @@ function App() {
         <Route element={<ProtectedRoute />}>
           <Route path="/" element={<DashboardPage />} />
         </Route>
+        <Route path="/register" element={<RegistrationLandingPage />} />
         {/* Public parent → child registration (multi-step) */}
         <Route path="/register/parent" element={<ParentRegisterPage />} />
         {/* Public registration forms — no auth required */}
