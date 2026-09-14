@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { getNotificationPermission, isPushSupported, requestPermissionAndSubscribe } from '../../lib/pushNotifications.ts'
 
 const VAPID_CONFIGURED = Boolean(import.meta.env.VITE_VAPID_PUBLIC_KEY)
@@ -31,14 +31,9 @@ function BellOffIcon() {
 const DISMISS_KEY = 'push_banner_dismissed'
 
 export function NotificationBanner({ userId }: NotificationBannerProps) {
-  const [permission, setPermission] = useState<NotificationPermission>('default')
+  const [permission, setPermission] = useState<NotificationPermission>(getNotificationPermission)
   const [loading, setLoading] = useState(false)
   const [dismissed, setDismissed] = useState(() => localStorage.getItem(DISMISS_KEY) === '1')
-
-  useEffect(() => {
-    if (!isPushSupported()) return
-    setPermission(getNotificationPermission())
-  }, [])
 
   if (!isPushSupported() || !VAPID_CONFIGURED || permission === 'denied' || permission === 'granted' || dismissed) {
     return null

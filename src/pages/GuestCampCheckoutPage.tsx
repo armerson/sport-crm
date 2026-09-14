@@ -10,13 +10,17 @@ const UUID_RE =
 
 export function GuestCampCheckoutPage() {
   const { productId } = useParams<{ productId: string }>()
+  return <GuestCampCheckoutContent key={productId} productId={productId} />
+}
+
+function GuestCampCheckoutContent({ productId }: { productId: string | undefined }) {
   const [searchParams] = useSearchParams()
   const cancelled = searchParams.get('cancelled') === '1'
 
   const [club, setClub] = useState<ClubSettings>({ name: 'My Club', logoUrl: null, primaryColor: '#1565ff', instagramTagline: '', instagramHashtags: '' })
   const [product, setProduct] = useState<GuestProductInfo | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [notFound, setNotFound] = useState(false)
+  const [loading, setLoading] = useState(Boolean(productId && UUID_RE.test(productId)))
+  const [notFound, setNotFound] = useState(!productId || !UUID_RE.test(productId))
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -32,8 +36,6 @@ export function GuestCampCheckoutPage() {
 
   useEffect(() => {
     if (!productId || !UUID_RE.test(productId)) {
-      setNotFound(true)
-      setLoading(false)
       return
     }
     void fetchGuestProduct(productId)

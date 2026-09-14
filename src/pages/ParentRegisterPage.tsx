@@ -1,3 +1,4 @@
+import { validateChildren } from '../utils/childRegistration.ts'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '../components/ui/Button.tsx'
@@ -11,7 +12,7 @@ import type { ClubPlayerField } from '../types/clubPlayerFields.ts'
 import { isSupabaseConfigured, supabaseConfigError } from '../lib/supabase.ts'
 import type { ClubSettings } from '../types/forms.ts'
 
-type Step = 'account' | 'children' | 'done'
+type Step = 'account' | 'confirm-email' | 'children' | 'done'
 
 interface ChildRow {
   name: string
@@ -21,11 +22,12 @@ interface ChildRow {
 
 export function ParentRegisterPage() {
   const navigate = useNavigate()
-  const { currentUser, profile, signUp, refreshProfile, loading: authLoading } = useAuth()
+  const { currentUser, profile, signUp, refreshProfile, loading: authLoading, error: authError } = useAuth()
   const [step, setStep] = useState<Step>('account')
   const [club, setClub] = useState<ClubSettings>({ name: 'My Club', logoUrl: null, primaryColor: '#1565ff', instagramTagline: '', instagramHashtags: '' })
   const [fields, setFields] = useState<ClubPlayerField[]>([])
   const [loadingMeta, setLoadingMeta] = useState(true)
+  const [metadataError, setMetadataError] = useState<string | null>(null)
 
   const [parentName, setParentName] = useState('')
   const [email, setEmail] = useState('')
@@ -47,17 +49,12 @@ export function ParentRegisterPage() {
   )
 
   useEffect(() => {
-    void Promise.all([fetchClubSettings(), fetchPublicClubPlayerFields().catch(() => [])]).then(([c, f]) => {
+    void Promise.all([fetchClubSettings(), fetchPublicClubPlayerFields()]).then(([c, f]) => {
       setClub(c)
       setFields(f)
-      setLoadingMeta(false)
-    })
+    }).catch(() => setMetadataError('Unable to load registration details. Please refresh and try again.')).finally(() => setLoadingMeta(false))
   }, [])
 
-  useEffect(() => {
-    if (authLoading || loadingMeta) return
-    if (canProceedChildren) setStep('children')
-  }, [authLoading, loadingMeta, canProceedChildren])
 
   function setCustomForRow(index: number, fieldId: string, value: string) {
     setChildrenRows((rows) =>
@@ -68,20 +65,26 @@ export function ParentRegisterPage() {
   async function handleAccount(e: React.FormEvent) {
     e.preventDefault()
     setAccountError(null)
+    if (metadataError) return
     if (!parentName.trim() || !email.trim() || password.length < 6) {
       setAccountError('Enter your name, email, and a password of at least 6 characters.')
       return
     }
     setSubmitting(true)
     try {
-      await signUp({
+      const result = await signUp({
         name: parentName.trim(),
         email: email.trim(),
         password,
         roles: ['parent'],
+        emailRedirectPath: '/register/parent',
       })
-      await refreshProfile()
-      setStep('children')
+      if (result.requiresEmailConfirmation) {
+        setStep('confirm-email')
+      } else {
+        await refreshProfile()
+        setStep('children')
+      }
     } catch (err) {
       setAccountError(err instanceof Error ? err.message : 'Sign up failed.')
     } finally {
@@ -92,47 +95,33 @@ export function ParentRegisterPage() {
   async function handleChildrenSubmit(e: React.FormEvent) {
     e.preventDefault()
     setChildrenError(null)
+    if (metadataError) return
     if (!canProceedChildren) {
       setChildrenError('Please sign in first.')
       navigate(`/login?next=${encodeURIComponent('/register/parent')}`)
       return
     }
 
-    for (const f of fields) {
-      if (!f.required) continue
-      for (const row of childrenRows) {
-        if (!row.name.trim() || !row.dob) {
-          setChildrenError('Each child needs a name and date of birth.')
-          return
-        }
-        const v = row.custom[f.id] ?? ''
-        if (f.fieldType === 'checkbox' && v !== 'true') {
-          setChildrenError(`Please complete required field: ${f.label}`)
-          return
-        }
-        if (f.fieldType !== 'checkbox' && !String(v).trim()) {
-          setChildrenError(`Please complete required field: ${f.label}`)
+    let payload: ChildRow[]
+    try { payload = validateChildren(childrenRows) } catch (error) {
+      setChildrenError(error instanceof Error ? error.message : 'Check each child’s details.')
+      return
+    }
+    for (const field of fields) {
+      if (!field.required) continue
+      for (const row of payload) {
+        const value = row.custom[field.id] ?? ''
+        if ((field.fieldType === 'checkbox' && value !== 'true') || (field.fieldType !== 'checkbox' && !String(value).trim())) {
+          setChildrenError(`Please complete required field: ${field.label}`)
           return
         }
       }
     }
 
-    const payload = childrenRows
-      .filter((r) => r.name.trim() && r.dob)
-      .map((r) => ({
-        name: r.name.trim(),
-        dob: r.dob,
-        custom: Object.keys(r.custom).length ? r.custom : undefined,
-      }))
-
-    if (payload.length === 0) {
-      setChildrenError('Add at least one child with name and date of birth.')
-      return
-    }
-
     setSubmitting(true)
     try {
       await registerChildrenForCurrentUser(payload)
+      await refreshProfile()
       setStep('done')
     } catch (err) {
       setChildrenError(err instanceof Error ? err.message : 'Registration failed.')
@@ -155,11 +144,13 @@ export function ParentRegisterPage() {
         <div className="mb-6 text-center text-white">
           <p className="text-sm font-semibold uppercase tracking-widest text-white/60">{club.name}</p>
           <h1 className="mt-2 text-2xl font-bold">Register your child</h1>
-          <p className="mt-1 text-sm text-white/70">Multi-step parent registration (same data model as the parent portal).</p>
+          <p className="mt-1 text-sm text-white/70">Create your family account, then add your children.</p>
         </div>
 
         <div className="rounded-[1.75rem] border border-white/20 bg-white p-6 shadow-xl">
-          {step === 'account' && !canProceedChildren ? (
+          {metadataError || authError ? <p role="alert" className="mb-4 text-sm text-rose-700">{metadataError ?? authError}</p> : null}
+          {authLoading || loadingMeta ? <p role="status" className="text-sm text-slate-500">Loading registration…</p> : null}
+          {!authLoading && !loadingMeta && step === 'account' && !canProceedChildren ? (
             <form className="space-y-4" onSubmit={handleAccount}>
               <p className="text-sm text-slate-600">
                 Create a parent account. Already have one?{' '}
@@ -171,13 +162,13 @@ export function ParentRegisterPage() {
               <TextField label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
               <TextField label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
               {accountError ? <p className="text-sm text-rose-600">{accountError}</p> : null}
-              <Button className="w-full" loading={submitting} type="submit">
+              <Button className="w-full" disabled={Boolean(metadataError)} loading={submitting} type="submit">
                 Continue
               </Button>
             </form>
           ) : null}
 
-          {step === 'children' || (step === 'account' && canProceedChildren) ? (
+          {!authLoading && !loadingMeta && canProceedChildren && step !== 'done' ? (
             <form className="space-y-6" onSubmit={handleChildrenSubmit}>
               {canProceedChildren ? (
                 <p className="text-sm text-slate-600">
@@ -229,12 +220,19 @@ export function ParentRegisterPage() {
               </Button>
 
               {childrenError ? <p className="text-sm text-rose-600">{childrenError}</p> : null}
-              <Button className="w-full" loading={submitting} type="submit">
+              <Button className="w-full" disabled={Boolean(metadataError)} loading={submitting} type="submit">
                 Submit registration
               </Button>
             </form>
           ) : null}
 
+          {step === 'confirm-email' && !canProceedChildren ? (
+            <div className="space-y-4">
+              <h2 className="text-xl font-semibold text-slate-900">Check your email</h2>
+              <p className="text-sm leading-6 text-slate-600">Confirm your account using the email sent to <strong>{email}</strong>. You can then sign in and add your children.</p>
+              <Link className="inline-block font-semibold text-blue-700 underline" to="/login?next=%2Fregister%2Fparent">Continue to sign in</Link>
+            </div>
+          ) : null}
           {step === 'done' ? (
             <div className="space-y-4 text-center">
               <p className="text-lg font-semibold text-slate-900">Thank you!</p>
@@ -249,7 +247,7 @@ export function ParentRegisterPage() {
         </div>
 
         <p className="mt-6 text-center text-xs text-white/50">
-          Data is stored securely. This app uses Supabase (no separate REST API). Admins configure extra questions under Admin → Player registration.
+          Your club will review the registration and help connect your family to the right teams.
         </p>
       </div>
     </div>

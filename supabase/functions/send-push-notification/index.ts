@@ -1,106 +1,86 @@
-/**
- * Supabase Edge Function: send-push-notification
- *
- * Sends Web Push notifications to one or more users via their stored subscriptions.
- *
- * Required secrets (set with `supabase secrets set`):
- *   VAPID_PUBLIC_KEY   — base64url VAPID public key
- *   VAPID_PRIVATE_KEY  — base64url VAPID private key
- *   VAPID_SUBJECT      — mailto: URI for the VAPID contact (e.g. mailto:admin@yourclub.com)
- *
- * Generate keys once with:
- *   npx web-push generate-vapid-keys
- *
- * Deploy with:
- *   supabase functions deploy send-push-notification
- */
+import { createClient } from 'npm:@supabase/supabase-js@2.101.1'
+import webpush from 'npm:web-push@3.6.7'
+import { createPushHandler, isTrustedPushEndpoint, type PushActor } from './handler.ts'
 
-import { createClient } from 'npm:@supabase/supabase-js@2'
-import webpush from 'npm:web-push@3'
+const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
+  auth: { persistSession: false, autoRefreshToken: false },
+})
+interface PushSubscriptionRow { endpoint: string; p256dh: string; auth: string }
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+async function authenticate(token: string): Promise<PushActor | null> {
+  const { data, error } = await supabase.auth.getUser(token)
+  if (error || !data.user) return null
+  const { data: profile, error: profileError } = await supabase.from('profiles').select('roles, linked_player_id').eq('id', data.user.id).maybeSingle()
+  if (profileError || !profile) return null
+  return { id: data.user.id, roles: profile.roles, linkedPlayerId: profile.linked_player_id }
 }
 
-interface RequestBody {
-  userIds: string[]
-  title: string
-  body: string
-  url?: string
-  tag?: string
-}
-
-interface PushSubscriptionRow {
-  endpoint: string
-  p256dh: string
-  auth: string
-}
-
-Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+async function allowedRecipients(actor: PushActor): Promise<Set<string>> {
+  const [coaches, parents] = await Promise.all([
+    supabase.from('team_coaches').select('team_id').eq('coach_id', actor.id),
+    supabase.from('player_parents').select('player_id').eq('parent_id', actor.id),
+  ])
+  if (coaches.error || parents.error) throw new Error('Membership lookup failed')
+  const playerIds = [...new Set([...(parents.data ?? []).map((p) => p.player_id), ...(actor.linkedPlayerId ? [actor.linkedPlayerId] : [])])]
+  const memberships = playerIds.length ? await supabase.from('player_teams').select('team_id').in('player_id', playerIds) : { data: [], error: null }
+  if (memberships.error) throw memberships.error
+  const teamIds = [...new Set([...(coaches.data ?? []).map((c) => c.team_id), ...(memberships.data ?? []).map((m) => m.team_id)])]
+  if (!teamIds.length) return new Set()
+  const [teamCoaches, teamPlayers] = await Promise.all([
+    supabase.from('team_coaches').select('coach_id').in('team_id', teamIds),
+    supabase.from('player_teams').select('player_id').in('team_id', teamIds),
+  ])
+  if (teamCoaches.error || teamPlayers.error) throw new Error('Team lookup failed')
+  const recipients = new Set<string>((teamCoaches.data ?? []).map((c) => c.coach_id))
+  const squadIds = [...new Set((teamPlayers.data ?? []).map((p) => p.player_id))]
+  if (squadIds.length) {
+    const [families, players] = await Promise.all([
+      supabase.from('player_parents').select('parent_id').in('player_id', squadIds),
+      supabase.from('profiles').select('id').in('linked_player_id', squadIds),
+    ])
+    if (families.error || players.error) throw new Error('Recipient lookup failed')
+    for (const p of families.data ?? []) recipients.add(p.parent_id)
+    for (const p of players.data ?? []) recipients.add(p.id)
   }
+  return recipients
+}
 
-  try {
-    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY')
-    const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY')
-    const vapidSubject = Deno.env.get('VAPID_SUBJECT')
-
-    if (!vapidPublicKey || !vapidPrivateKey || !vapidSubject) {
-      return new Response(JSON.stringify({ error: 'VAPID keys not configured' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-    }
-
-    webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey)
-
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    const supabase = createClient(supabaseUrl, serviceRoleKey)
-
-    const body = (await req.json()) as RequestBody
-    const { userIds, title, body: messageBody, url = '/', tag = 'sports-crm' } = body
-
-    if (!userIds?.length || !title || !messageBody) {
-      return new Response(JSON.stringify({ error: 'Missing required fields: userIds, title, body' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-    }
-
+Deno.serve(createPushHandler({
+  authenticate,
+  allowedRecipients,
+  async deliver({ userIds, title, body: messageBody, url, tag }) {
+    const publicKey = Deno.env.get('VAPID_PUBLIC_KEY')
+    const privateKey = Deno.env.get('VAPID_PRIVATE_KEY')
+    const subject = Deno.env.get('VAPID_SUBJECT')
+    if (!publicKey || !privateKey || !subject) throw new Error('Push is not configured')
+    webpush.setVapidDetails(subject, publicKey, privateKey)
     const { data: subscriptions, error: fetchError } = await supabase
       .from('push_subscriptions')
       .select('endpoint, p256dh, auth')
       .in('user_id', userIds)
 
     if (fetchError) {
-      return new Response(JSON.stringify({ error: fetchError.message }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+      throw fetchError
     }
 
     if (!subscriptions?.length) {
-      return new Response(JSON.stringify({ sent: 0, message: 'No subscriptions found' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+      return { sent: 0 }
     }
 
+    const safeSubscriptions = (subscriptions as PushSubscriptionRow[]).filter((sub) => isTrustedPushEndpoint(sub.endpoint))
     const payload = JSON.stringify({ title, body: messageBody, url, tag })
 
     const results = await Promise.allSettled(
-      (subscriptions as PushSubscriptionRow[]).map((sub) =>
+      safeSubscriptions.map((sub) =>
         webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, payload),
       ),
     )
 
     const sent = results.filter((r) => r.status === 'fulfilled').length
-    const failed = results.filter((r) => r.status === 'rejected').length
+    const failed = results.filter((r) => r.status === 'rejected').length + subscriptions.length - safeSubscriptions.length
 
     // Clean up expired subscriptions (HTTP 410 Gone)
-    const expiredEndpoints = (subscriptions as PushSubscriptionRow[])
+    const expiredEndpoints = safeSubscriptions
       .filter((_, i) => {
         const result = results[i]
         return result?.status === 'rejected' && (result as PromiseRejectedResult).reason?.statusCode === 410
@@ -111,14 +91,6 @@ Deno.serve(async (req: Request) => {
       await supabase.from('push_subscriptions').delete().in('endpoint', expiredEndpoints)
     }
 
-    return new Response(JSON.stringify({ sent, failed }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    return new Response(JSON.stringify({ error: message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
-  }
-})
+    return { sent, failed }
+  },
+}))

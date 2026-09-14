@@ -42,7 +42,7 @@ function ShareIcon() {
 
 export function InstallBanner() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
-  const [showIosHint, setShowIosHint] = useState(false)
+  const [showIosHint, setShowIosHint] = useState(isIosSafari)
   const [dismissed, setDismissed] = useState(() => localStorage.getItem(DISMISS_KEY) === '1')
 
   useEffect(() => {
@@ -54,11 +54,6 @@ export function InstallBanner() {
       setDeferredPrompt(e as BeforeInstallPromptEvent)
     }
     window.addEventListener('beforeinstallprompt', handler)
-
-    // iOS Safari — no install prompt API, show manual hint instead
-    if (isIosSafari()) {
-      setShowIosHint(true)
-    }
 
     return () => window.removeEventListener('beforeinstallprompt', handler)
   }, [dismissed])

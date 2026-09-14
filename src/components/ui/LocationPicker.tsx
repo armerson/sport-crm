@@ -61,9 +61,11 @@ export function LocationPicker({ value, onChange, placeholder = 'Search for a lo
   const [showResults, setShowResults] = useState(false)
   const [lat, setLat] = useState<number | null>(null)
   const [lng, setLng] = useState<number | null>(null)
-  const [searching, setSearching] = useState(false)
+  const [completedQuery, setCompletedQuery] = useState('')
   const containerRef = useRef<HTMLDivElement>(null)
   const debouncedQuery = useDebounce(query, 400)
+  const searchEnabled = debouncedQuery.length >= 3 && lat === null
+  const searching = searchEnabled && completedQuery !== debouncedQuery
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -76,22 +78,20 @@ export function LocationPicker({ value, onChange, placeholder = 'Search for a lo
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
-  // Autocomplete search
+  // Ignore late replies when the user types again or selects a location.
   useEffect(() => {
-    if (debouncedQuery.length < 3 || lat !== null) {
-      setResults([])
-      setShowResults(false)
-      return
-    }
-    setSearching(true)
+    if (!searchEnabled) return
+    let current = true
     void nominatimSearch(debouncedQuery)
       .then((data) => {
+        if (!current) return
         setResults(data)
         setShowResults(data.length > 0)
       })
-      .catch(() => setResults([]))
-      .finally(() => setSearching(false))
-  }, [debouncedQuery, lat])
+      .catch(() => { if (current) setResults([]) })
+      .finally(() => { if (current) setCompletedQuery(debouncedQuery) })
+    return () => { current = false }
+  }, [debouncedQuery, searchEnabled])
 
   function handleSelect(result: NominatimResult) {
     const address = result.display_name
@@ -107,6 +107,8 @@ export function LocationPicker({ value, onChange, placeholder = 'Search for a lo
 
   function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
     const newValue = e.target.value
+    setResults([])
+    setShowResults(false)
     setQuery(newValue)
     setLat(null)
     setLng(null)
@@ -142,7 +144,7 @@ export function LocationPicker({ value, onChange, placeholder = 'Search for a lo
           </span>
         )}
 
-        {showResults && results.length > 0 && (
+        {showResults && query === debouncedQuery && completedQuery === query && searchEnabled && results.length > 0 && (
           <ul className="absolute z-20 mt-1 w-full rounded-2xl border border-slate-200 bg-white py-1 shadow-lg shadow-slate-900/10">
             {results.map((result) => (
               <li key={result.place_id}>

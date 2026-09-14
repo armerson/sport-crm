@@ -6,13 +6,14 @@ interface TabNavProps<T extends string> {
 
 export function TabNav<T extends string>({ tabs, active, onChange }: TabNavProps<T>) {
   return (
-    <div className="flex rounded-2xl bg-slate-100/90 p-1">
+    <div role="group" aria-label="Sections" className="flex gap-1 overflow-x-auto rounded-2xl border border-slate-200 bg-white p-1.5">
       {tabs.map((tab) => (
         <button
           key={tab.value}
-          className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition ${
+          aria-pressed={active === tab.value}
+          className={`shrink-0 flex-1 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-semibold transition ${
             active === tab.value
-              ? 'bg-white text-slate-900 shadow-sm'
+              ? 'bg-slate-900 text-white shadow-sm'
               : 'text-slate-500 hover:text-slate-700'
           }`}
           onClick={() => onChange(tab.value)}

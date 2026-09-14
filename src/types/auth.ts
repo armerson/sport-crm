@@ -24,6 +24,8 @@ export interface SignUpChildInput {
 }
 
 export interface SignUpInput extends SignInInput {
+  /** Local route to return to after confirming the signup email. */
+  emailRedirectPath?: string
   name: string
   roles: UserRole[]
   /** Stored in auth metadata and applied after first session (email confirm safe). */
@@ -39,7 +41,7 @@ export interface AuthContextValue {
   error: string | null
   isConfigured: boolean
   signIn: (input: SignInInput) => Promise<void>
-  signUp: (input: SignUpInput) => Promise<void>
+  signUp: (input: SignUpInput) => Promise<{ requiresEmailConfirmation: boolean }>
   signOutUser: () => Promise<void>
   resetPassword: (email: string) => Promise<void>
   updateProfile: (name: string) => Promise<void>

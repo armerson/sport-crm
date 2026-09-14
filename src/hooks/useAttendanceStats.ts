@@ -3,25 +3,19 @@ import { isSupabaseConfigured } from '../lib/supabase.ts'
 import { fetchAttendanceStats } from '../services/coachClub.ts'
 import type { AttendanceStat } from '../types/club.ts'
 
-/**
- * Fetches per-player attendance stats for a team (past events only).
- * Refreshes whenever teamId changes. Not real-time — recalculates on mount.
- */
+/** Keep late responses from a previous squad out of the current squad's stats. */
 export function useAttendanceStats(teamId: string) {
-  const [stats, setStats] = useState<AttendanceStat[]>([])
-  const [loading, setLoading] = useState(false)
-
+  const [result, setResult] = useState<{ teamId: string; stats: AttendanceStat[]; error: string | null } | null>(null)
+  const enabled = Boolean(teamId && isSupabaseConfigured)
   useEffect(() => {
-    if (!teamId || !isSupabaseConfigured) {
-      setStats([])
-      return
-    }
-
-    setLoading(true)
+    if (!enabled) return
+    let current = true
     void fetchAttendanceStats(teamId)
-      .then(setStats)
-      .finally(() => setLoading(false))
-  }, [teamId])
+      .then((stats) => { if (current) setResult({ teamId, stats, error: null }) })
+      .catch(() => { if (current) setResult({ teamId, stats: [], error: 'Unable to load attendance statistics.' }) })
+    return () => { current = false }
+  }, [teamId, enabled])
 
-  return { stats, loading }
+  const current = enabled && result?.teamId === teamId ? result : null
+  return { stats: current?.stats ?? [], loading: enabled && !current, error: current?.error ?? null }
 }

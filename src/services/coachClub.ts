@@ -85,7 +85,7 @@ export function subscribeToEventsForTeam(
   return subscribeToTables(`team-events-${teamId}`, ['events'], async () => {
     const { data, error } = await client
       .from('events')
-      .select('id, team_id, title, type, date_time, location, place_id, lat, lng, recurrence_group_id, opponent')
+      .select('id, team_id, title, type, date_time, location, place_id, lat, lng, recurrence_group_id, opponent, event_status')
       .eq('team_id', teamId)
       .order('date_time', { ascending: true })
 
@@ -110,7 +110,7 @@ export function subscribeToEventsForTeams(
   return subscribeToTables(key, ['events'], async () => {
     const { data, error } = await client
       .from('events')
-      .select('id, team_id, title, type, date_time, location, place_id, lat, lng, recurrence_group_id, opponent')
+      .select('id, team_id, title, type, date_time, location, place_id, lat, lng, recurrence_group_id, opponent, event_status')
       .in('team_id', teamIds)
       .order('date_time', { ascending: true })
 

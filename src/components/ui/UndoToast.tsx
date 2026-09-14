@@ -29,24 +29,21 @@ interface UndoToastProps {
  */
 export function UndoToast({ message, duration = 5000, onUndo, onConfirm }: UndoToastProps) {
   const [remaining, setRemaining] = useState(duration)
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const confirmRef = useRef(onConfirm)
-  confirmRef.current = onConfirm
+  useEffect(() => { confirmRef.current = onConfirm }, [onConfirm])
 
   useEffect(() => {
-    const step = 50
-    intervalRef.current = setInterval(() => {
-      setRemaining((r) => {
-        if (r <= step) {
-          clearInterval(intervalRef.current!)
-          confirmRef.current()
-          return 0
-        }
-        return r - step
-      })
-    }, step)
-    return () => clearInterval(intervalRef.current!)
-  }, [])
+    const startedAt = Date.now()
+    const interval = setInterval(() => {
+      setRemaining(Math.max(0, duration - (Date.now() - startedAt)))
+    }, 50)
+    const timer = setTimeout(() => {
+      clearInterval(interval)
+      setRemaining(0)
+      confirmRef.current()
+    }, duration)
+    return () => { clearInterval(interval); clearTimeout(timer) }
+  }, [duration])
 
   const pct = Math.max(0, remaining / duration)
 

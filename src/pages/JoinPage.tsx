@@ -1,3 +1,4 @@
+import { applyTeamInvite } from '../services/teamInvites.ts'
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getInviteInfo, type InviteInfo } from '../services/teamInvites.ts'
@@ -94,6 +95,7 @@ function ParentSignupForm({ info, onSuccess }: { info: InviteInfo; onSuccess: ()
         email: email.trim(),
         password,
         roles: ['parent'],
+        emailRedirectPath: `/join/${info.code}`,
         signupChildren: validChildren,
       })
       // Store invite code so completePendingRegistration can pick it up
@@ -175,8 +177,8 @@ function CoachSignupForm({ info, onSuccess }: { info: InviteInfo; onSuccess: () 
 
     setSubmitting(true)
     try {
-      await signUp({ name: name.trim(), email: email.trim(), password, roles: ['coach'] })
       sessionStorage.setItem('pending_invite_code', info.code)
+      await signUp({ name: name.trim(), email: email.trim(), password, roles: ['coach'], emailRedirectPath: `/join/${info.code}` })
       onSuccess()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sign up failed')
@@ -268,13 +270,17 @@ export function JoinPage() {
     })
   }, [code])
 
-  // If already logged in and invite loads, store code and redirect
+  const inviteCode = info?.code
+  const signedInId = profile?.id
+  // A full navigation reloads the profile after the server grants invited access.
   useEffect(() => {
-    if (info && profile) {
-      sessionStorage.setItem('pending_invite_code', info.code)
-      navigate('/', { replace: true })
-    }
-  }, [info, profile, navigate])
+    if (!inviteCode || !signedInId) return
+    let active = true
+    void applyTeamInvite(inviteCode).then(() => {
+      if (active) window.location.assign('/')
+    }).catch((error) => { if (active) setLoadError(error instanceof Error ? error.message : 'Could not accept invitation.') })
+    return () => { active = false }
+  }, [inviteCode, signedInId])
 
   function handleSuccess() {
     setJoined(true)

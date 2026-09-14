@@ -33,7 +33,7 @@ function getParentErrorMessage(error: unknown, fallback: string) {
 
 export function useParentClubData(childIds: string[]) {
   const childIdsKey = sortedChildIdsKey(childIds)
-  const stableChildIds = useMemo(() => [...childIds], [childIdsKey])
+  const stableChildIds = useMemo(() => childIdsKey ? childIdsKey.split('|') : [], [childIdsKey])
 
   const [players, setPlayers] = useState<PlayerRecord[]>([])
   const [teams, setTeams] = useState<TeamRecord[]>([])

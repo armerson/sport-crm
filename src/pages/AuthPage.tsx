@@ -1,3 +1,5 @@
+import { ageOnDate } from '../utils/birthDate.ts'
+import { useSearchParams } from 'react-router-dom'
 import { useMemo, useState } from 'react'
 import { Button } from '../components/ui/Button.tsx'
 import { TextField } from '../components/ui/TextField.tsx'
@@ -7,21 +9,6 @@ import { useClubSettings } from '../hooks/useClubSettings.ts'
 type AuthMode = 'sign-in' | 'sign-up' | 'forgot-password'
 type SignUpStep = 'who' | 'form'
 type SignUpKind = 'parent' | 'player'
-
-function isAtLeastAge(dobYmd: string, minAge: number): boolean {
-  const parts = dobYmd.split('-').map(Number)
-  if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) return false
-  const [y, m, d] = parts
-  const birth = new Date(y, m - 1, d)
-  if (Number.isNaN(birth.getTime())) return false
-  const today = new Date()
-  let age = today.getFullYear() - birth.getFullYear()
-  const mDiff = today.getMonth() - birth.getMonth()
-  if (mDiff < 0 || (mDiff === 0 && today.getDate() < birth.getDate())) {
-    age -= 1
-  }
-  return age >= minAge
-}
 
 // ── Compact mobile header (replaces the full hero on small screens) ────────────
 
@@ -134,14 +121,17 @@ export function AuthPage() {
   const { clearError, error, isConfigured, signIn, signUp, resetPassword } = useAuth()
   const { settings } = useClubSettings()
 
-  const [mode, setMode] = useState<AuthMode>('sign-in')
+  const [params] = useSearchParams()
+  const registrationKind = params.get('kind')
+  const initialKind = registrationKind === 'parent' || registrationKind === 'player' ? registrationKind : null
+  const [mode, setMode] = useState<AuthMode>(() => params.get('mode') === 'register' ? 'sign-up' : 'sign-in')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [resetSent, setResetSent] = useState(false)
   const [resetEmail, setResetEmail] = useState('')
   const [signInValues, setSignInValues] = useState({ email: '', password: '' })
-  const [signUpStep, setSignUpStep] = useState<SignUpStep>('who')
-  const [signUpKind, setSignUpKind] = useState<SignUpKind | null>(null)
+  const [signUpStep, setSignUpStep] = useState<SignUpStep>(() => params.get('mode') === 'register' && initialKind ? 'form' : 'who')
+  const [signUpKind, setSignUpKind] = useState<SignUpKind | null>(initialKind)
   const [signUpValues, setSignUpValues] = useState({ name: '', email: '', password: '' })
   const [playerDob, setPlayerDob] = useState('')
   const [children, setChildren] = useState<Array<{ name: string; dob: string }>>([{ name: '', dob: '' }])
@@ -211,11 +201,11 @@ export function AuthPage() {
       for (let i = 0; i < trimmed.length; i += 1) {
         const c = trimmed[i]
         if (c.name.length < 2) { setFormError(`Child ${i + 1}: enter a name (at least 2 characters).`); return }
-        if (!c.dob) { setFormError(`Child ${i + 1}: enter a date of birth.`); return }
+        if (ageOnDate(c.dob) === null) { setFormError(`Child ${i + 1}: enter a valid date of birth that is not in the future.`); return }
       }
     } else {
       if (!playerDob) { setFormError('Enter your date of birth.'); return }
-      if (!isAtLeastAge(playerDob, 18)) {
+      if ((ageOnDate(playerDob) ?? -1) < 18) {
         setFormError('Player registration is for people aged 18 or over. Parents should register a parent account instead.')
         return
       }
@@ -423,8 +413,8 @@ export function AuthPage() {
               <p className="text-2xl">🎉</p>
               <p className="mt-2 font-semibold text-emerald-900">Account created!</p>
               <p className="mt-1 text-emerald-700 leading-5">
-                Your registration has been sent to the club. An admin will review it and link{' '}
-                {signUpKind === 'parent' ? 'your children' : 'you'} to the right team — you'll be able to sign in once that's done.
+                Check your inbox for a confirmation email if one is required. The club will review your registration and link{' '}
+                {signUpKind === 'parent' ? 'your children' : 'you'} to the right team.
               </p>
               <button
                 className="mt-4 font-medium text-emerald-800 underline underline-offset-2"
@@ -467,7 +457,7 @@ export function AuthPage() {
               {/* Trust note */}
               <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                 <p className="text-xs leading-5 text-slate-500">
-                  🔒 Your information is only visible to your club's admin and coaches — it is never shared with third parties.
+                  Your details help the club manage registration and contact you about your team.
                 </p>
               </div>
             </div>

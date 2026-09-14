@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { applyClubInvite, getClubInviteInfo, type ClubInviteInfo } from '../services/teamInvites.ts'
 import { useAuth } from '../hooks/useAuth.ts'
 
@@ -29,8 +29,7 @@ function Spinner() {
 
 export function ClubJoinPage() {
   const { code = '' } = useParams<{ code: string }>()
-  const navigate = useNavigate()
-  const { signUp, signIn, currentUser } = useAuth()
+  const { signUp, signIn, profile } = useAuth()
 
   const [info, setInfo] = useState<ClubInviteInfo | null>(null)
   const [inviteError, setInviteError] = useState<string | null>(null)
@@ -50,13 +49,15 @@ export function ClubJoinPage() {
     })
   }, [code])
 
-  // After auth, use the invite and redirect
+  const signedInId = profile?.id
+  const inviteReady = Boolean(info)
   useEffect(() => {
-    if (!currentUser || !info) return
-    applyClubInvite(code)
-      .then(() => navigate('/dashboard', { replace: true }))
-      .catch(() => navigate('/dashboard', { replace: true }))
-  }, [currentUser, info, code, navigate])
+    if (!signedInId || !inviteReady) return
+    let active = true
+    void applyClubInvite(code).then(() => { if (active) window.location.assign('/') })
+      .catch((error) => { if (active) setInviteError(error instanceof Error ? error.message : 'Could not accept invitation.') })
+    return () => { active = false }
+  }, [signedInId, inviteReady, code])
 
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault()
@@ -65,7 +66,7 @@ export function ClubJoinPage() {
     setSubmitting(true)
     try {
       sessionStorage.setItem('pending_club_invite_code', code)
-      await signUp({ email, password, name: name.trim(), roles: info!.role === 'coach' ? ['coach'] : ['admin'] })
+      await signUp({ email, password, name: name.trim(), roles: info!.role === 'coach' ? ['coach'] : ['admin'], emailRedirectPath: `/join/club/${code}` })
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Sign up failed.')
       sessionStorage.removeItem('pending_club_invite_code')

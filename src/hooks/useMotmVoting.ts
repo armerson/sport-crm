@@ -9,16 +9,17 @@ import type { MotmTally, MotmVote, PlayerRecord } from '../types/club.ts'
  * events (just returns empty state).
  */
 export function useMotmVoting(eventId: string, isPastMatch: boolean, players: PlayerRecord[]) {
-  const [votes, setVotes] = useState<MotmVote[]>([])
+  const [result, setResult] = useState<{ eventId: string; votes: MotmVote[] } | null>(null)
+  const enabled = Boolean(eventId && isPastMatch && isSupabaseConfigured)
+  const votes = useMemo(() => enabled && result?.eventId === eventId ? result.votes : [], [enabled, result, eventId])
 
   useEffect(() => {
     if (!eventId || !isPastMatch || !isSupabaseConfigured) {
-      setVotes([])
       return undefined
     }
     return subscribeToMotmVotes(
       eventId,
-      (next) => setVotes(next),
+      (next) => setResult({ eventId, votes: next }),
       () => undefined,
     )
   }, [eventId, isPastMatch])
