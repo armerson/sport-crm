@@ -59,9 +59,10 @@ h1, h2, h3 { text-wrap: balance; }
   .ui-workspace { background: var(--ui-canvas); }
   .ui-workspace-header { background: #ffffffed; backdrop-filter: blur(16px); border-bottom: 1px solid var(--ui-border); }
   .ui-bottom-nav { left: 10px; right: 10px; bottom: calc(10px + env(safe-area-inset-bottom)); border-radius: 18px; padding: 4px; box-shadow: 0 12px 36px #182b2920; }
-  .ui-bottom-nav button { min-height: 58px; border-radius: 14px; }
+  .ui-bottom-nav button { min-height: 62px; border-radius: 14px; }
   .ui-bottom-nav button[aria-current=page] { color: var(--ui-accent); }
   .ui-bottom-nav button[aria-current=page] { background: color-mix(in srgb, var(--ui-accent) 10%, white); }
+  .ui-bottom-nav button[aria-current=page]::before { content: ''; position: absolute; left: 50%; top: 3px; width: 24px; height: 2px; border-radius: 999px; background: currentColor; transform: translateX(-50%); }
   .ui-bottom-nav button[aria-current=page] > span:first-child { transform: translateY(-1px); }
   .ui-feature { background: #193b32; border-radius: 20px; }
   .ui-registration { background: var(--ui-canvas); }

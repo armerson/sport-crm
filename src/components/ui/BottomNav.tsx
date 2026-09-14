@@ -33,7 +33,7 @@ export function BottomNav({ items, active, onChange, badges = {} }: BottomNavPro
                 <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-white" />
               )}
             </span>
-            <span className={`text-[10px] font-semibold leading-none tracking-wide ${isActive ? 'text-[var(--ui-accent)]' : 'text-slate-500'}`}>
+            <span className={`text-xs font-semibold leading-none ${isActive ? 'text-[var(--ui-accent)]' : 'text-slate-500'}`}>
               {item.label}
             </span>
           </button>

@@ -36,7 +36,7 @@ export function CoachOverview({ name, events, teams, loading, onSelectEvent, onC
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="hidden flex-wrap items-end justify-between gap-4 sm:flex">
         <div>
           <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Your coaching workspace</p>
           <h1 className="text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">Your club day, {name.split(' ')[0]}.</h1>

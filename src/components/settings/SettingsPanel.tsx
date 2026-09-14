@@ -330,15 +330,16 @@ export function SettingsPanel({ onClose }: Props) {
   return (
     <div className="min-h-[calc(100vh-8rem)] space-y-5 px-1 pb-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-slate-800">Settings</h1>
+      <div className="flex items-center justify-end sm:justify-between">
+        <h1 className="hidden text-xl font-bold text-slate-800 sm:block">Settings</h1>
         <button
           type="button"
           onClick={onClose}
-          className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100"
+          className="flex min-h-10 items-center justify-center rounded-xl px-3 text-sm font-semibold text-slate-500 hover:bg-slate-100"
           aria-label="Close settings"
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <span className="sm:hidden">Done</span>
+          <svg className="hidden sm:block" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <line x1="18" y1="6" x2="6" y2="18" />
             <line x1="6" y1="6" x2="18" y2="18" />
           </svg>

@@ -63,6 +63,38 @@ const roleContent: Record<UserRole, { title: string; summary: string }> = {
   },
 }
 
+const tabDescriptions: Record<UserRole, Record<string, string>> = {
+  admin: {
+    overview: 'See club activity, pending registrations, and the work that needs attention.',
+    manage: 'Manage teams, players, coaches, forms, and club settings.',
+    posts: 'Share club news and updates with members.',
+    billing: 'Manage fees, subscriptions, and payments.',
+    messages: 'Send updates to teams, groups, or the whole club.',
+  },
+  coach: {
+    schedule: 'See upcoming sessions, attendance, and match-day details.',
+    create: 'Add a training session or fixture and notify the squad.',
+    squad: 'Find players, review profiles, and manage your squad.',
+    stats: 'Track attendance, results, and player performance.',
+    feed: 'Read and share the latest team news.',
+    messages: 'Keep players and families informed.',
+  },
+  parent: {
+    schedule: 'See what is coming up and respond to attendance.',
+    development: 'Review feedback and your child’s progress.',
+    children: 'Manage player profiles and important details.',
+    feed: 'Read the latest news from the club.',
+    messages: 'Read and reply to team updates.',
+  },
+  player: {
+    schedule: 'See what is coming up and respond to attendance.',
+    feed: 'Read the latest news from your club.',
+    profile: 'Keep your playing and contact details up to date.',
+    billing: 'View subscriptions and outstanding fees.',
+    messages: 'Read and reply to team updates.',
+  },
+}
+
 function SectionFallback() {
   return (
     <section className="rounded-[2rem] border border-white/70 bg-white/80 p-6 shadow-lg shadow-slate-900/5 backdrop-blur-sm">
@@ -180,7 +212,12 @@ export function DashboardPage() {
         ? PLAYER_BOTTOM_NAV
         : PARENT_BOTTOM_NAV
 
-  const activeTabLabel = bottomNavItems.find((item) => item.value === activeTab)?.label ?? activeContent.title
+  const activeTabLabel = activeRole === 'coach' && activeTab === 'create'
+    ? 'New event'
+    : bottomNavItems.find((item) => item.value === activeTab)?.label ?? activeContent.title
+  const activeTabDescription = tabDescriptions[activeRole][activeTab] ?? activeContent.summary
+  const pageTitle = showSettings ? 'Settings' : activeTabLabel
+  const pageDescription = showSettings ? 'Manage your profile, notifications, security, and app updates.' : activeTabDescription
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
 
@@ -241,21 +278,13 @@ export function DashboardPage() {
           >
             <GearIcon />
           </button>
-          <button
-            type="button"
-            onClick={() => void signOutUser()}
-            className="flex h-10 w-10 items-center justify-center rounded-xl text-white/80 transition active:bg-white/15"
-            aria-label="Sign out"
-          >
-            <SignOutIcon />
-          </button>
         </div>
         </div>
 
         <div className="relative mt-7">
           <p className="text-sm font-medium text-white/70">{greeting}, {profile.name.split(' ')[0]}</p>
-          <h1 className="mt-1 text-3xl font-bold tracking-[-0.035em] text-white">{activeTabLabel}</h1>
-          <p className="mt-2 max-w-sm text-sm leading-5 text-white/65">{activeContent.summary}</p>
+          <h1 className="mt-1 text-3xl font-bold tracking-[-0.035em] text-white">{pageTitle}</h1>
+          <p className="mt-2 max-w-sm text-sm leading-5 text-white/70">{pageDescription}</p>
         </div>
 
         {hasMultipleRoles ? (
@@ -323,22 +352,23 @@ export function DashboardPage() {
       </div>
 
       {/* ── Coach floating create button (mobile only) ── */}
-      {isCoach && coachTab !== 'create' ? (
+      {isCoach && coachTab !== 'create' && !showSettings ? (
         <button
           type="button"
           aria-label="Create event"
           onClick={() => setCoachTab('create')}
-          className="fixed bottom-[4.5rem] right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--ui-accent)] text-white shadow-lg transition active:scale-95 hover:bg-[#0d4ed8] sm:hidden"
+          className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-4 z-50 flex min-h-12 items-center justify-center gap-2 rounded-full bg-[var(--ui-accent)] px-4 text-white shadow-lg transition active:scale-95 sm:hidden"
         >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
             <line x1="12" y1="5" x2="12" y2="19" />
             <line x1="5" y1="12" x2="19" y2="12" />
           </svg>
+          <span className="text-sm font-bold">New event</span>
         </button>
       ) : null}
 
       {/* ── Mobile bottom navigation ── */}
-      <BottomNav items={bottomNavItems} active={activeTab} onChange={handleTabChange} badges={navBadges} />
+      {!showSettings ? <BottomNav items={bottomNavItems} active={activeTab} onChange={handleTabChange} badges={navBadges} /> : null}
     </main>
   )
 }
