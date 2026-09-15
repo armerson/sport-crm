@@ -6,12 +6,16 @@ import {
   requestPermissionAndSubscribe,
 } from '../../lib/pushNotifications.ts'
 import { checkForAppUpdate } from '../../registerAppUpdates.ts'
+import { registerCurrentMemberAsPlayer } from '../../services/memberRegistration.ts'
+import { ageOnDate } from '../../utils/birthDate.ts'
 
 interface Props {
   onClose: () => void
+  initialSection?: Section
+  onPlayerRegistered?: () => void
 }
 
-type Section = 'main' | 'profile' | 'notifications' | 'security' | 'privacy'
+type Section = 'main' | 'profile' | 'notifications' | 'security' | 'privacy' | 'player-registration'
 
 function ChevronRight() {
   return (
@@ -309,9 +313,57 @@ function SectionPrivacy({ onBack }: { onBack: () => void }) {
   )
 }
 
-export function SettingsPanel({ onClose }: Props) {
+function SectionPlayerRegistration({ onBack, onDone }: { onBack: () => void; onDone?: () => void }) {
+  const { profile, refreshProfile } = useAuth()
+  const [dob, setDob] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const age = ageOnDate(dob)
+    if (age === null) { setError('Enter a valid date of birth.'); return }
+    if (age < 18) { setError('Players under 18 must be registered by a parent or guardian.'); return }
+    setSaving(true)
+    setError(null)
+    try {
+      await registerCurrentMemberAsPlayer(dob)
+      await refreshProfile()
+      onDone?.()
+    } catch (registrationError) {
+      setError(registrationError instanceof Error ? registrationError.message : 'Player registration could not be completed.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center gap-3">
+        <BackButton onClick={onBack} />
+        <h2 className="text-base font-bold text-slate-800">Add player workspace</h2>
+      </div>
+      <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+        <p className="text-sm font-semibold text-slate-900">Register {profile?.name} as an adult player</p>
+        <p className="mt-1 text-sm leading-5 text-slate-500">Your Admin, Coach and Parent access will stay in place. The club can assign your player profile to a team after registration.</p>
+        <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-400">Date of birth</span>
+            <input type="date" required value={dob} onChange={(event) => setDob(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-[#1565ff] focus:ring-2 focus:ring-[#1565ff]/20" />
+          </label>
+          {error ? <p role="alert" className="text-sm text-red-600">{error}</p> : null}
+          <button type="submit" disabled={saving} className="w-full rounded-xl bg-[#1565ff] py-2.5 text-sm font-semibold text-white transition disabled:opacity-40 active:scale-[0.98]">
+            {saving ? 'Adding player workspace…' : 'Register me as a player'}
+          </button>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+export function SettingsPanel({ onClose, initialSection = 'main', onPlayerRegistered }: Props) {
   const { profile, signOutUser } = useAuth()
-  const [section, setSection] = useState<Section>('main')
+  const [section, setSection] = useState<Section>(initialSection)
   const [updateStatus, setUpdateStatus] = useState<'idle' | 'checking' | 'current' | 'unsupported' | 'error'>('idle')
 
   const initials = profile?.name
@@ -370,6 +422,14 @@ export function SettingsPanel({ onClose }: Props) {
               label="My Profile"
               sublabel="Edit your display name"
             />
+            {!profile?.linkedPlayerId ? (
+              <RowButton
+                onClick={() => setSection('player-registration')}
+                icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/><path d="M19 4v6M16 7h6"/></svg>}
+                label={profile?.roles.includes('player') ? 'Finish player setup' : 'Add player workspace'}
+                sublabel="Register yourself as an adult player"
+              />
+            ) : null}
             <RowButton
               onClick={() => setSection('notifications')}
               icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>}
@@ -430,6 +490,7 @@ export function SettingsPanel({ onClose }: Props) {
       {section === 'notifications' && <SectionNotifications onBack={() => setSection('main')} />}
       {section === 'security' && <SectionSecurity onBack={() => setSection('main')} />}
       {section === 'privacy' && <SectionPrivacy onBack={() => setSection('main')} />}
+      {section === 'player-registration' && <SectionPlayerRegistration onBack={() => setSection('main')} onDone={onPlayerRegistered} />}
     </div>
   )
 }

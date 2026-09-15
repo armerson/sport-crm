@@ -80,6 +80,11 @@ their profile, see messages and manage club payments.
 ### Club administrators
 
 Administrators manage teams, players, staff access, parent links and registrations.
+
+One member account can hold Admin, Coach, Parent and Player access at the same
+time. An existing signed-in member can add an adult player workspace from
+Settings without losing their other workspaces; the new player record follows
+the normal pending review and team-assignment process.
 The existing app also contains billing, forms, posts, bulk import, club branding
 and an activity log.
 

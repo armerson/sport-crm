@@ -17,6 +17,9 @@ export function PublicOnlyRoute() {
   }
 
   if (currentUser) {
+    if (params.get('mode') === 'register' && params.get('kind') === 'player') {
+      return <Navigate replace to="/?register=player" />
+    }
     return <Navigate replace to={safeReturnPath(params.get('next'))} />
   }
 
