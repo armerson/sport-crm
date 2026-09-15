@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { isSupabaseConfigured, supabaseConfigError } from '../lib/supabase.ts'
-import { fetchParentIdsForPlayers, fetchTeamParentIds, sendPushToUsers } from '../lib/pushNotifications.ts'
+import { fetchAttendanceRecipientIds, fetchTeamParentIds, sendPushToUsers } from '../lib/pushNotifications.ts'
 import {
   castMotmVote,
   coachUpdateAttendance,
@@ -384,17 +384,17 @@ export function useCoachClubData(coachId: string, selectedTeamId: string, select
 
       if (!pendingPlayerIds.length) return 0
 
-      const parentIds = await fetchParentIdsForPlayers(pendingPlayerIds)
-      if (!parentIds.length) return 0
+      const recipientIds = await fetchAttendanceRecipientIds(pendingPlayerIds)
+      if (!recipientIds.length) return 0
 
       await sendPushToUsers(
-        parentIds,
+        recipientIds,
         'Attendance reminder',
-        `Please confirm your child's attendance for: ${eventTitle}`,
+        `Please confirm attendance for: ${eventTitle}`,
         '/',
       )
 
-      return parentIds.length
+      return recipientIds.length
     },
   }
 }
