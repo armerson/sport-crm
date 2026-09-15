@@ -48,8 +48,9 @@ export function subscribeToTeamsByIds(
 
     const { data, error } = await client
       .from('teams')
-      .select('id, name, age_group, is_senior, team_coaches(coach_id), player_teams(player_id)')
+      .select('id, name, age_group, is_senior, archived_at, team_coaches(coach_id), player_teams(player_id)')
       .in('id', teamIds)
+      .is('archived_at', null)
       .order('age_group', { ascending: true })
       .order('name', { ascending: true })
 

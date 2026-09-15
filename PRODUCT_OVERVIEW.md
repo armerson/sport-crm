@@ -85,6 +85,9 @@ One member account can hold Admin, Coach, Parent and Player access at the same
 time. An existing signed-in member can add an adult player workspace from
 Settings without losing their other workspaces; the new player record follows
 the normal pending review and team-assignment process.
+Teams can be archived when they fold or finish a season. Archived teams disappear
+from daily schedules, messaging targets and selectors while their records remain
+available to restore.
 The existing app also contains billing, forms, posts, bulk import, club branding
 and an activity log.
 

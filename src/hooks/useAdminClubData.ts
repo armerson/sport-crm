@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { isSupabaseConfigured, supabaseConfigError } from '../lib/supabase.ts'
 import {
   approvePendingPlayerToTeam,
@@ -15,13 +15,15 @@ import {
   subscribeToCoaches,
   subscribeToGroups,
   subscribeToTeams,
+  subscribeToArchivedTeams,
   subscribeToAllEvents,
   subscribeToPendingPlayers,
   addPlayerToTeam,
   createGroup,
   createTeam,
   deleteGroup,
-  deleteTeam,
+  archiveTeam,
+  restoreTeam,
   updateGroup,
   updateTeam,
 } from '../services/adminClub.ts'
@@ -36,6 +38,7 @@ function getAdminErrorMessage(error: unknown, fallback: string): string {
 
 export function useAdminClubData() {
   const [teams, setTeams] = useState<TeamRecord[]>([])
+  const [archivedTeams, setArchivedTeams] = useState<TeamRecord[]>([])
   const [coaches, setCoaches] = useState<UserProfile[]>([])
   const [parents, setParents] = useState<UserProfile[]>([])
   const [events, setEvents] = useState<EventRecord[]>([])
@@ -57,7 +60,7 @@ export function useAdminClubData() {
 
     setError(null)
 
-    let pending = 4
+    let pending = 5
 
     const markLoaded = () => {
       pending -= 1
@@ -66,6 +69,11 @@ export function useAdminClubData() {
 
     const teamsSubscription = subscribeToTeams(
       (nextTeams) => { setTeams(nextTeams); markLoaded() },
+      (message) => { setError(message); markLoaded() },
+    )
+
+    const archivedTeamsSubscription = subscribeToArchivedTeams(
+      (nextTeams) => { setArchivedTeams(nextTeams); markLoaded() },
       (message) => { setError(message); markLoaded() },
     )
 
@@ -86,6 +94,7 @@ export function useAdminClubData() {
 
     return () => {
       teamsSubscription()
+      archivedTeamsSubscription()
       eventsSubscription()
       groupsSubscription()
       pendingSubscription()
@@ -113,12 +122,17 @@ export function useAdminClubData() {
   }, [loadContacts])
 
   const triggerLoadContacts = useCallback(() => setLoadContacts(true), [])
+  const visibleEvents = useMemo(() => {
+    const activeTeamIds = new Set(teams.map((team) => team.id))
+    return events.filter((event) => activeTeamIds.has(event.teamId))
+  }, [events, teams])
 
   return {
     teams,
+    archivedTeams,
     coaches,
     parents,
-    events,
+    events: visibleEvents,
     groups,
     pendingRegistrations,
     loading,
@@ -170,7 +184,7 @@ export function useAdminClubData() {
         setIsSubmitting(false)
       }
     },
-    deleteTeam: async (teamId: string) => {
+    archiveTeam: async (teamId: string, teamName: string) => {
       if (!isSupabaseConfigured) {
         setError(supabaseConfigError)
         return
@@ -180,11 +194,24 @@ export function useAdminClubData() {
       setError(null)
 
       try {
-        await deleteTeam(teamId)
-        // Optimistic removal — realtime will confirm later
+        await archiveTeam(teamId, teamName)
         setTeams((prev) => prev.filter((t) => t.id !== teamId))
       } catch (submitError) {
-        setError(getAdminErrorMessage(submitError, 'Unable to delete team.'))
+        setError(getAdminErrorMessage(submitError, 'Unable to archive team.'))
+        throw submitError
+      } finally {
+        setIsSubmitting(false)
+      }
+    },
+    restoreTeam: async (teamId: string, teamName: string) => {
+      if (!isSupabaseConfigured) { setError(supabaseConfigError); return }
+      setIsSubmitting(true)
+      setError(null)
+      try {
+        await restoreTeam(teamId, teamName)
+        setArchivedTeams((prev) => prev.filter((team) => team.id !== teamId))
+      } catch (submitError) {
+        setError(getAdminErrorMessage(submitError, 'Unable to restore team.'))
         throw submitError
       } finally {
         setIsSubmitting(false)

@@ -14,6 +14,7 @@ export interface TeamRecord {
   photoFocusY: number
   cometTeamId: number | null
   cometCompetitionId: number | null
+  archivedAt: string | null
 }
 
 export type PlayerDocumentType = 'birth_certificate' | 'passport' | 'other'
