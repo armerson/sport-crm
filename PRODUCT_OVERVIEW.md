@@ -91,8 +91,9 @@ available to restore.
 Members can add an individual event to Apple Calendar or Google Calendar, or create
 a private, revocable subscription in Settings that keeps all of their accessible
 team schedules updated automatically.
-Events can also include an optional meet time and expected finish time. These are
-shown to coaches and families and carried into calendar entries.
+Events can also include a meet-before offset, chosen in five-minute steps, and an
+optional expected finish time. The app calculates the arrival time automatically;
+both times are shown to families and carried into calendar entries.
 Coaches can send an availability reminder at any time. Members who still have a
 pending response also receive one automatic in-app and push reminder about a day
 before the event or its earlier meet time.
