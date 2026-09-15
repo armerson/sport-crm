@@ -10,6 +10,8 @@ import { SettingsPanel } from '../components/settings/SettingsPanel.tsx'
 import { PageSkeleton } from '../components/ui/Skeleton.tsx'
 import { useAuth } from '../hooks/useAuth.ts'
 import { markMessagesRead, useUnreadMessages } from '../hooks/useUnreadMessages.ts'
+import { useMemberNotifications, type MemberNotification } from '../hooks/useMemberNotifications.ts'
+import { NotificationCentre } from '../components/notifications/NotificationCentre.tsx'
 import { useClubSettings } from '../hooks/useClubSettings.ts'
 import type { UserRole } from '../types/auth.ts'
 import type { AdminTab } from '../components/admin/AdminClubPanel.tsx'
@@ -149,6 +151,7 @@ export function DashboardPage() {
   const { profile, loading: authLoading, error: authError, signOutUser } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const [showSettings, setShowSettings] = useState(() => searchParams.get('register') === 'player')
+  const [showNotifications, setShowNotifications] = useState(false)
   const [adminTab, setAdminTab] = useState<AdminTab>('overview')
   const [coachTab, setCoachTab] = useState<CoachTab>('schedule')
   const [parentTab, setParentTab] = useState<ParentTab>('schedule')
@@ -165,8 +168,10 @@ export function DashboardPage() {
   const activeRole = profile ? resolveWorkspaceRole(profile, searchParams.get('view')) : 'parent'
   const activeTab = activeRole === 'admin' ? adminTab : activeRole === 'coach' ? coachTab : activeRole === 'player' ? playerTab : parentTab
   const hasUnreadMessages = useUnreadMessages(profile?.id ?? '', activeTab === 'messages' && !showSettings)
+  const memberNotifications = useMemberNotifications(profile?.id ?? '')
   function setActiveRole(role: UserRole) {
     setShowSettings(false)
+    setShowNotifications(false)
     setSearchParams((previous) => {
       const next = new URLSearchParams(previous)
       next.set('view', role)
@@ -178,6 +183,7 @@ export function DashboardPage() {
 
   function openSettings() {
     setShowSettings(true)
+    setShowNotifications(false)
     scrollWorkspaceToTop()
   }
 
@@ -189,6 +195,19 @@ export function DashboardPage() {
       return next
     })
     scrollWorkspaceToTop()
+  }
+
+  function openNotifications() {
+    setShowSettings(false)
+    setShowNotifications(true)
+    scrollWorkspaceToTop()
+  }
+
+  function openNotification(item: MemberNotification) {
+    void memberNotifications.markRead(item.id)
+    setShowNotifications(false)
+    if (item.url.includes('messages')) handleTabChange('messages')
+    else scrollWorkspaceToTop()
   }
 
   if (authLoading) {
@@ -240,13 +259,14 @@ export function DashboardPage() {
     ? 'New event'
     : bottomNavItems.find((item) => item.value === activeTab)?.label ?? activeContent.title
   const activeTabDescription = tabDescriptions[activeRole][activeTab] ?? activeContent.summary
-  const pageTitle = showSettings ? 'Settings' : activeTabLabel
-  const pageDescription = showSettings ? 'Manage your profile, notifications, security, and app updates.' : activeTabDescription
+  const pageTitle = showSettings ? 'Settings' : showNotifications ? 'Notifications' : activeTabLabel
+  const pageDescription = showSettings ? 'Manage your profile, notifications, security, and app updates.' : showNotifications ? 'Team alerts and important updates in one place.' : activeTabDescription
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
 
   function handleTabChange(value: string) {
     setShowSettings(false)
+    setShowNotifications(false)
     if (value === 'messages') markMessagesRead(profile?.id ?? '')
     if (isAdmin) setAdminTab(value as AdminTab)
     else if (isCoach) setCoachTab(value as CoachTab)
@@ -255,6 +275,7 @@ export function DashboardPage() {
     scrollWorkspaceToTop()
   }
 
+  const notificationCount = memberNotifications.unreadCount + (hasUnreadMessages ? 1 : 0)
   const navBadges: Record<string, boolean> = { messages: hasUnreadMessages }
 
   const initials = profile.name
@@ -289,11 +310,9 @@ export function DashboardPage() {
         </div>
           <div className="flex shrink-0 items-center gap-1">
           <NotificationBell
-            hasUnread={hasUnreadMessages}
-            onClick={() => {
-              markMessagesRead(profile.id)
-              handleTabChange('messages')
-            }}
+            hasUnread={notificationCount > 0}
+            unreadCount={notificationCount}
+            onClick={openNotifications}
           />
           <button
             type="button"
@@ -343,7 +362,7 @@ export function DashboardPage() {
             {hasMultipleRoles ? <select aria-label="Workspace" value={activeRole} onChange={(event) => setActiveRole(event.target.value as UserRole)} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium">
               {sortedRoles.map((role) => <option key={role} value={role}>{ROLE_LABELS[role]} workspace</option>)}
             </select> : null}
-            <NotificationBell hasUnread={hasUnreadMessages} onClick={() => handleTabChange('messages')} className="h-10 w-10 !bg-slate-100 !text-slate-600" />
+            <NotificationBell hasUnread={notificationCount > 0} unreadCount={notificationCount} onClick={openNotifications} className="h-10 w-10 !bg-slate-100 !text-slate-600" />
             <button type="button" onClick={openSettings} className="rounded-xl p-3 text-slate-500 hover:bg-slate-100" aria-label="Settings"><GearIcon /></button>
             <div className="flex items-center gap-2 border-l border-slate-200 pl-4"><span className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-700">{initials}</span><span className="max-w-36 truncate text-sm font-semibold">{profile.name}</span></div>
             <button type="button" onClick={() => void signOutUser()} className="rounded-xl p-3 text-slate-500 hover:bg-slate-100" aria-label="Sign out"><SignOutIcon /></button>
@@ -354,12 +373,22 @@ export function DashboardPage() {
       {/* ── Main content ── */}
       <div id="workspace-content" tabIndex={-1} className="relative z-10 -mt-4 rounded-t-[1.75rem] bg-[var(--ui-canvas)] px-4 pb-5 pt-7 sm:mt-0 sm:rounded-none sm:bg-transparent sm:px-6 sm:py-0 lg:px-8">
         <div className="mx-auto max-w-6xl space-y-4 sm:space-y-6">
-          <div key={`${activeRole}:${activeTab}:${showSettings ? 'settings' : 'workspace'}`} className="ui-view-enter">
+          <div key={`${activeRole}:${activeTab}:${showSettings ? 'settings' : showNotifications ? 'notifications' : 'workspace'}`} className="ui-view-enter">
             {showSettings ? (
               <SettingsPanel
                 onClose={closeSettings}
                 initialSection={searchParams.get('register') === 'player' ? 'player-registration' : 'main'}
                 onPlayerRegistered={() => setActiveRole('player')}
+              />
+            ) : showNotifications ? (
+              <NotificationCentre
+                items={memberNotifications.items}
+                loading={memberNotifications.loading}
+                hasUnreadMessages={hasUnreadMessages}
+                onClose={() => setShowNotifications(false)}
+                onMarkAllRead={() => void memberNotifications.markAllRead()}
+                onOpen={openNotification}
+                onOpenMessages={() => { markMessagesRead(profile.id); handleTabChange('messages') }}
               />
             ) : (
               <>
@@ -383,7 +412,7 @@ export function DashboardPage() {
       </div>
 
       {/* ── Coach floating create button (mobile only) ── */}
-      {isCoach && coachTab !== 'create' && !showSettings ? (
+      {isCoach && coachTab !== 'create' && !showSettings && !showNotifications ? (
         <button
           type="button"
           aria-label="Create event"
@@ -399,7 +428,7 @@ export function DashboardPage() {
       ) : null}
 
       {/* ── Mobile bottom navigation ── */}
-      {!showSettings ? <BottomNav items={bottomNavItems} active={activeTab} onChange={handleTabChange} badges={navBadges} /> : null}
+      {!showSettings && !showNotifications ? <BottomNav items={bottomNavItems} active={activeTab} onChange={handleTabChange} badges={navBadges} /> : null}
     </main>
   )
 }
