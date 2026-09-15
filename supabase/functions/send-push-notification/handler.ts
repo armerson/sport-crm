@@ -41,7 +41,7 @@ export function createPushHandler(dependencies: PushDependencies) {
       const userIds = [...new Set(input.userIds as string[])]
       if (!internal && actor && !actor.roles.includes('admin')) {
         const allowed = await dependencies.allowedRecipients(actor)
-        if (userIds.some((id) => !allowed.has(id))) return json({ error: 'Recipients must belong to your teams.' }, 403)
+        if (userIds.some((id) => id !== actor.id && !allowed.has(id))) return json({ error: 'Recipients must belong to your teams.' }, 403)
       }
       const result = await dependencies.deliver({ userIds, title: input.title.trim(), body: input.body.trim(), url, tag: 'sports-crm' })
       return json(result)

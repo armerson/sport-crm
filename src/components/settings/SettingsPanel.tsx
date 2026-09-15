@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '../../hooks/useAuth.ts'
 import {
   isPushSupported,
   getNotificationPermission,
+  hasPushSubscription,
   requestPermissionAndSubscribe,
+  sendPushToUsers,
 } from '../../lib/pushNotifications.ts'
 import { checkForAppUpdate } from '../../registerAppUpdates.ts'
 import { registerCurrentMemberAsPlayer } from '../../services/memberRegistration.ts'
@@ -132,22 +134,48 @@ function SectionProfile({ onBack }: { onBack: () => void }) {
 function SectionNotifications({ onBack }: { onBack: () => void }) {
   const { profile } = useAuth()
   const [permission, setPermission] = useState<NotificationPermission>(getNotificationPermission)
+  const [connection, setConnection] = useState<'checking' | 'active' | 'missing'>('checking')
   const [subscribing, setSubscribing] = useState(false)
-  const [done, setDone] = useState(false)
+  const [testing, setTesting] = useState(false)
+  const [testResult, setTestResult] = useState<'idle' | 'sent' | 'failed'>('idle')
   const pushSupported = isPushSupported()
+
+  useEffect(() => {
+    let active = true
+    void hasPushSubscription().then((subscribed) => {
+      if (active) setConnection(subscribed ? 'active' : 'missing')
+    })
+    return () => { active = false }
+  }, [])
 
   async function handleEnable() {
     if (!profile) return
     setSubscribing(true)
-    await requestPermissionAndSubscribe(profile.id)
+    const subscribed = await requestPermissionAndSubscribe(profile.id)
     const current = getNotificationPermission()
     setPermission(current)
-    if (current === 'granted') setDone(true)
+    setConnection(subscribed ? 'active' : 'missing')
+    setTestResult('idle')
     setSubscribing(false)
   }
 
-  const statusColor = permission === 'granted' ? 'text-green-600 bg-green-50' : permission === 'denied' ? 'text-red-600 bg-red-50' : 'text-amber-600 bg-amber-50'
-  const statusLabel = permission === 'granted' ? 'Enabled' : permission === 'denied' ? 'Blocked' : 'Not set up'
+  async function handleTest() {
+    if (!profile) return
+    setTesting(true)
+    setTestResult('idle')
+    const sent = await sendPushToUsers(
+      [profile.id],
+      'ClubOS notifications are working',
+      'This device is ready for team updates, reminders and announcements.',
+      '/',
+    )
+    setTestResult(sent ? 'sent' : 'failed')
+    setTesting(false)
+  }
+
+  const isActive = permission === 'granted' && connection === 'active'
+  const statusColor = isActive ? 'text-green-600 bg-green-50' : permission === 'denied' ? 'text-red-600 bg-red-50' : 'text-amber-600 bg-amber-50'
+  const statusLabel = connection === 'checking' ? 'Checking…' : isActive ? 'Connected' : permission === 'denied' ? 'Blocked' : 'Needs setup'
 
   return (
     <div className="space-y-5">
@@ -175,14 +203,14 @@ function SectionNotifications({ onBack }: { onBack: () => void }) {
           <p className="text-xs text-slate-400">Push notifications are not supported in this browser.</p>
         )}
 
-        {pushSupported && permission !== 'denied' && permission !== 'granted' && (
+        {pushSupported && permission !== 'denied' && !isActive && connection !== 'checking' && (
           <button
             type="button"
             onClick={() => void handleEnable()}
             disabled={subscribing}
             className="w-full rounded-xl bg-[#1565ff] py-2.5 text-sm font-semibold text-white transition disabled:opacity-40 active:scale-[0.98]"
           >
-            {subscribing ? 'Enabling…' : done ? '✓ Notifications on' : 'Enable notifications'}
+            {subscribing ? 'Connecting…' : permission === 'granted' ? 'Reconnect this device' : 'Enable notifications'}
           </button>
         )}
 
@@ -192,9 +220,13 @@ function SectionNotifications({ onBack }: { onBack: () => void }) {
           </div>
         )}
 
-        {pushSupported && permission === 'granted' && (
-          <div className="rounded-xl bg-green-50 p-3 text-xs text-green-700">
-            You&apos;re all set — notifications are active on this device.
+        {pushSupported && isActive && (
+          <div className="space-y-3 rounded-xl bg-green-50 p-3 text-xs text-green-700">
+            <p>You&apos;re all set — notifications are connected on this device.</p>
+            <button type="button" onClick={() => void handleTest()} disabled={testing} className="w-full rounded-xl bg-white px-3 py-2.5 font-semibold text-green-800 shadow-sm ring-1 ring-green-200 transition active:scale-[0.98] disabled:opacity-50">
+              {testing ? 'Sending test…' : testResult === 'sent' ? '✓ Test sent' : 'Send a test notification'}
+            </button>
+            {testResult === 'failed' ? <p className="text-red-600" role="alert">The test could not be delivered. Reconnect this device and try again.</p> : null}
           </div>
         )}
       </div>

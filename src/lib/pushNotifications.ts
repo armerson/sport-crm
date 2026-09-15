@@ -22,6 +22,16 @@ export function getNotificationPermission(): NotificationPermission {
   return Notification.permission
 }
 
+export async function hasPushSubscription(): Promise<boolean> {
+  if (!isPushSupported() || getNotificationPermission() !== 'granted') return false
+  try {
+    const registration = await navigator.serviceWorker.ready
+    return Boolean(await registration.pushManager.getSubscription())
+  } catch {
+    return false
+  }
+}
+
 export async function requestPermissionAndSubscribe(userId: string): Promise<boolean> {
   if (!isPushSupported()) return false
   if (!VAPID_PUBLIC_KEY) {
@@ -141,7 +151,9 @@ export async function sendPushToUsers(userIds: string[], title: string, body: st
       },
       body: JSON.stringify({ userIds, title, body, url }),
     })
-    return response.ok
+    if (!response.ok) return false
+    const result = await response.json() as { sent?: number }
+    return typeof result.sent === 'number' && result.sent > 0
   } catch (err) {
     console.error('[push] Failed to send notification:', err)
     return false

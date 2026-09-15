@@ -223,7 +223,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let previousUserId: string | null = null
     let queue = Promise.resolve()
     const timers = new Set<ReturnType<typeof setTimeout>>()
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY' && window.location.pathname !== '/reset-password') {
+        window.location.replace('/reset-password')
+        return
+      }
       const currentRevision = ++revision
       // Do not call auth methods from inside the auth event callback. Queue work
       // outside the callback and serialize it so metadata updates cannot re-enter.
@@ -335,7 +339,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         setError(null)
         const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/`,
+          redirectTo: `${window.location.origin}/reset-password`,
         })
 
         if (resetError) {
@@ -343,6 +347,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setError(message)
           throw new Error(message)
         }
+      },
+      updatePassword: async (password: string) => {
+        if (!supabase) throw new Error(supabaseConfigError)
+        const { error: updateError } = await supabase.auth.updateUser({ password })
+        if (updateError) {
+          const message = getAuthMessage(updateError)
+          setError(message)
+          throw new Error(message)
+        }
+        setError(null)
       },
       signOutUser: async () => {
         if (!supabase) {

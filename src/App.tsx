@@ -48,6 +48,11 @@ const GuestCampSuccessPage = lazy(async () => {
   return { default: module.GuestCampSuccessPage }
 })
 
+const ResetPasswordPage = lazy(async () => {
+  const module = await import('./pages/ResetPasswordPage.tsx')
+  return { default: module.ResetPasswordPage }
+})
+
 const UiPreview = import.meta.env.DEV ? lazy(() => import('./dev/UiPreview.tsx')) : null
 
 function RouteFallback() {
@@ -72,6 +77,7 @@ function App() {
           <Route path="/" element={<DashboardPage />} />
         </Route>
         <Route path="/register" element={<RegistrationLandingPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         {/* Public parent → child registration (multi-step) */}
         <Route path="/register/parent" element={<ParentRegisterPage />} />
         {/* Public registration forms — no auth required */}

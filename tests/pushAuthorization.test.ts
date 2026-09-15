@@ -4,10 +4,11 @@ import { createPushHandler, isTrustedPushEndpoint, type PushPayload } from '../s
 
 const recipient = 'dd202609-1400-4000-8000-000000000001'
 const other = 'dd202609-1400-4000-8000-000000000002'
+const actorId = 'dd202609-1400-4000-8000-000000000003'
 function setup(roles = ['coach']) {
   const sent: PushPayload[] = []
   const handler = createPushHandler({
-    authenticate: async (token) => token === 'valid' ? { id: 'test-actor', roles, linkedPlayerId: null } : null,
+    authenticate: async (token) => token === 'valid' ? { id: actorId, roles, linkedPlayerId: null } : null,
     allowedRecipients: async () => new Set([recipient]),
     isInternal: (request) => request.headers.get('x-internal-secret') === 'valid-internal-secret',
     deliver: async (payload) => { sent.push(payload); return { sent: 0 } },
@@ -35,6 +36,11 @@ test('team notifications deduplicate recipients and preserve content', async () 
   assert.equal((await request({ ...payload, userIds: [recipient, recipient] })).status, 200)
   assert.deepEqual(sent[0].userIds, [recipient])
   assert.equal(sent[0].body, payload.body)
+})
+test('members can send a test notification to their own device', async () => {
+  const { request, sent } = setup()
+  assert.equal((await request({ ...payload, userIds: [actorId] })).status, 200)
+  assert.deepEqual(sent[0].userIds, [actorId])
 })
 test('admins can notify across teams', async () => {
   const { request, sent } = setup(['admin'])
