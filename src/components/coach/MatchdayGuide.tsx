@@ -17,7 +17,7 @@ const stages = [
 
 export function MatchdayGuide({ attending, pending, selected, isPast, resultRecorded, winnerRecorded, onJump }: MatchdayGuideProps) {
   const done = {
-    availability: pending === 0,
+    availability: attending + pending > 0 && pending === 0,
     squad: selected > 0,
     result: resultRecorded,
     player: winnerRecorded,
