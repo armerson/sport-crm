@@ -13,7 +13,7 @@ import { useClubSettings } from '../../hooks/useClubSettings.ts'
 import { useTeamPlayers } from '../../hooks/useTeamPlayers.ts'
 import { useAllPlayers } from '../../hooks/useAllPlayers.ts'
 import { useAuth } from '../../hooks/useAuth.ts'
-import { formatDate, formatDateTime } from '../../utils/date.ts'
+import { formatDate, formatDateTime, formatDateTimeMedium, formatTime } from '../../utils/date.ts'
 import type { ProvisionableRole } from '../../services/provisioning.ts'
 import { uploadTeamPhoto, saveTeamPhotoFocus } from '../../services/adminClub.ts'
 import { InviteButton } from '../shared/InviteButton.tsx'
@@ -506,7 +506,7 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
                     <div className="min-w-0">
                       <p className="truncate text-sm font-bold text-blue-900">Today: {event.title}</p>
                       <p className="text-xs text-blue-700">
-                        {new Date(event.dateTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                        {formatTime(event.dateTime)}
                         {event.location ? ` · ${event.location}` : ''}
                       </p>
                     </div>
@@ -1179,7 +1179,7 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
                               </div>
                               <p className="mt-1 pl-[18px] text-xs text-slate-600">
                                 {team.cometLastSyncedAt
-                                  ? `Last checked ${new Date(team.cometLastSyncedAt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}${team.cometLastSyncStatus === 'success' ? ` · ${team.cometLastSyncCount ?? 0} fixtures found` : ''}`
+                                  ? `Last checked ${formatDateTimeMedium(team.cometLastSyncedAt)}${team.cometLastSyncStatus === 'success' ? ` · ${team.cometLastSyncCount ?? 0} fixtures found` : ''}`
                                   : 'The first automatic check runs each morning.'}
                               </p>
                               {team.cometLastSyncStatus === 'error' && team.cometLastSyncError ? (

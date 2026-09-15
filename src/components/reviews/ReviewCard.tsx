@@ -1,5 +1,6 @@
 import { StarRating } from './StarRating.tsx'
 import { type PlayerReview } from '../../services/playerReviews.ts'
+import { formatDateLong } from '../../utils/date.ts'
 
 interface ReviewCardProps {
   review: PlayerReview
@@ -17,10 +18,6 @@ const RATING_LABELS: { key: keyof Pick<PlayerReview, 'ratingTechnical' | 'rating
   { key: 'ratingPhysical',  label: 'Physical'  },
   { key: 'ratingAttitude',  label: 'Attitude'  },
 ]
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
-}
 
 function OverallScore({ review }: { review: PlayerReview }) {
   const ratings = [review.ratingTechnical, review.ratingTactical, review.ratingPhysical, review.ratingAttitude].filter((r): r is number => r !== null)
@@ -64,8 +61,8 @@ export function ReviewCard({ review, playerName, mode, onEdit, onRetract, onDele
           <h3 className="text-base font-bold text-slate-900">{review.periodLabel}</h3>
           <p className="mt-0.5 text-xs text-slate-400">
             {isDraft
-              ? `Draft · saved ${formatDate(review.updatedAt)}`
-              : `Published ${review.publishedAt ? formatDate(review.publishedAt) : ''}`}
+              ? `Draft · saved ${formatDateLong(review.updatedAt)}`
+              : `Published ${review.publishedAt ? formatDateLong(review.publishedAt) : ''}`}
           </p>
         </div>
         <div className="flex items-center gap-2">

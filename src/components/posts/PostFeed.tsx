@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { addComment, deleteComment, fetchComments, fetchFeed, toggleLike } from '../../services/posts.ts'
 import type { Post, PostComment } from '../../types/posts.ts'
 import type { UserProfile } from '../../types/auth.ts'
+import { formatDateShort } from '../../utils/date.ts'
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime()
@@ -12,7 +13,7 @@ function timeAgo(iso: string): string {
   if (h < 24) return `${h}h ago`
   const d = Math.floor(h / 24)
   if (d < 7) return `${d}d ago`
-  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+  return formatDateShort(iso)
 }
 
 function HeartIcon({ filled }: { filled: boolean }) {

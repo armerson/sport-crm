@@ -6,6 +6,7 @@ import { Button } from '../ui/Button.tsx'
 import { useAdminPayments } from '../../hooks/useAdminPayments.ts'
 import { useAuth } from '../../hooks/useAuth.ts'
 import { formatPence, penceToPounds, poundsToPence } from '../../lib/pricing.ts'
+import { formatDateLong } from '../../utils/date.ts'
 import { fetchAllPlayers } from '../../services/payments.ts'
 import type { BillingType, FamilyCapConfig, Product, ProductFormInput, TieredDiscountConfig } from '../../types/payments.ts'
 import type { SimplePlayer } from '../../services/payments.ts'
@@ -689,7 +690,7 @@ function AssignSection() {
                                 {(() => {
                                   const d = new Date()
                                   d.setMonth(d.getMonth() + parseInt(assignMonths))
-                                  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+                                  return formatDateLong(d)
                                 })()}
                               </p>
                             )}
@@ -724,7 +725,7 @@ function AssignSection() {
                                 {(() => {
                                   const d = new Date()
                                   d.setMonth(d.getMonth() + parseInt(editMonths))
-                                  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+                                  return formatDateLong(d)
                                 })()}
                               </p>
                             ) : (

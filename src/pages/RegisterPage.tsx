@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth.ts'
 import { fetchClubSettings, fetchPublicForm, submitForm } from '../services/forms.ts'
 import type { ClubSettings, FormField, RegistrationForm } from '../types/forms.ts'
+import { formatDateLong } from '../utils/date.ts'
 
 function FieldInput({ field, value, onChange }: {
   field: FormField
@@ -187,7 +188,7 @@ export function RegisterPage() {
           )}
           {form.deadline && (
             <p className={`mt-2 text-xs font-semibold ${isPastDeadline ? 'text-rose-600' : 'text-amber-700'}`}>
-              {isPastDeadline ? 'Registration closed' : `Deadline: ${new Date(form.deadline).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}`}
+              {isPastDeadline ? 'Registration closed' : `Deadline: ${formatDateLong(form.deadline)}`}
             </p>
           )}
         </div>

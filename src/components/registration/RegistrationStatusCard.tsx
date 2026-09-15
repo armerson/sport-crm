@@ -1,4 +1,5 @@
 import type { PlayerRecord } from '../../types/club.ts'
+import { formatDateShort } from '../../utils/date.ts'
 
 interface RegistrationStatusCardProps {
   player: Pick<PlayerRecord, 'name' | 'status' | 'registrationMessage' | 'registrationUpdatedAt'>
@@ -23,7 +24,7 @@ export function RegistrationStatusCard({ player, compact = false }: Registration
           <h3 className="mt-1 font-semibold">{player.name} · {current.label}</h3>
         </div>
         {player.registrationUpdatedAt ? (
-          <span className="text-[11px] font-medium opacity-65">Updated {new Date(player.registrationUpdatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
+          <span className="text-[11px] font-medium opacity-65">Updated {formatDateShort(player.registrationUpdatedAt)}</span>
         ) : null}
       </div>
       {!compact ? (

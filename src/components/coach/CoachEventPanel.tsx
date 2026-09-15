@@ -13,7 +13,7 @@ import { InviteButton } from '../shared/InviteButton.tsx'
 import { LocationPicker, LocationMapCard } from '../ui/LocationPicker.tsx'
 import { UndoToast } from '../ui/UndoToast.tsx'
 import { MatchDayCard } from '../shared/MatchDayCard.tsx'
-import { formatDate, formatDateTimeRelative, dateBox, shortenAddress, groupByWeek } from '../../utils/date.ts'
+import { formatDate, formatDateTimeRelative, formatDateTimeMedium, dateBox, shortenAddress, groupByWeek } from '../../utils/date.ts'
 import { EventTypeChip } from '../ui/EventTypeChip.tsx'
 import { Button } from '../ui/Button.tsx'
 import { SelectField } from '../ui/SelectField.tsx'
@@ -775,7 +775,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                   <span>
                     Automatic COMET updates on
                     {selectedTeam.cometLastSyncedAt
-                      ? ` · checked ${new Date(selectedTeam.cometLastSyncedAt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}`
+                      ? ` · checked ${formatDateTimeMedium(selectedTeam.cometLastSyncedAt)}`
                       : ' · first check runs each morning'}
                   </span>
                   {selectedTeam.cometLastSyncStatus === 'error' ? <span className="font-semibold text-amber-700">Needs attention</span> : null}

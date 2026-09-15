@@ -95,6 +95,38 @@ export function dateBox(value: string): { month: string; day: string } {
   }
 }
 
+/** "5 Apr" */
+export function formatDateShort(value: string) {
+  if (!value) return ''
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return value
+  return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' }).format(parsed)
+}
+
+/** "5 April 2026" */
+export function formatDateLong(value: string | Date) {
+  if (!value) return ''
+  const parsed = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(parsed.getTime())) return String(value)
+  return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }).format(parsed)
+}
+
+/** "18:30" */
+export function formatTime(value: string) {
+  if (!value) return ''
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return value
+  return new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' }).format(parsed)
+}
+
+/** "5 Apr 2026, 18:30" */
+export function formatDateTimeMedium(value: string) {
+  if (!value) return ''
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return value
+  return new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short' }).format(parsed)
+}
+
 /** Shorten a full geocoded address to just the venue/street part (before first comma). */
 export function shortenAddress(location: string): string {
   if (!location) return ''

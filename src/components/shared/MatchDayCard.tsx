@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { AttendanceRecord, AttendanceStatus, EventRecord } from '../../types/club.ts'
+import { formatTime } from '../../utils/date.ts'
 
 // ── Weather (Open-Meteo — free, no API key) ───────────────────────────────────
 
@@ -89,7 +90,7 @@ export function MatchDayCard({
 
   const kickoff = new Date(event.dateTime)
   const kickoffHour = kickoff.getHours()
-  const kickoffTime = kickoff.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+  const kickoffTime = formatTime(event.dateTime)
   const isMatch = event.type === 'match'
 
   useEffect(() => {
