@@ -18,7 +18,7 @@ export function subscribeToParentPlayers(
 
     const { data, error } = await client
       .from('players')
-      .select('id, name, dob, status, player_parents(parent_id), player_teams(team_id)')
+      .select('id, name, dob, status, registration_message, registration_updated_at, player_parents(parent_id), player_teams(team_id)')
       .in('id', playerIds)
       .order('name', { ascending: true })
 

@@ -7,6 +7,7 @@ import { PlayerProfileCard } from '../players/PlayerProfileCard.tsx'
 import type { UserProfile } from '../../types/auth.ts'
 import type { AttendanceStatus } from '../../types/club.ts'
 import { TabNav } from '../ui/TabNav.tsx'
+import { RegistrationStatusCard } from '../registration/RegistrationStatusCard.tsx'
 
 const TeamMessagesPanel = lazy(async () => {
   const module = await import('../messages/TeamMessagesPanel.tsx')
@@ -82,8 +83,6 @@ export function PlayerPortal({ profile, activeTab, onTabChange }: PlayerPortalPr
     }
   }
 
-  const isPendingApproval = selfPlayer?.status === 'pending'
-
   return (
     <section className="space-y-5">
       <div className="ui-workspace-navigation hidden sm:block">
@@ -111,14 +110,7 @@ export function PlayerPortal({ profile, activeTab, onTabChange }: PlayerPortalPr
         </div>
       ) : null}
 
-      {linkedId && isPendingApproval ? (
-        <div className="rounded-3xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-          <p className="font-semibold">Registration pending</p>
-          <p className="mt-1 text-amber-900/90">
-            The club will assign you to a team soon. You can still update your profile and billing details below.
-          </p>
-        </div>
-      ) : null}
+      {linkedId && selfPlayer ? <RegistrationStatusCard player={selfPlayer} /> : null}
 
       {activeTab === 'schedule' ? (
         <section className="space-y-5">

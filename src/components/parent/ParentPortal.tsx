@@ -23,6 +23,7 @@ import { Button } from '../ui/Button.tsx'
 import { SelectField } from '../ui/SelectField.tsx'
 import { TabNav } from '../ui/TabNav.tsx'
 import { TextField } from '../ui/TextField.tsx'
+import { RegistrationStatusCard } from '../registration/RegistrationStatusCard.tsx'
 
 const TeamMessagesPanel = lazy(async () => {
   const module = await import('../messages/TeamMessagesPanel.tsx')
@@ -576,18 +577,21 @@ export function ParentPortal({ profile, activeTab, onTabChange }: ParentPortalPr
               ) : null}
 
               {activeChild ? (
-                <div className="mt-4 rounded-[1.5rem] bg-slate-50 p-4">
-                  <p className="font-semibold text-slate-950">{activeChild.name}</p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {activeChild.teams.length > 0 ? (
-                      activeChild.teams.map((teamId) => (
-                        <span key={teamId} className="rounded-full bg-[#1565ff] px-3 py-1 text-xs font-semibold text-white">
-                          {teamById.get(teamId)?.name ?? 'Team'}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-sm text-slate-400">No teams assigned yet.</span>
-                    )}
+                <div className="mt-4 space-y-3">
+                  <RegistrationStatusCard player={activeChild} />
+                  <div className="rounded-[1.5rem] bg-slate-50 p-4">
+                    <p className="font-semibold text-slate-950">{activeChild.name}</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {activeChild.teams.length > 0 ? (
+                        activeChild.teams.map((teamId) => (
+                          <span key={teamId} className="rounded-full bg-[#1565ff] px-3 py-1 text-xs font-semibold text-white">
+                            {teamById.get(teamId)?.name ?? 'Team'}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-sm text-slate-400">No teams assigned yet.</span>
+                      )}
+                    </div>
                   </div>
                 </div>
               ) : null}

@@ -6,6 +6,10 @@ export interface PendingRegistration {
   name: string
   dob: string | null
   parentIds: string[]
+  applicantUserIds: string[]
+  status: 'pending' | 'needs_info'
+  message: string | null
+  updatedAt: string | null
   /** Who registered — parent name(s) or self (senior) */
   registeredByLabel: string
 }
@@ -265,8 +269,8 @@ export function subscribeToPendingPlayers(
   return subscribeToTables('pending-registrations', ['players', 'player_parents', 'profiles'], async () => {
     const { data, error } = await client
       .from('players')
-      .select('id, name, dob, status, player_parents(parent_id)')
-      .eq('status', 'pending')
+      .select('id, name, dob, status, registration_message, registration_updated_at, player_parents(parent_id)')
+      .in('status', ['pending', 'needs_info'])
       .order('created_at', { ascending: false })
 
     if (error) {
@@ -315,6 +319,10 @@ export function subscribeToPendingPlayers(
         name: r.name as string,
         dob: typeof r.dob === 'string' ? r.dob : null,
         parentIds,
+        applicantUserIds: [...new Set([...parentIds, ...((selfProfiles ?? []).filter((profile) => profile.linked_player_id === r.id).map((profile) => profile.id))])],
+        status: r.status === 'needs_info' ? 'needs_info' : 'pending',
+        message: typeof r.registration_message === 'string' ? r.registration_message : null,
+        updatedAt: typeof r.registration_updated_at === 'string' ? r.registration_updated_at : null,
         registeredByLabel,
       }
     })

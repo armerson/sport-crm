@@ -17,6 +17,7 @@ import { formatDate, formatDateTime } from '../../utils/date.ts'
 import type { ProvisionableRole } from '../../services/provisioning.ts'
 import { uploadTeamPhoto, saveTeamPhotoFocus } from '../../services/adminClub.ts'
 import { InviteButton } from '../shared/InviteButton.tsx'
+import { sendPushToUsers } from '../../lib/pushNotifications.ts'
 
 // Heavy tab panels — only loaded when their tab is first opened
 const TeamMessagesPanel = lazy(async () => {
@@ -116,7 +117,7 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
   const {
     addPlayer, approvePendingPlayer, archiveTeam, archivedTeams, assignCoach, coaches, createGroup, createTeam, deleteGroup,
     error, events, groups, isConfigured, isSubmitting, loading, linkParent, movePlayer, parents,
-    pendingRegistrations, provisionUser, rejectPendingRegistration, removePlayer, teams,
+    pendingRegistrations, provisionUser, rejectPendingRegistration, requestRegistrationInformation, removePlayer, teams,
     restoreTeam, unlinkParent, updateGroup, updateTeam,
   } = useAdminClubData()
 
@@ -132,6 +133,7 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
 
   const [teamValues, setTeamValues] = useState({ name: '', ageGroup: '', isSenior: false, cometTeamId: '', cometCompetitionId: '' })
   const [pendingTeamPick, setPendingTeamPick] = useState<Record<string, string>>({})
+  const [registrationReply, setRegistrationReply] = useState<{ playerId: string; mode: 'needs_info' | 'rejected'; message: string } | null>(null)
   const [playerValues, setPlayerValues] = useState({ name: '', dob: '', teamId: '' })
   const [assignmentValues, setAssignmentValues] = useState({ teamId: '', coachId: '' })
   const [linkValues, setLinkValues] = useState({ teamId: '', playerId: '', parentId: '' })
@@ -675,7 +677,12 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
                     <div key={reg.playerId} className="rounded-2xl border border-amber-200/80 bg-white px-4 py-3">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
-                          <p className="font-semibold text-slate-900">{reg.name}</p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-semibold text-slate-900">{reg.name}</p>
+                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${reg.status === 'needs_info' ? 'bg-orange-100 text-orange-800' : 'bg-amber-100 text-amber-800'}`}>
+                              {reg.status === 'needs_info' ? 'Information requested' : 'New'}
+                            </span>
+                          </div>
                           <p className="text-xs text-slate-500">
                             {reg.dob ? formatDate(reg.dob) : 'DOB not set'} · {isSeniorReg ? 'Senior (self)' : 'Junior'}
                           </p>
@@ -713,6 +720,8 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
                                     return next
                                   })
                                   showSuccess(`${reg.name} approved onto squad.`)
+                                  const teamName = teams.find((team) => team.id === tid)?.name ?? 'your team'
+                                  void sendPushToUsers(reg.applicantUserIds, `${clubSettings.name} registration approved`, `Welcome to the club. ${reg.name} has been added to ${teamName}.`, '/')
                                 } catch { /* hook error */ }
                               })()
                             }}
@@ -721,18 +730,59 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
                           >
                             Approve
                           </Button>
-                          <ConfirmInline
-                            confirmLabel="Yes, reject"
-                            label="Reject"
-                            onConfirm={() => void (async () => {
-                              try {
-                                await rejectPendingRegistration(reg.playerId)
-                                showSuccess(`Rejected ${reg.name}.`)
-                              } catch { /* hook error */ }
-                            })()}
-                          />
+                          <Button
+                            onClick={() => setRegistrationReply({ playerId: reg.playerId, mode: 'needs_info', message: reg.message ?? 'Please update the player profile with the missing details so we can continue your registration.' })}
+                            type="button"
+                            variant="secondary"
+                          >
+                            Request info
+                          </Button>
+                          <button
+                            className="min-h-10 px-2 text-xs font-semibold text-rose-600 hover:text-rose-800"
+                            onClick={() => setRegistrationReply({ playerId: reg.playerId, mode: 'rejected', message: 'Thank you for your interest. We are unable to approve this registration at this time. Please contact the club if you would like to discuss it.' })}
+                            type="button"
+                          >
+                            Decline
+                          </button>
                         </div>
                       </div>
+                      {reg.message ? <p className="mt-3 rounded-xl bg-orange-50 px-3 py-2 text-xs font-medium text-orange-900">Last message: {reg.message}</p> : null}
+                      {registrationReply?.playerId === reg.playerId ? (
+                        <form
+                          className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3"
+                          onSubmit={(event) => {
+                            event.preventDefault()
+                            const reply = registrationReply
+                            if (!reply.message.trim()) return
+                            void (async () => {
+                              try {
+                                if (reply.mode === 'needs_info') await requestRegistrationInformation(reg.playerId, reply.message)
+                                else await rejectPendingRegistration(reg.playerId, reply.message)
+                                await sendPushToUsers(reg.applicantUserIds, `${clubSettings.name} registration update`, reply.message, '/')
+                                setRegistrationReply(null)
+                                showSuccess(reply.mode === 'needs_info' ? `Information requested from ${reg.name}.` : `Registration declined for ${reg.name}.`)
+                              } catch { /* hook exposes error */ }
+                            })()
+                          }}
+                        >
+                          <label className="text-xs font-semibold text-slate-700" htmlFor={`registration-message-${reg.playerId}`}>
+                            Message to {reg.registeredByLabel}
+                          </label>
+                          <textarea
+                            className="mt-2 min-h-24 w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                            id={`registration-message-${reg.playerId}`}
+                            maxLength={1000}
+                            onChange={(event) => setRegistrationReply((current) => current ? { ...current, message: event.target.value } : current)}
+                            value={registrationReply.message}
+                          />
+                          <div className="mt-2 flex justify-end gap-2">
+                            <Button onClick={() => setRegistrationReply(null)} type="button" variant="secondary">Cancel</Button>
+                            <Button loading={isSubmitting} type="submit" variant="primary">
+                              {registrationReply.mode === 'rejected' ? 'Send and decline' : 'Send request'}
+                            </Button>
+                          </div>
+                        </form>
+                      ) : null}
                   {isSeniorReg && teamOptions.length === 0 ? (
                     <p className="mt-2 text-xs text-rose-600">
                       Create a senior team (Manage → Create team → check &quot;Senior team&quot;) before approving.
