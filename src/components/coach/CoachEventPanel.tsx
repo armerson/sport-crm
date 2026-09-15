@@ -724,6 +724,18 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                   ) : null}
                 </div>
               </div>
+              {selectedTeam?.cometTeamId && selectedTeam.cometCompetitionId ? (
+                <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
+                  <span className={`h-2 w-2 rounded-full ${selectedTeam.cometLastSyncStatus === 'error' ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+                  <span>
+                    Automatic COMET updates on
+                    {selectedTeam.cometLastSyncedAt
+                      ? ` · checked ${new Date(selectedTeam.cometLastSyncedAt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}`
+                      : ' · first check runs each morning'}
+                  </span>
+                  {selectedTeam.cometLastSyncStatus === 'error' ? <span className="font-semibold text-amber-700">Needs attention</span> : null}
+                </div>
+              ) : null}
 
               <div className="mt-4 space-y-3">
                 <TextField label="Find an event" type="search" placeholder="Search events, teams or locations" value={eventSearch} onChange={(event) => setEventSearch(event.target.value)} />

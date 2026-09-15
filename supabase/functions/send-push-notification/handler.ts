@@ -4,6 +4,7 @@ export interface PushDependencies {
   authenticate: (token: string) => Promise<PushActor | null>
   allowedRecipients: (actor: PushActor) => Promise<Set<string>>
   deliver: (payload: PushPayload) => Promise<{ sent: number; failed?: number }>
+  isInternal?: (request: Request) => boolean
 }
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -19,11 +20,12 @@ export function createPushHandler(dependencies: PushDependencies) {
   return async (request: Request): Promise<Response> => {
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors })
     if (request.method !== 'POST') return json({ error: 'Method not allowed.' }, 405)
+    const internal = dependencies.isInternal?.(request) === true
     const token = request.headers.get('Authorization')?.match(/^Bearer\s+(.+)$/i)?.[1]
-    if (!token) return json({ error: 'Sign in to send notifications.' }, 401)
+    if (!internal && !token) return json({ error: 'Sign in to send notifications.' }, 401)
     try {
-      const actor = await dependencies.authenticate(token)
-      if (!actor) return json({ error: 'Your session is invalid or expired.' }, 401)
+      const actor = internal ? null : await dependencies.authenticate(token!)
+      if (!internal && !actor) return json({ error: 'Your session is invalid or expired.' }, 401)
       const raw = await request.text()
       if (raw.length > 16000) return json({ error: 'Notification is too large.' }, 400)
       let input: Record<string, unknown>
@@ -37,7 +39,7 @@ export function createPushHandler(dependencies: PushDependencies) {
       const url = typeof input.url === 'string' ? input.url : '/'
       if (!url.startsWith('/') || url.startsWith('//') || (url.includes('\\') || [...url].some((character) => character.charCodeAt(0) < 32))) return json({ error: 'Invalid notification destination.' }, 400)
       const userIds = [...new Set(input.userIds as string[])]
-      if (!actor.roles.includes('admin')) {
+      if (!internal && actor && !actor.roles.includes('admin')) {
         const allowed = await dependencies.allowedRecipients(actor)
         if (userIds.some((id) => !allowed.has(id))) return json({ error: 'Recipients must belong to your teams.' }, 403)
       }

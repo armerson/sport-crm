@@ -1,4 +1,4 @@
--- Run after 20260915100000_team_archiving. Synthetic data is rolled back.
+-- Run after 20260915073921_team_archiving. Synthetic data is rolled back.
 begin;
 insert into auth.users(id, aud, role, email) values
   ('ac202609-1510-4000-8000-000000000001','authenticated','authenticated','crm-archive-admin@example.invalid');

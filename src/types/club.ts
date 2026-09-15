@@ -14,6 +14,10 @@ export interface TeamRecord {
   photoFocusY: number
   cometTeamId: number | null
   cometCompetitionId: number | null
+  cometLastSyncedAt: string | null
+  cometLastSyncStatus: 'success' | 'error' | null
+  cometLastSyncError: string | null
+  cometLastSyncCount: number | null
   archivedAt: string | null
 }
 

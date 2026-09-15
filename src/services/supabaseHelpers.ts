@@ -69,6 +69,10 @@ export function mapTeamRow(row: Record<string, unknown>): TeamRecord {
     photoFocusY: typeof row.photo_focus_y === 'number' ? row.photo_focus_y : 50,
     cometTeamId: typeof row.comet_team_id === 'number' ? row.comet_team_id : null,
     cometCompetitionId: typeof row.comet_competition_id === 'number' ? row.comet_competition_id : null,
+    cometLastSyncedAt: typeof row.comet_last_synced_at === 'string' ? row.comet_last_synced_at : null,
+    cometLastSyncStatus: row.comet_last_sync_status === 'success' || row.comet_last_sync_status === 'error' ? row.comet_last_sync_status : null,
+    cometLastSyncError: typeof row.comet_last_sync_error === 'string' ? row.comet_last_sync_error : null,
+    cometLastSyncCount: typeof row.comet_last_sync_count === 'number' ? row.comet_last_sync_count : null,
     archivedAt: typeof row.archived_at === 'string' ? row.archived_at : null,
   }
 }

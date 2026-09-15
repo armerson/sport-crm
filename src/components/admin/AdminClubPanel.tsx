@@ -1121,6 +1121,22 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
                           </div>
                         </div>
                         <div className="mt-4">
+                          {team.cometTeamId && team.cometCompetitionId ? (
+                            <div className={`mb-4 rounded-2xl border px-4 py-3 ${team.cometLastSyncStatus === 'error' ? 'border-amber-200 bg-amber-50' : 'border-emerald-100 bg-emerald-50/70'}`}>
+                              <div className="flex items-center gap-2">
+                                <span className={`h-2.5 w-2.5 rounded-full ${team.cometLastSyncStatus === 'error' ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+                                <p className="text-sm font-semibold text-slate-900">Automatic COMET updates are on</p>
+                              </div>
+                              <p className="mt-1 pl-[18px] text-xs text-slate-600">
+                                {team.cometLastSyncedAt
+                                  ? `Last checked ${new Date(team.cometLastSyncedAt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}${team.cometLastSyncStatus === 'success' ? ` · ${team.cometLastSyncCount ?? 0} fixtures found` : ''}`
+                                  : 'The first automatic check runs each morning.'}
+                              </p>
+                              {team.cometLastSyncStatus === 'error' && team.cometLastSyncError ? (
+                                <p className="mt-1 pl-[18px] text-xs font-medium text-amber-800">{team.cometLastSyncError}</p>
+                              ) : null}
+                            </div>
+                          ) : null}
                           <p className="text-sm font-medium text-slate-500">Coaches</p>
                           <div className="mt-2 flex flex-wrap gap-2">
                             {team.coaches.length > 0 ? (

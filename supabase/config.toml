@@ -4,3 +4,7 @@ verify_jwt = false
 
 [functions.create-guest-checkout-session]
 verify_jwt = false
+
+# Called by pg_cron with the private COMET_SYNC_SECRET stored in Vault.
+[functions.scheduled-comet-sync]
+verify_jwt = false

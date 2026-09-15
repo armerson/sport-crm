@@ -9,6 +9,7 @@ function setup(roles = ['coach']) {
   const handler = createPushHandler({
     authenticate: async (token) => token === 'valid' ? { id: 'test-actor', roles, linkedPlayerId: null } : null,
     allowedRecipients: async () => new Set([recipient]),
+    isInternal: (request) => request.headers.get('x-internal-secret') === 'valid-internal-secret',
     deliver: async (payload) => { sent.push(payload); return { sent: 0 } },
   })
   const request = (body: unknown, token: string | null = 'valid') => handler(new Request('https://example.invalid/push', {
@@ -38,6 +39,21 @@ test('team notifications deduplicate recipients and preserve content', async () 
 test('admins can notify across teams', async () => {
   const { request, sent } = setup(['admin'])
   assert.equal((await request({ ...payload, userIds: [other] })).status, 200)
+  assert.equal(sent.length, 1)
+})
+test('trusted scheduled jobs can notify a team without a member session', async () => {
+  const { sent } = setup()
+  const response = await createPushHandler({
+    authenticate: async () => null,
+    allowedRecipients: async () => new Set(),
+    isInternal: (request) => request.headers.get('x-internal-secret') === 'valid-internal-secret',
+    deliver: async (notification) => { sent.push(notification); return { sent: 0 } },
+  })(new Request('https://example.invalid/push', {
+    method: 'POST',
+    headers: { 'x-internal-secret': 'valid-internal-secret' },
+    body: JSON.stringify({ ...payload, userIds: [other] }),
+  }))
+  assert.equal(response.status, 200)
   assert.equal(sent.length, 1)
 })
 test('notifications reject unsafe destinations and malformed payloads', async () => {

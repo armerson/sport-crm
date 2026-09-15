@@ -10,9 +10,9 @@ The first connection should be a one-way import from COMET into ClubOS. COMET re
 
 The Ambassadors FC website already holds the IFA COMET API key on its server and exposes a small, cached fixture feed at `https://www.ambassadorsfc.org/api/comet`. ClubOS reuses this feed, so the COMET key is never copied into the CRM or a member's browser.
 
-Each ClubOS team stores its public COMET team ID and competition ID. An authorised coach or admin can choose **Sync COMET** from the schedule. The sync imports official fixtures and scores, prepares pending attendance for the squad, and updates matching records using the permanent COMET match ID.
+Each ClubOS team stores its public COMET team ID and competition ID. ClubOS checks every connected, active team automatically at 05:15 UTC each day. An authorised coach or admin can also choose **Sync COMET** from the schedule at any time. The sync imports official fixtures and scores, prepares pending attendance for the squad, and updates matching records using the permanent COMET match ID.
 
-Once a fixture has been imported, later syncs compare its kickoff, venue, opponent and status. When any of those details change, ClubOS sends one concise update to the team's linked parents. The first import stays quiet so connecting an existing season does not produce a burst of notifications.
+Once a fixture has been imported, later syncs compare its kickoff, venue, opponent and status. When any of those details change, ClubOS sends one concise update to the team's linked parents and adult players. The first import stays quiet so connecting an existing season does not produce a burst of notifications. Team settings and the coach schedule show when COMET was last checked and whether it succeeded.
 
 For another separately branded club app, set the Edge Function's `COMET_FEED_URL` secret to that club website's compatible server feed.
 
@@ -39,9 +39,11 @@ A Supabase Edge Function will:
 2. Request the permitted, normalised records from the club website feed.
 3. Validate and normalise the response.
 4. Upsert records into ClubOS using COMET identifiers.
-5. Record the sync counts in the club audit log.
+5. Record the last sync time, fixture count and health on the team.
 
-The admin app stores the two public IDs while the coach schedule shows the sync action. A scheduled sync can be added after the first manual imports are verified.
+Manual checks are recorded in the club audit log. The scheduled job uses a private shared secret stored in both Supabase Edge Function secrets and Vault; it does not impersonate a club member. The database scheduler only calls the private orchestration function, which then invokes the existing team sync using the service role on the server.
+
+The admin app stores the two public IDs while the coach schedule shows the sync action and automatic status.
 
 ## Data ownership
 
