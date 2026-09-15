@@ -20,7 +20,7 @@ export function subscribeToTeams(
   return subscribeToTables('teams-feed', ['teams', 'team_coaches', 'player_teams'], async () => {
     const { data: teamsData, error: teamsError } = await client
       .from('teams')
-      .select('id, name, age_group, is_senior, photo_url, photo_focus_x, photo_focus_y, comet_team_id, comet_competition_id, archived_at')
+      .select('id, name, age_group, is_senior, photo_url, photo_focus_x, photo_focus_y, comet_team_id, comet_competition_id, comet_last_synced_at, comet_last_sync_status, comet_last_sync_error, comet_last_sync_count, archived_at')
       .is('archived_at', null)
       .order('age_group', { ascending: true })
       .order('name', { ascending: true })
@@ -71,7 +71,7 @@ export function subscribeToArchivedTeams(
   return subscribeToTables('archived-teams-feed', ['teams'], async () => {
     const { data, error } = await client
       .from('teams')
-      .select('id, name, age_group, is_senior, photo_url, photo_focus_x, photo_focus_y, comet_team_id, comet_competition_id, archived_at, team_coaches(coach_id), player_teams(player_id)')
+      .select('id, name, age_group, is_senior, photo_url, photo_focus_x, photo_focus_y, comet_team_id, comet_competition_id, comet_last_synced_at, comet_last_sync_status, comet_last_sync_error, comet_last_sync_count, archived_at, team_coaches(coach_id), player_teams(player_id)')
       .not('archived_at', 'is', null)
       .order('archived_at', { ascending: false })
     if (error) { onError('Unable to load archived teams.'); return }

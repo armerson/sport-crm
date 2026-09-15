@@ -48,6 +48,11 @@ async function allowedRecipients(actor: PushActor): Promise<Set<string>> {
 Deno.serve(createPushHandler({
   authenticate,
   allowedRecipients,
+  isInternal(request) {
+    const expected = Deno.env.get('COMET_SYNC_SECRET') ?? ''
+    const supplied = request.headers.get('x-internal-secret') ?? ''
+    return expected.length >= 32 && supplied === expected
+  },
   async deliver({ userIds, title, body: messageBody, url, tag }) {
     const publicKey = Deno.env.get('VAPID_PUBLIC_KEY')
     const privateKey = Deno.env.get('VAPID_PRIVATE_KEY')
