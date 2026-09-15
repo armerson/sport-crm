@@ -49,6 +49,19 @@ function useDebounce<T>(value: T, delay: number): T {
 
 const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY?.trim()
 const mapSearchRegion = import.meta.env.VITE_MAP_SEARCH_REGION?.trim()
+const homeVenueName = import.meta.env.VITE_CLUB_HOME_VENUE_NAME?.trim()
+const homeVenueAddress = import.meta.env.VITE_CLUB_HOME_VENUE_ADDRESS?.trim()
+const homeVenueLat = Number(import.meta.env.VITE_CLUB_HOME_VENUE_LAT)
+const homeVenueLng = Number(import.meta.env.VITE_CLUB_HOME_VENUE_LNG)
+const homeVenueAliases = import.meta.env.VITE_CLUB_HOME_VENUE_ALIASES?.split('|').map((alias) => alias.trim()).filter(Boolean) ?? []
+const homeVenue = homeVenueName && homeVenueAddress && Number.isFinite(homeVenueLat) && Number.isFinite(homeVenueLng)
+  ? {
+      place_id: -1,
+      display_name: `${homeVenueName}, ${homeVenueAddress}`,
+      lat: String(homeVenueLat),
+      lon: String(homeVenueLng),
+    } satisfies NominatimResult
+  : null
 let googleMapsConfigured = false
 
 type GoogleAutocompleteElement = google.maps.places.PlaceAutocompleteElement & {
@@ -86,8 +99,11 @@ async function nominatimSearch(query: string): Promise<NominatimResult[]> {
     if (!res.ok) return []
     return res.json() as Promise<NominatimResult[]>
   }))
+  const normalizedQuery = query.trim().toLowerCase()
+  const homeVenueMatches = homeVenue && [homeVenueName!, homeVenueAddress!, ...homeVenueAliases]
+    .some((label) => label.toLowerCase().includes(normalizedQuery) || normalizedQuery.includes(label.toLowerCase()))
   const seen = new Set<string>()
-  return batches.flat().filter((result) => {
+  return [...(homeVenueMatches ? [homeVenue] : []), ...batches.flat()].filter((result) => {
     const key = result.display_name.trim().toLowerCase()
     if (seen.has(key)) return false
     seen.add(key)
@@ -234,6 +250,10 @@ export function LocationPicker({ value, onChange, placeholder = 'Search for a lo
     onChange({ address, placeId: null, lat: selectedLat, lng: selectedLng })
   }
 
+  function selectHomeVenue() {
+    if (homeVenue) handleSelect(homeVenue)
+  }
+
   function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
     const newValue = e.target.value
     setResults([])
@@ -292,6 +312,17 @@ export function LocationPicker({ value, onChange, placeholder = 'Search for a lo
           </ul>
         )}
       </div>
+
+      {homeVenue && !showMap ? (
+        <button
+          type="button"
+          onClick={selectHomeVenue}
+          className="inline-flex items-center gap-2 rounded-xl bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 active:scale-[0.98]"
+        >
+          <span aria-hidden="true">⌂</span>
+          Use {homeVenueName}
+        </button>
+      ) : null}
 
       {showMap && (
         <div className="w-full min-w-0 overflow-hidden rounded-2xl border border-slate-200 shadow-sm">

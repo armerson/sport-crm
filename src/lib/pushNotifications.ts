@@ -123,17 +123,20 @@ export async function fetchAllClubRecipientIds(senderId: string): Promise<string
 }
 
 /**
- * Parent IDs for a specific set of player IDs.
- * Used for targeted attendance reminders (only ping parents of players who haven't responded).
+ * Member IDs responsible for a specific set of players.
+ * This includes parents of youth players and the linked accounts of adult players.
  */
-export async function fetchParentIdsForPlayers(playerIds: string[]): Promise<string[]> {
+export async function fetchAttendanceRecipientIds(playerIds: string[]): Promise<string[]> {
   if (!playerIds.length) return []
   const client = requireSupabase()
-  const { data } = await client
-    .from('player_parents')
-    .select('parent_id')
-    .in('player_id', playerIds)
-  return [...new Set((data ?? []).map((r) => r.parent_id as string))]
+  const [parents, players] = await Promise.all([
+    client.from('player_parents').select('parent_id').in('player_id', playerIds),
+    client.from('profiles').select('id').in('linked_player_id', playerIds),
+  ])
+  return [...new Set([
+    ...(parents.data ?? []).map((row) => row.parent_id as string),
+    ...(players.data ?? []).map((row) => row.id as string),
+  ])]
 }
 
 export async function sendPushToUsers(userIds: string[], title: string, body: string, url = '/'): Promise<boolean> {

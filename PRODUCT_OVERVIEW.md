@@ -93,6 +93,9 @@ a private, revocable subscription in Settings that keeps all of their accessible
 team schedules updated automatically.
 Events can also include an optional meet time and expected finish time. These are
 shown to coaches and families and carried into calendar entries.
+Coaches can send an availability reminder at any time. Members who still have a
+pending response also receive one automatic in-app and push reminder about a day
+before the event or its earlier meet time.
 The notification bell opens a member notification centre. Event and team alerts
 are kept there as an in-app history even when browser push notifications are
 blocked or no device subscription has been created.
@@ -153,10 +156,11 @@ notification endpoint now checks sign-in and team membership. See
 [SECURITY_RELEASE_BLOCKERS.md](SECURITY_RELEASE_BLOCKERS.md) for the exact evidence,
 the revoked old staff invitation and remaining test limits.
 
-The latest quality pass adds saved in-app alerts, clearer unread notification
-badges and a regional fallback for pitch searches when Google Places is not
-configured. It also fixes cancelled-event status loading, stale squad/review
-state, notification-permission initialisation and the deletion undo timer.
+The latest quality pass adds saved in-app alerts, automatic availability reminders,
+clearer unread notification badges and a regional fallback for pitch searches when
+Google Places is not configured. Each branded deployment can also provide its home
+ground as a searchable, one-tap venue; Ambassadors Arena is configured with its
+verified Brownlow Road map pin.
 
 ## Remaining rollout work
 

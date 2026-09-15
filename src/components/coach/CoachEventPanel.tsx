@@ -969,8 +969,8 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                           void sendAttendanceReminder(activeEventId, activeEvent.title).then((count) => {
                             setReminderMsg(
                               count > 0
-                                ? `Reminder sent to ${count} parent${count === 1 ? '' : 's'}.`
-                                : 'No parents with push notifications enabled.'
+                                ? `Reminder sent to ${count} member${count === 1 ? '' : 's'}.`
+                                : 'No linked parent or player accounts were found.'
                             )
                           }).catch(() => setReminderMsg('The reminder could not be sent. Please try again.')).finally(() => setSendingReminder(false))
                         }}
@@ -983,6 +983,11 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                       )}
                     </div>
                   )}
+                  {activeEventCounts.pending > 0 && activeEvent ? (
+                    <p className="mt-2 text-xs leading-5 text-slate-500">
+                      Anyone still awaiting a response will also receive one automatic reminder about a day before the {activeEvent.meetTime ? 'meet time' : 'start time'}.
+                    </p>
+                  ) : null}
 
                   {attendance.length > 0 && !loadingAttendance && (
                     <div className="mt-3 flex gap-2">

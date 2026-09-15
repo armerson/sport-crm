@@ -8,3 +8,7 @@ verify_jwt = false
 # Called by pg_cron with the private COMET_SYNC_SECRET stored in Vault.
 [functions.scheduled-comet-sync]
 verify_jwt = false
+
+# Called by pg_cron with the same private internal secret used by scheduled jobs.
+[functions.scheduled-attendance-reminders]
+verify_jwt = false
