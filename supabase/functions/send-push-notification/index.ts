@@ -54,6 +54,11 @@ Deno.serve(createPushHandler({
     return expected.length >= 32 && supplied === expected
   },
   async deliver({ userIds, title, body: messageBody, url, tag }) {
+    const { error: historyError } = await supabase.from('member_notifications').insert(
+      userIds.map((userId) => ({ user_id: userId, title, body: messageBody, url })),
+    )
+    if (historyError) throw historyError
+
     const publicKey = Deno.env.get('VAPID_PUBLIC_KEY')
     const privateKey = Deno.env.get('VAPID_PRIVATE_KEY')
     const subject = Deno.env.get('VAPID_SUBJECT')

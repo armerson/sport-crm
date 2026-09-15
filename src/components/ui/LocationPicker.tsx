@@ -86,10 +86,11 @@ async function nominatimSearch(query: string): Promise<NominatimResult[]> {
     if (!res.ok) return []
     return res.json() as Promise<NominatimResult[]>
   }))
-  const seen = new Set<number>()
+  const seen = new Set<string>()
   return batches.flat().filter((result) => {
-    if (seen.has(result.place_id)) return false
-    seen.add(result.place_id)
+    const key = result.display_name.trim().toLowerCase()
+    if (seen.has(key)) return false
+    seen.add(key)
     return true
   }).slice(0, 8)
 }

@@ -1,5 +1,6 @@
 interface NotificationBellProps {
   hasUnread: boolean
+  unreadCount?: number
   onClick: () => void
   className?: string
 }
@@ -8,12 +9,12 @@ interface NotificationBellProps {
  * Bell icon button with an unread badge dot.
  * Designed to sit in the dashboard header — clicking navigates to Messages.
  */
-export function NotificationBell({ hasUnread, onClick, className = '' }: NotificationBellProps) {
+export function NotificationBell({ hasUnread, unreadCount = 0, onClick, className = '' }: NotificationBellProps) {
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-label={hasUnread ? 'You have unread messages — go to Messages' : 'Messages'}
+      aria-label={hasUnread ? `${unreadCount || 1} unread notifications` : 'Notifications'}
       className={`relative flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white/80 transition active:bg-white/20 hover:bg-white/20 ${className}`}
     >
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -23,8 +24,8 @@ export function NotificationBell({ hasUnread, onClick, className = '' }: Notific
       {hasUnread ? (
         <span
           aria-hidden="true"
-          className="absolute right-1 top-1 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-[#f18a3f] ring-2 ring-[#1565ff]"
-        />
+          className="absolute -right-1 -top-1 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-[#f18a3f] px-1 text-[9px] font-bold text-slate-950 ring-2 ring-[#1565ff]"
+        >{unreadCount > 0 ? Math.min(unreadCount, 9) : ''}</span>
       ) : null}
     </button>
   )
