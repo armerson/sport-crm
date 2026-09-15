@@ -5,6 +5,7 @@ import { useCoachClubData } from '../../hooks/useCoachClubData.ts'
 import { useTeamPlayers } from '../../hooks/useTeamPlayers.ts'
 import { MotmVotingCard } from '../shared/MotmVotingCard.tsx'
 import { EventComments } from '../events/EventComments.tsx'
+import { EventCalendarActions } from '../events/EventCalendarActions.tsx'
 import { PlayerProfileCard } from '../players/PlayerProfileCard.tsx'
 import { PlayerReviewsPanel } from '../reviews/PlayerReviewsPanel.tsx'
 import { InviteButton } from '../shared/InviteButton.tsx'
@@ -903,6 +904,12 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                   <LocationMapCard location={activeEvent.location} placeId={activeEvent.placeId} lat={activeEvent.lat} lng={activeEvent.lng} />
                 </div>
               )}
+
+              {activeEvent ? (
+                <div className="mt-3">
+                  <EventCalendarActions event={activeEvent} team={selectedTeam ?? undefined} />
+                </div>
+              ) : null}
 
               {activeEventId ? (
                 <>

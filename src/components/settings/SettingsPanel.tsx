@@ -10,6 +10,7 @@ import {
 import { checkForAppUpdate } from '../../registerAppUpdates.ts'
 import { registerCurrentMemberAsPlayer } from '../../services/memberRegistration.ts'
 import { ageOnDate } from '../../utils/birthDate.ts'
+import { createCalendarFeed, getCalendarFeed, rotateCalendarFeed, type CalendarFeed } from '../../services/calendar.ts'
 
 interface Props {
   onClose: () => void
@@ -17,7 +18,7 @@ interface Props {
   onPlayerRegistered?: () => void
 }
 
-type Section = 'main' | 'profile' | 'notifications' | 'security' | 'privacy' | 'player-registration'
+type Section = 'main' | 'profile' | 'notifications' | 'calendar' | 'security' | 'privacy' | 'player-registration'
 
 function ChevronRight() {
   return (
@@ -301,6 +302,81 @@ function SectionSecurity({ onBack }: { onBack: () => void }) {
   )
 }
 
+function SectionCalendar({ onBack }: { onBack: () => void }) {
+  const { profile } = useAuth()
+  const [feed, setFeed] = useState<CalendarFeed | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [working, setWorking] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let active = true
+    if (!profile) return () => { active = false }
+    void getCalendarFeed(profile.id)
+      .then((value) => { if (active) setFeed(value) })
+      .catch(() => { if (active) setError('The calendar connection could not be loaded.') })
+      .finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
+  }, [profile])
+
+  async function handleCreate() {
+    if (!profile) return
+    setWorking(true)
+    setError(null)
+    try { setFeed(await createCalendarFeed(profile.id)) }
+    catch { setError('The private calendar link could not be created.') }
+    finally { setWorking(false) }
+  }
+
+  async function handleRotate() {
+    if (!profile || !window.confirm('Replace your private calendar link? Your current calendar subscription will stop updating.')) return
+    setWorking(true)
+    setError(null)
+    try { setFeed(await rotateCalendarFeed(profile.id)); setCopied(false) }
+    catch { setError('The private calendar link could not be replaced.') }
+    finally { setWorking(false) }
+  }
+
+  async function handleCopy() {
+    if (!feed) return
+    await navigator.clipboard.writeText(feed.httpsUrl)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center gap-3"><BackButton onClick={onBack} /><h2 className="text-base font-bold text-slate-800">Calendar</h2></div>
+      <div className="space-y-4 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+        <div>
+          <p className="text-sm font-semibold text-slate-900">Keep your schedule in sync</p>
+          <p className="mt-1 text-xs leading-5 text-slate-500">Subscribe once to see your teams&apos; training and matches in Apple Calendar, Google Calendar or Outlook. Changes in ClubOS will flow into the calendar.</p>
+        </div>
+        {loading ? <p className="text-xs text-slate-400">Checking your calendar connection…</p> : null}
+        {!loading && !feed ? (
+          <button type="button" onClick={() => void handleCreate()} disabled={working} className="w-full rounded-xl bg-[#1565ff] py-2.5 text-sm font-semibold text-white transition active:scale-[0.98] disabled:opacity-50">
+            {working ? 'Creating…' : 'Create private calendar link'}
+          </button>
+        ) : null}
+        {feed ? (
+          <div className="space-y-3">
+            <div className="rounded-xl bg-emerald-50 p-3 text-xs text-emerald-800"><strong>Ready to subscribe.</strong> This private link includes only the teams available in your ClubOS account.</div>
+            <a href={feed.webcalUrl} className="block w-full rounded-xl bg-[#1565ff] py-2.5 text-center text-sm font-semibold text-white transition active:scale-[0.98]">Subscribe on this device</a>
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => void handleCopy()} className="rounded-xl border border-slate-200 py-2.5 text-xs font-semibold text-slate-700">{copied ? '✓ Copied' : 'Copy link'}</button>
+              <a href={feed.httpsUrl} className="rounded-xl border border-slate-200 py-2.5 text-center text-xs font-semibold text-slate-700">Download calendar</a>
+            </div>
+            <button type="button" onClick={() => void handleRotate()} disabled={working} className="w-full py-1 text-xs font-semibold text-slate-400 hover:text-red-600 disabled:opacity-50">Replace private link</button>
+          </div>
+        ) : null}
+        {error ? <p className="rounded-xl bg-rose-50 p-3 text-xs text-rose-700" role="alert">{error}</p> : null}
+        <p className="text-[11px] leading-4 text-slate-400">Treat this link like a password. Anyone who has it can read your schedule. Replace it here at any time to disable the old link.</p>
+      </div>
+    </div>
+  )
+}
+
 function SectionPrivacy({ onBack }: { onBack: () => void }) {
   return (
     <div className="space-y-5">
@@ -469,6 +545,12 @@ export function SettingsPanel({ onClose, initialSection = 'main', onPlayerRegist
               sublabel="Events, reminders & announcements"
             />
             <RowButton
+              onClick={() => setSection('calendar')}
+              icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>}
+              label="Calendar"
+              sublabel="Keep matches and training in sync"
+            />
+            <RowButton
               onClick={() => setSection('security')}
               icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>}
               label="Security"
@@ -520,6 +602,7 @@ export function SettingsPanel({ onClose, initialSection = 'main', onPlayerRegist
 
       {section === 'profile' && <SectionProfile onBack={() => setSection('main')} />}
       {section === 'notifications' && <SectionNotifications onBack={() => setSection('main')} />}
+      {section === 'calendar' && <SectionCalendar onBack={() => setSection('main')} />}
       {section === 'security' && <SectionSecurity onBack={() => setSection('main')} />}
       {section === 'privacy' && <SectionPrivacy onBack={() => setSection('main')} />}
       {section === 'player-registration' && <SectionPlayerRegistration onBack={() => setSection('main')} onDone={onPlayerRegistered} />}

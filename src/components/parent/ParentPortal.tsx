@@ -14,6 +14,7 @@ import { LocationMapCard } from '../ui/LocationPicker.tsx'
 import { MatchDayCard } from '../shared/MatchDayCard.tsx'
 import { MotmVotingCard } from '../shared/MotmVotingCard.tsx'
 import { EventComments } from '../events/EventComments.tsx'
+import { EventCalendarActions } from '../events/EventCalendarActions.tsx'
 import { fetchPublishedReviewsForPlayer, type PlayerReview } from '../../services/playerReviews.ts'
 import type { UserProfile } from '../../types/auth.ts'
 import type { AttendanceStatus } from '../../types/club.ts'
@@ -313,6 +314,7 @@ function ParentEventCard({
           {event.location && (
             <LocationMapCard location={event.location} placeId={event.placeId} lat={event.lat} lng={event.lng} />
           )}
+          <EventCalendarActions event={event} team={team} />
           {isPast && event.type === 'match' && currentUserId ? (
             <MotmVotingCard eventId={event.id} isPastMatch={isPast} teamId={event.teamId} currentUserId={currentUserId} />
           ) : null}
