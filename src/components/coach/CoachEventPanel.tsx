@@ -21,7 +21,7 @@ import { SuccessMessage } from '../ui/SuccessMessage.tsx'
 import { TabNav } from '../ui/TabNav.tsx'
 import { TextField } from '../ui/TextField.tsx'
 import type { EventType, RecurrencePattern } from '../../types/club.ts'
-import { validateSupportingTimes } from '../../utils/eventTimes.ts'
+import { meetTimeFromMinutesBefore, minutesBeforeFromMeetTime, validateSupportingTimes } from '../../utils/eventTimes.ts'
 
 import { PostFeed } from '../posts/PostFeed.tsx'
 import { MatchStatsPanel } from './MatchStatsPanel.tsx'
@@ -47,7 +47,7 @@ interface EventFormState {
   title: string
   type: EventType
   dateTime: string
-  meetTime: string
+  meetBeforeMinutes: string
   endTime: string
   location: string
   opponent: string
@@ -77,6 +77,19 @@ const WEEK_OPTIONS = Array.from({ length: 19 }, (_, i) => ({
   label: `${i + 2} sessions`,
   value: String(i + 2),
 }))
+
+const MEET_BEFORE_OPTIONS = [
+  { label: 'No meet time', value: '' },
+  ...Array.from({ length: 36 }, (_, index) => {
+    const minutes = (index + 1) * 5
+    const hours = Math.floor(minutes / 60)
+    const remaining = minutes % 60
+    const duration = hours === 0
+      ? `${minutes} minutes`
+      : `${hours} hour${hours === 1 ? '' : 's'}${remaining ? ` ${remaining} minutes` : ''}`
+    return { label: `${duration} before`, value: String(minutes) }
+  }),
+]
 
 function SectionFallback() {
   return (
@@ -304,11 +317,11 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [editingEventId, setEditingEventId] = useState<string | null>(null)
   const [createTeamId, setCreateTeamId] = useState('')
-  const [editValues, setEditValues] = useState<Pick<EventFormState, 'title' | 'type' | 'dateTime' | 'meetTime' | 'endTime' | 'location' | 'opponent'>>({
+  const [editValues, setEditValues] = useState<Pick<EventFormState, 'title' | 'type' | 'dateTime' | 'meetBeforeMinutes' | 'endTime' | 'location' | 'opponent'>>({
     title: '',
     type: 'training',
     dateTime: '',
-    meetTime: '',
+    meetBeforeMinutes: '',
     endTime: '',
     location: '',
     opponent: '',
@@ -317,7 +330,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
     title: '',
     type: 'training',
     dateTime: '',
-    meetTime: '',
+    meetBeforeMinutes: '',
     endTime: '',
     location: '',
     opponent: '',
@@ -456,7 +469,8 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
       setLocalError('Team, title, date/time, and location are required.')
       return
     }
-    const timeError = validateSupportingTimes(eventValues.dateTime, eventValues.meetTime, eventValues.endTime)
+    const meetTime = meetTimeFromMinutesBefore(eventValues.dateTime, eventValues.meetBeforeMinutes)
+    const timeError = validateSupportingTimes(eventValues.dateTime, meetTime, eventValues.endTime)
     if (timeError) { setLocalError(timeError); return }
 
     const recurrence =
@@ -471,7 +485,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
           title: eventValues.title.trim(),
           type: eventValues.type,
           dateTime: eventValues.dateTime,
-          meetTime: eventValues.meetTime || null,
+          meetTime: meetTime || null,
           endTime: eventValues.endTime || null,
           location: eventValues.location.trim(),
           placeId: eventLocationMeta.placeId,
@@ -483,7 +497,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
         recurrence,
       )
 
-      setEventValues({ title: '', type: 'training', dateTime: '', meetTime: '', endTime: '', location: '', recurring: false, recurrencePattern: 'weekly', recurrenceWeeks: 6, opponent: '' })
+      setEventValues({ title: '', type: 'training', dateTime: '', meetBeforeMinutes: '', endTime: '', location: '', recurring: false, recurrencePattern: 'weekly', recurrenceWeeks: 6, opponent: '' })
       setEventLocationMeta({})
       const sessionLabel = recurrence ? `${recurrence.weeks} training sessions` : 'event'
       setSuccessMessage(`${sessionLabel.charAt(0).toUpperCase() + sessionLabel.slice(1)} created. Players have been given a pending attendance record.`)
@@ -501,7 +515,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
       title: event.title,
       type: event.type,
       dateTime: toLocalDateTimeInput(event.dateTime),
-      meetTime: toLocalDateTimeInput(event.meetTime),
+      meetBeforeMinutes: minutesBeforeFromMeetTime(event.dateTime, event.meetTime),
       endTime: toLocalDateTimeInput(event.endTime),
       location: event.location,
       opponent: event.opponent ?? '',
@@ -518,14 +532,15 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
       setLocalError('Title, date/time, and location are required.')
       return
     }
-    const timeError = validateSupportingTimes(editValues.dateTime, editValues.meetTime, editValues.endTime)
+    const meetTime = meetTimeFromMinutesBefore(editValues.dateTime, editValues.meetBeforeMinutes)
+    const timeError = validateSupportingTimes(editValues.dateTime, meetTime, editValues.endTime)
     if (timeError) { setLocalError(timeError); return }
     try {
       await updateEvent(editingEventId, {
         title: editValues.title.trim(),
         type: editValues.type,
         dateTime: new Date(editValues.dateTime).toISOString(),
-        meetTime: editValues.meetTime ? new Date(editValues.meetTime).toISOString() : null,
+        meetTime: meetTime || null,
         endTime: editValues.endTime ? new Date(editValues.endTime).toISOString() : null,
         location: editValues.location.trim(),
         placeId: editLocationMeta.placeId,
@@ -883,7 +898,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                       value={editValues.dateTime}
                     />
                     <div className="grid gap-3 sm:grid-cols-2">
-                      <TextField label="Meet time (optional)" onChange={(e) => setEditValues((c) => ({ ...c, meetTime: e.target.value }))} type="datetime-local" value={editValues.meetTime} />
+                      <SelectField label="Meet before" onChange={(e) => setEditValues((c) => ({ ...c, meetBeforeMinutes: e.target.value }))} options={MEET_BEFORE_OPTIONS} value={editValues.meetBeforeMinutes} />
                       <TextField label="Finish time (optional)" onChange={(e) => setEditValues((c) => ({ ...c, endTime: e.target.value }))} type="datetime-local" value={editValues.endTime} />
                     </div>
                     <div className="space-y-1">
@@ -1443,7 +1458,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
               value={eventValues.dateTime}
             />
             <div className="grid gap-3 sm:grid-cols-2">
-              <TextField label="Meet time (optional)" onChange={(event) => setEventValues((current) => ({ ...current, meetTime: event.target.value }))} type="datetime-local" value={eventValues.meetTime} />
+              <SelectField label="Meet before" onChange={(event) => setEventValues((current) => ({ ...current, meetBeforeMinutes: event.target.value }))} options={MEET_BEFORE_OPTIONS} value={eventValues.meetBeforeMinutes} />
               <TextField label="Finish time (optional)" onChange={(event) => setEventValues((current) => ({ ...current, endTime: event.target.value }))} type="datetime-local" value={eventValues.endTime} />
             </div>
             <div className="space-y-1">
