@@ -148,7 +148,7 @@ function scrollWorkspaceToTop() {
 export function DashboardPage() {
   const { profile, loading: authLoading, error: authError, signOutUser } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
-  const [showSettings, setShowSettings] = useState(false)
+  const [showSettings, setShowSettings] = useState(() => searchParams.get('register') === 'player')
   const [adminTab, setAdminTab] = useState<AdminTab>('overview')
   const [coachTab, setCoachTab] = useState<CoachTab>('schedule')
   const [parentTab, setParentTab] = useState<ParentTab>('schedule')
@@ -170,6 +170,7 @@ export function DashboardPage() {
     setSearchParams((previous) => {
       const next = new URLSearchParams(previous)
       next.set('view', role)
+      next.delete('register')
       return next
     })
     scrollWorkspaceToTop()
@@ -182,6 +183,11 @@ export function DashboardPage() {
 
   function closeSettings() {
     setShowSettings(false)
+    setSearchParams((previous) => {
+      const next = new URLSearchParams(previous)
+      next.delete('register')
+      return next
+    })
     scrollWorkspaceToTop()
   }
 
@@ -350,7 +356,11 @@ export function DashboardPage() {
         <div className="mx-auto max-w-6xl space-y-4 sm:space-y-6">
           <div key={`${activeRole}:${activeTab}:${showSettings ? 'settings' : 'workspace'}`} className="ui-view-enter">
             {showSettings ? (
-              <SettingsPanel onClose={closeSettings} />
+              <SettingsPanel
+                onClose={closeSettings}
+                initialSection={searchParams.get('register') === 'player' ? 'player-registration' : 'main'}
+                onPlayerRegistered={() => setActiveRole('player')}
+              />
             ) : (
               <>
               <InstallBanner />

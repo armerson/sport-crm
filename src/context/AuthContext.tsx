@@ -16,6 +16,7 @@ import type {
   SignUpInput,
   UserProfile,
 } from '../types/auth.ts'
+import { isObscuredExistingSignup } from '../utils/authSignup.ts'
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
@@ -312,6 +313,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (signUpError) {
           const message = getAuthMessage(signUpError)
+          setError(message)
+          throw new Error(message)
+        }
+
+        // Supabase deliberately obscures an existing confirmed email by
+        // returning a user with no identities. Do not show a false success.
+        if (isObscuredExistingSignup(data.user)) {
+          const message = 'That email address already has an account. Sign in to add another workspace.'
           setError(message)
           throw new Error(message)
         }
