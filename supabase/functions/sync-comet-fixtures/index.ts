@@ -87,10 +87,11 @@ Deno.serve(async (request) => {
 
   const { data: team, error: teamError } = await service
     .from('teams')
-    .select('id, name, comet_team_id, comet_competition_id')
+    .select('id, name, comet_team_id, comet_competition_id, archived_at')
     .eq('id', teamId)
     .maybeSingle()
   if (teamError || !team) return json(request, { error: 'Team could not be found.' }, 404)
+  if (team.archived_at) return json(request, { error: 'Restore this team before syncing fixtures.' }, 400)
   if (!team.comet_team_id || !team.comet_competition_id) {
     return json(request, { error: 'Ask a club admin to add the COMET team and competition IDs first.' }, 400)
   }

@@ -159,6 +159,7 @@ Deno.serve(async (request) => {
   const { data: existingTeams } = await adminClient
     .from('teams')
     .select('id, name, age_group')
+    .is('archived_at', null)
 
   const teamCache = new Map<string, string>() // name → id
   for (const team of existingTeams ?? []) {

@@ -114,14 +114,18 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
   const [viewingPlayerId, setViewingPlayerId] = useState<string | null>(null)
   const { profile } = useAuth()
   const {
-    addPlayer, approvePendingPlayer, assignCoach, coaches, createGroup, createTeam, deleteGroup, deleteTeam,
+    addPlayer, approvePendingPlayer, archiveTeam, archivedTeams, assignCoach, coaches, createGroup, createTeam, deleteGroup,
     error, events, groups, isConfigured, isSubmitting, loading, linkParent, movePlayer, parents,
     pendingRegistrations, provisionUser, rejectPendingRegistration, removePlayer, teams,
-    unlinkParent, updateGroup, updateTeam,
+    restoreTeam, unlinkParent, updateGroup, updateTeam,
   } = useAdminClubData()
 
   const { logs: auditLogs, loading: loadingAuditLogs, error: auditLogError } = useAuditLogs()
   const { players: allPlayers, loading: loadingAllPlayers } = useAllPlayers()
+  const activePlayers = useMemo(() => {
+    const activeTeamIds = new Set(teams.map((team) => team.id))
+    return allPlayers.filter((player) => player.teams.length === 0 || player.teams.some((teamId) => activeTeamIds.has(teamId)))
+  }, [allPlayers, teams])
   const [playerSearch, setPlayerSearch] = useState('')
   const [manageSection, setManageSection] = useState<ManageSection>('import')
   const [showAllPlayers, setShowAllPlayers] = useState(false)
@@ -1105,12 +1109,12 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
                               Edit
                             </button>
                             <ConfirmInline
-                              confirmLabel="Yes, delete"
-                              label="Delete"
+                              confirmLabel="Yes, archive"
+                              label="Archive"
                               onConfirm={() => void (async () => {
                                 try {
-                                  await deleteTeam(team.id)
-                                  showSuccess(`${team.name} deleted.`)
+                                  await archiveTeam(team.id, team.name)
+                                  showSuccess(`${team.name} archived. Its history has been kept.`)
                                 } catch { /* hook exposes error */ }
                               })()}
                             />
@@ -1226,7 +1230,7 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-2xl font-semibold tracking-tight text-slate-950">Players</h2>
-              <p className="mt-0.5 text-sm text-slate-500">{loadingAllPlayers ? 'Loading…' : `${allPlayers.length} player${allPlayers.length === 1 ? '' : 's'}`}</p>
+              <p className="mt-0.5 text-sm text-slate-500">{loadingAllPlayers ? 'Loading…' : `${activePlayers.length} player${activePlayers.length === 1 ? '' : 's'}`}</p>
             </div>
             <input
               type="search"
@@ -1239,11 +1243,11 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
 
           {loadingAllPlayers ? (
             <p className="text-sm text-slate-400">Loading players…</p>
-          ) : allPlayers.length === 0 ? (
+          ) : activePlayers.length === 0 ? (
             <p className="text-sm text-slate-400">No players yet.</p>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {allPlayers
+              {activePlayers
                 .filter((p) => !playerSearch || p.name.toLowerCase().includes(playerSearch.toLowerCase()))
                 .map((player) => {
                   const teamName = teams.find((t) => player.teams.includes(t.id))?.name ?? 'No team'
@@ -1371,6 +1375,23 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
                     Save team
                   </Button>
                 </form>
+                {archivedTeams.length > 0 ? (
+                  <div className="mt-6 border-t border-slate-100 pt-5">
+                    <h3 className="text-sm font-semibold text-slate-900">Archived teams</h3>
+                    <p className="mt-1 text-xs text-slate-500">Hidden from schedules, messages and team selectors. Their history is retained.</p>
+                    <div className="mt-3 space-y-2">
+                      {archivedTeams.map((team) => (
+                        <div key={team.id} className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-slate-800">{team.name}</p>
+                            <p className="text-xs text-slate-500">{team.ageGroup}</p>
+                          </div>
+                          <button type="button" disabled={isSubmitting} onClick={() => void restoreTeam(team.id, team.name)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 disabled:opacity-50">Restore</button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
               </>
             ) : null}
 

@@ -9,7 +9,7 @@ export interface PendingRegistration {
   /** Who registered — parent name(s) or self (senior) */
   registeredByLabel: string
 }
-import { mapEventRow, mapGroupRow, mapPlayerRow, mapProfileRow, mapTeamRow, requireSupabase, subscribeToTables } from './supabaseHelpers.ts'
+import { mapEventRow, mapGroupRow, mapPlayerRow, mapProfileRow, mapTeamRow, requireSupabase, subscribeToTables, writeAuditLog } from './supabaseHelpers.ts'
 
 export function subscribeToTeams(
   onData: (teams: TeamRecord[]) => void,
@@ -20,7 +20,8 @@ export function subscribeToTeams(
   return subscribeToTables('teams-feed', ['teams', 'team_coaches', 'player_teams'], async () => {
     const { data: teamsData, error: teamsError } = await client
       .from('teams')
-      .select('id, name, age_group, is_senior, photo_url, photo_focus_x, photo_focus_y, comet_team_id, comet_competition_id')
+      .select('id, name, age_group, is_senior, photo_url, photo_focus_x, photo_focus_y, comet_team_id, comet_competition_id, archived_at')
+      .is('archived_at', null)
       .order('age_group', { ascending: true })
       .order('name', { ascending: true })
 
@@ -59,6 +60,22 @@ export function subscribeToTeams(
       const player_teams = (playersByTeam.get(id) ?? []).map((player_id) => ({ player_id }))
       return mapTeamRow({ ...team, team_coaches, player_teams } as Record<string, unknown>)
     }))
+  })
+}
+
+export function subscribeToArchivedTeams(
+  onData: (teams: TeamRecord[]) => void,
+  onError: (message: string) => void,
+): () => void {
+  const client = requireSupabase()
+  return subscribeToTables('archived-teams-feed', ['teams'], async () => {
+    const { data, error } = await client
+      .from('teams')
+      .select('id, name, age_group, is_senior, photo_url, photo_focus_x, photo_focus_y, comet_team_id, comet_competition_id, archived_at, team_coaches(coach_id), player_teams(player_id)')
+      .not('archived_at', 'is', null)
+      .order('archived_at', { ascending: false })
+    if (error) { onError('Unable to load archived teams.'); return }
+    onData((data ?? []).map((row) => mapTeamRow(row as Record<string, unknown>)))
   })
 }
 
@@ -371,13 +388,21 @@ export async function saveTeamPhotoFocus(teamId: string, focusX: number, focusY:
   if (error) throw new Error(error.message)
 }
 
-export async function deleteTeam(teamId: string) {
+export async function archiveTeam(teamId: string, teamName: string) {
   const client = requireSupabase()
-  const { error } = await client.from('teams').delete().eq('id', teamId)
+  const { error } = await client.from('teams').update({ archived_at: new Date().toISOString() }).eq('id', teamId)
 
   if (error) {
     throw new Error(error.message)
   }
+  await writeAuditLog({ action: 'archive_team', targetType: 'team', targetId: teamId, summary: `Archived ${teamName}.` })
+}
+
+export async function restoreTeam(teamId: string, teamName: string) {
+  const client = requireSupabase()
+  const { error } = await client.from('teams').update({ archived_at: null }).eq('id', teamId)
+  if (error) throw new Error(error.message)
+  await writeAuditLog({ action: 'restore_team', targetType: 'team', targetId: teamId, summary: `Restored ${teamName}.` })
 }
 
 export async function addPlayerToTeam(input: PlayerFormInput) {

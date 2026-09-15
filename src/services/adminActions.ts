@@ -13,7 +13,7 @@ function rpcMissingOrSchemaError(err: { message?: string; code?: string }): bool
 export async function assignCoachToTeam(teamId: string, coachId: string) {
   const client = requireSupabase()
 
-  const { data: teamRow, error: teamError } = await client.from('teams').select('id, name').eq('id', teamId).single()
+  const { data: teamRow, error: teamError } = await client.from('teams').select('id, name').eq('id', teamId).is('archived_at', null).single()
   if (teamError || !teamRow) {
     throw new Error(teamError?.message ?? 'Team not found.')
   }
@@ -104,7 +104,7 @@ export async function movePlayerToTeam(playerId: string, fromTeamId: string, toT
   const client = requireSupabase()
   const [{ data: playerRow, error: playerError }, { data: toTeamRow, error: toTeamError }] = await Promise.all([
     client.from('players').select('id, name').eq('id', playerId).single(),
-    client.from('teams').select('id, name').eq('id', toTeamId).single(),
+    client.from('teams').select('id, name').eq('id', toTeamId).is('archived_at', null).single(),
   ])
 
   if (playerError || !playerRow) throw new Error(playerError?.message ?? 'Player not found.')
