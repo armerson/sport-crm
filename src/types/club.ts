@@ -49,13 +49,15 @@ export interface EmergencyContact {
 
 export type DominantFoot = 'left' | 'right' | 'both'
 
-export type PlayerStatus = 'pending' | 'active'
+export type PlayerStatus = 'pending' | 'needs_info' | 'active' | 'rejected'
 
 export interface PlayerRecord {
   id: string
   name: string
   dob: string
   status: PlayerStatus
+  registrationMessage: string | null
+  registrationUpdatedAt: string | null
   parentIds: string[]
   teams: string[]
   // Profile fields (nullable — may not be filled in yet)

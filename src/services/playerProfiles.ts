@@ -12,12 +12,14 @@ import type {
 
 function mapPlayerRow(row: Record<string, unknown>): PlayerRecord {
   const statusRaw = row.status as string | undefined
-  const status: PlayerRecord['status'] = statusRaw === 'pending' || statusRaw === 'active' ? statusRaw : 'active'
+  const status: PlayerRecord['status'] = statusRaw === 'pending' || statusRaw === 'needs_info' || statusRaw === 'rejected' ? statusRaw : 'active'
   return {
     id: row.id as string,
     name: row.name as string,
     dob: row.dob as string,
     status,
+    registrationMessage: (row.registration_message as string | null) ?? null,
+    registrationUpdatedAt: (row.registration_updated_at as string | null) ?? null,
     parentIds: [],
     teams: [],
     position: (row.position as string | null) ?? null,

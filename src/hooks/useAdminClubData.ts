@@ -6,6 +6,7 @@ import {
   linkParentToPlayer,
   movePlayerToTeam,
   rejectPendingRegistration,
+  updatePendingRegistrationStatus,
   removePlayerFromClub,
   unlinkParentFromPlayer,
 } from '../services/adminActions.ts'
@@ -385,12 +386,25 @@ export function useAdminClubData() {
         setIsSubmitting(false)
       }
     },
-    rejectPendingRegistration: async (playerId: string) => {
+    requestRegistrationInformation: async (playerId: string, message: string) => {
       if (!isSupabaseConfigured) { setError(supabaseConfigError); return }
       setIsSubmitting(true)
       setError(null)
       try {
-        await rejectPendingRegistration(playerId)
+        await updatePendingRegistrationStatus(playerId, 'needs_info', message)
+      } catch (submitError) {
+        setError(getAdminErrorMessage(submitError, 'Unable to request more information.'))
+        throw submitError
+      } finally {
+        setIsSubmitting(false)
+      }
+    },
+    rejectPendingRegistration: async (playerId: string, message: string) => {
+      if (!isSupabaseConfigured) { setError(supabaseConfigError); return }
+      setIsSubmitting(true)
+      setError(null)
+      try {
+        await rejectPendingRegistration(playerId, message)
       } catch (submitError) {
         setError(getAdminErrorMessage(submitError, 'Unable to reject registration.'))
         throw submitError

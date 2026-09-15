@@ -165,8 +165,8 @@ export async function approvePendingPlayerToTeam(playerId: string, teamId: strin
   if (playerError || !playerRow) {
     throw new Error(playerError?.message ?? 'Player not found.')
   }
-  if (playerRow.status !== 'pending') {
-    throw new Error('This registration is not pending approval.')
+  if (!['pending', 'needs_info'].includes(playerRow.status)) {
+    throw new Error('This registration is not awaiting approval.')
   }
 
   const { error: approvalError } = await client.rpc('admin_approve_pending_player', {
@@ -191,7 +191,7 @@ export async function approvePendingPlayerToTeam(playerId: string, teamId: strin
   } catch { /* non-blocking */ }
 }
 
-export async function rejectPendingRegistration(playerId: string) {
+export async function updatePendingRegistrationStatus(playerId: string, status: 'needs_info' | 'rejected', message: string) {
   const client = requireSupabase()
   const { data: playerRow, error: playerError } = await client
     .from('players')
@@ -202,19 +202,27 @@ export async function rejectPendingRegistration(playerId: string) {
   if (playerError || !playerRow) {
     throw new Error(playerError?.message ?? 'Player not found.')
   }
-  if (playerRow.status !== 'pending') {
-    throw new Error('Only pending registrations can be rejected.')
+  if (!['pending', 'needs_info'].includes(playerRow.status)) {
+    throw new Error('Only registrations awaiting review can be updated.')
   }
 
-  const { error: deleteError } = await client.from('players').delete().eq('id', playerId)
-  if (deleteError) throw new Error(deleteError.message)
+  const { error: updateError } = await client.rpc('admin_set_registration_status', {
+    p_player_id: playerId,
+    p_status: status,
+    p_message: message.trim(),
+  })
+  if (updateError) throw new Error(updateError.message)
 
   await writeAuditLog({
-    action: 'reject_pending_registration',
+    action: status === 'rejected' ? 'reject_pending_registration' : 'request_registration_information',
     targetType: 'player',
     targetId: playerId,
-    summary: `Rejected registration for ${playerRow.name}.`,
+    summary: status === 'rejected' ? `Declined registration for ${playerRow.name}.` : `Requested more registration information from ${playerRow.name}.`,
   })
+}
+
+export async function rejectPendingRegistration(playerId: string, message: string) {
+  return updatePendingRegistrationStatus(playerId, 'rejected', message)
 }
 
 export async function unlinkParentFromPlayer(playerId: string, parentId: string) {

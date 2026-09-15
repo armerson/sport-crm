@@ -83,13 +83,15 @@ export function mapPlayerRow(row: Record<string, unknown>): PlayerRecord {
 
   const st = row.status
   const status: import('../types/club.ts').PlayerStatus =
-    st === 'pending' ? 'pending' : 'active'
+    st === 'pending' || st === 'needs_info' || st === 'rejected' ? st : 'active'
 
   return {
     id: typeof row.id === 'string' ? row.id : '',
     name: typeof row.name === 'string' ? row.name : 'Unnamed player',
     dob: typeof row.dob === 'string' ? row.dob : '',
     status,
+    registrationMessage: typeof row.registration_message === 'string' ? row.registration_message : null,
+    registrationUpdatedAt: typeof row.registration_updated_at === 'string' ? row.registration_updated_at : null,
     parentIds,
     teams,
     position: typeof row.position === 'string' ? row.position : null,
