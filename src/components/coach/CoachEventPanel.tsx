@@ -22,6 +22,7 @@ import type { EventType, RecurrencePattern } from '../../types/club.ts'
 
 import { PostFeed } from '../posts/PostFeed.tsx'
 import { MatchStatsPanel } from './MatchStatsPanel.tsx'
+import { MatchdayGuide } from './MatchdayGuide.tsx'
 import { fetchMatchStats, fetchSeasonStats } from '../../services/playerMatchStats.ts'
 import { createPost, uploadPostImage } from '../../services/posts.ts'
 import { subscribeToTables } from '../../services/supabaseHelpers.ts'
@@ -362,6 +363,10 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
         : resultByEventId.get(activeEventId))
     : undefined
   const isSingleTeamCoach = teams.length === 1
+
+  function jumpToMatchdaySection(target: 'matchday-availability' | 'matchday-squad' | 'matchday-result' | 'matchday-player') {
+    document.getElementById(target)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   async function handleCometSync() {
     if (!selectedTeam?.cometTeamId || !selectedTeam.cometCompetitionId) return
@@ -880,6 +885,18 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                 {activeEvent ? `${selectedTeam?.name ?? ''} · ${formatDateTimeRelative(activeEvent.dateTime)}` : 'Select an event to view attendance.'}
               </p>
 
+              {activeEvent?.type === 'match' ? (
+                <MatchdayGuide
+                  attending={activeEventCounts.yes}
+                  pending={activeEventCounts.pending}
+                  selected={playersInLineup.length}
+                  isPast={isPastMatch}
+                  resultRecorded={Boolean(existingResult)}
+                  winnerRecorded={Boolean(resultByEventId.get(activeEventId)?.motmWinnerId)}
+                  onJump={jumpToMatchdaySection}
+                />
+              ) : null}
+
               {/* Location map for active event */}
               {activeEvent?.location && (
                 <div className="mt-3">
@@ -889,7 +906,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
 
               {activeEventId ? (
                 <>
-                  <div className="mt-4 grid grid-cols-3 gap-2">
+                  <div className="mt-4 grid scroll-mt-24 grid-cols-3 gap-2" id="matchday-availability">
                     <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-3 text-emerald-900">
                       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Going</p>
                       <p className="mt-2 text-3xl font-semibold">{activeEventCounts.yes}</p>
@@ -1019,7 +1036,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
 
               {/* Match Result — past match events only */}
               {activeEventId && isPastMatch ? (
-                <div className="mt-5 border-t border-slate-100 pt-5">
+                <div className="mt-5 scroll-mt-24 border-t border-slate-100 pt-5" id="matchday-result">
                   <div className="mb-3 flex items-center justify-between">
                     <h3 className="font-semibold text-slate-900">Match Result</h3>
                     {!showResultForm ? (
@@ -1176,17 +1193,19 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
 
               {/* MOTM voting tally — coach sees tally + confirm MOTM */}
               {activeEventId && isPastMatch ? (
-                <MotmVotingCard
-                  eventId={activeEventId}
-                  isPastMatch={isPastMatch}
-                  players={players}
-                  currentUserId={profile.id}
-                  readOnly
-                  confirmedWinnerId={resultByEventId.get(activeEventId)?.motmWinnerId ?? null}
-                  onConfirmWinner={async (playerId) => {
-                    await setMotmWinner(activeEventId, playerId)
-                  }}
-                />
+                <div className="scroll-mt-24" id="matchday-player">
+                  <MotmVotingCard
+                    eventId={activeEventId}
+                    isPastMatch={isPastMatch}
+                    players={players}
+                    currentUserId={profile.id}
+                    readOnly
+                    confirmedWinnerId={resultByEventId.get(activeEventId)?.motmWinnerId ?? null}
+                    onConfirmWinner={async (playerId) => {
+                      await setMotmWinner(activeEventId, playerId)
+                    }}
+                  />
+                </div>
               ) : null}
 
               {/* Player match stats — enter goals/assists/cards after a match */}
@@ -1208,7 +1227,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
 
               {/* Match Squad — shown for any match event when one is selected */}
               {activeEventId && activeEvent?.type === 'match' ? (
-                <div className="mt-5 border-t border-slate-100 pt-5">
+                <div className="mt-5 scroll-mt-24 border-t border-slate-100 pt-5" id="matchday-squad">
                   <div className="mb-3 flex items-center justify-between">
                     <h3 className="font-semibold text-slate-900">Match Squad</h3>
                     <p className="text-xs text-slate-400">
