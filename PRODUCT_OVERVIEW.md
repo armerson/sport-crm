@@ -88,6 +88,9 @@ the normal pending review and team-assignment process.
 Teams can be archived when they fold or finish a season. Archived teams disappear
 from daily schedules, messaging targets and selectors while their records remain
 available to restore.
+Members can add an individual event to Apple Calendar or Google Calendar, or create
+a private, revocable subscription in Settings that keeps all of their accessible
+team schedules updated automatically.
 The existing app also contains billing, forms, posts, bulk import, club branding
 and an activity log.
 
