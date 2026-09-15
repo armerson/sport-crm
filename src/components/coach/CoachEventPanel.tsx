@@ -6,6 +6,7 @@ import { useTeamPlayers } from '../../hooks/useTeamPlayers.ts'
 import { MotmVotingCard } from '../shared/MotmVotingCard.tsx'
 import { EventComments } from '../events/EventComments.tsx'
 import { EventCalendarActions } from '../events/EventCalendarActions.tsx'
+import { EventTimeDetails } from '../events/EventTimeDetails.tsx'
 import { PlayerProfileCard } from '../players/PlayerProfileCard.tsx'
 import { PlayerReviewsPanel } from '../reviews/PlayerReviewsPanel.tsx'
 import { InviteButton } from '../shared/InviteButton.tsx'
@@ -20,6 +21,7 @@ import { SuccessMessage } from '../ui/SuccessMessage.tsx'
 import { TabNav } from '../ui/TabNav.tsx'
 import { TextField } from '../ui/TextField.tsx'
 import type { EventType, RecurrencePattern } from '../../types/club.ts'
+import { validateSupportingTimes } from '../../utils/eventTimes.ts'
 
 import { PostFeed } from '../posts/PostFeed.tsx'
 import { MatchStatsPanel } from './MatchStatsPanel.tsx'
@@ -45,11 +47,19 @@ interface EventFormState {
   title: string
   type: EventType
   dateTime: string
+  meetTime: string
+  endTime: string
   location: string
   opponent: string
   recurring: boolean
   recurrencePattern: RecurrencePattern
   recurrenceWeeks: number
+}
+
+function toLocalDateTimeInput(value: string | null): string {
+  if (!value) return ''
+  const date = new Date(value)
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16)
 }
 
 export type CoachTab = 'schedule' | 'create' | 'stats' | 'squad' | 'messages' | 'feed'
@@ -294,10 +304,12 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [editingEventId, setEditingEventId] = useState<string | null>(null)
   const [createTeamId, setCreateTeamId] = useState('')
-  const [editValues, setEditValues] = useState<Pick<EventFormState, 'title' | 'type' | 'dateTime' | 'location' | 'opponent'>>({
+  const [editValues, setEditValues] = useState<Pick<EventFormState, 'title' | 'type' | 'dateTime' | 'meetTime' | 'endTime' | 'location' | 'opponent'>>({
     title: '',
     type: 'training',
     dateTime: '',
+    meetTime: '',
+    endTime: '',
     location: '',
     opponent: '',
   })
@@ -305,6 +317,8 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
     title: '',
     type: 'training',
     dateTime: '',
+    meetTime: '',
+    endTime: '',
     location: '',
     opponent: '',
     recurring: false,
@@ -442,6 +456,8 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
       setLocalError('Team, title, date/time, and location are required.')
       return
     }
+    const timeError = validateSupportingTimes(eventValues.dateTime, eventValues.meetTime, eventValues.endTime)
+    if (timeError) { setLocalError(timeError); return }
 
     const recurrence =
       eventValues.type === 'training' && eventValues.recurring
@@ -455,6 +471,8 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
           title: eventValues.title.trim(),
           type: eventValues.type,
           dateTime: eventValues.dateTime,
+          meetTime: eventValues.meetTime || null,
+          endTime: eventValues.endTime || null,
           location: eventValues.location.trim(),
           placeId: eventLocationMeta.placeId,
           lat: eventLocationMeta.lat,
@@ -465,7 +483,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
         recurrence,
       )
 
-      setEventValues({ title: '', type: 'training', dateTime: '', location: '', recurring: false, recurrencePattern: 'weekly', recurrenceWeeks: 6, opponent: '' })
+      setEventValues({ title: '', type: 'training', dateTime: '', meetTime: '', endTime: '', location: '', recurring: false, recurrencePattern: 'weekly', recurrenceWeeks: 6, opponent: '' })
       setEventLocationMeta({})
       const sessionLabel = recurrence ? `${recurrence.weeks} training sessions` : 'event'
       setSuccessMessage(`${sessionLabel.charAt(0).toUpperCase() + sessionLabel.slice(1)} created. Players have been given a pending attendance record.`)
@@ -479,13 +497,15 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
     const event = events.find((e) => e.id === eventId)
     if (!event) return
     // Convert stored UTC ISO datetime to local datetime-local format (no seconds, no Z)
-    const localDt = event.dateTime
-      ? (() => {
-          const d = new Date(event.dateTime)
-          return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16)
-        })()
-      : ''
-    setEditValues({ title: event.title, type: event.type, dateTime: localDt, location: event.location, opponent: event.opponent ?? '' })
+    setEditValues({
+      title: event.title,
+      type: event.type,
+      dateTime: toLocalDateTimeInput(event.dateTime),
+      meetTime: toLocalDateTimeInput(event.meetTime),
+      endTime: toLocalDateTimeInput(event.endTime),
+      location: event.location,
+      opponent: event.opponent ?? '',
+    })
     setEditingEventId(eventId)
     selectEvent(event)
   }
@@ -498,11 +518,15 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
       setLocalError('Title, date/time, and location are required.')
       return
     }
+    const timeError = validateSupportingTimes(editValues.dateTime, editValues.meetTime, editValues.endTime)
+    if (timeError) { setLocalError(timeError); return }
     try {
       await updateEvent(editingEventId, {
         title: editValues.title.trim(),
         type: editValues.type,
         dateTime: new Date(editValues.dateTime).toISOString(),
+        meetTime: editValues.meetTime ? new Date(editValues.meetTime).toISOString() : null,
+        endTime: editValues.endTime ? new Date(editValues.endTime).toISOString() : null,
         location: editValues.location.trim(),
         placeId: editLocationMeta.placeId,
         lat: editLocationMeta.lat,
@@ -858,6 +882,10 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                       type="datetime-local"
                       value={editValues.dateTime}
                     />
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <TextField label="Meet time (optional)" onChange={(e) => setEditValues((c) => ({ ...c, meetTime: e.target.value }))} type="datetime-local" value={editValues.meetTime} />
+                      <TextField label="Finish time (optional)" onChange={(e) => setEditValues((c) => ({ ...c, endTime: e.target.value }))} type="datetime-local" value={editValues.endTime} />
+                    </div>
                     <div className="space-y-1">
                       <label className="block text-sm font-medium text-slate-700">Location</label>
                       <LocationPicker
@@ -885,6 +913,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
               <p className="mt-1 text-sm text-slate-500">
                 {activeEvent ? `${selectedTeam?.name ?? ''} · ${formatDateTimeRelative(activeEvent.dateTime)}` : 'Select an event to view attendance.'}
               </p>
+              {activeEvent ? <div className="mt-2"><EventTimeDetails event={activeEvent} /></div> : null}
 
               {activeEvent?.type === 'match' ? (
                 <MatchdayGuide
@@ -1408,6 +1437,10 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
               type="datetime-local"
               value={eventValues.dateTime}
             />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <TextField label="Meet time (optional)" onChange={(event) => setEventValues((current) => ({ ...current, meetTime: event.target.value }))} type="datetime-local" value={eventValues.meetTime} />
+              <TextField label="Finish time (optional)" onChange={(event) => setEventValues((current) => ({ ...current, endTime: event.target.value }))} type="datetime-local" value={eventValues.endTime} />
+            </div>
             <div className="space-y-1">
               <label className="block text-sm font-medium text-slate-700">Location</label>
               <LocationPicker

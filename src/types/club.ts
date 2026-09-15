@@ -135,6 +135,8 @@ export interface EventRecord {
   title: string
   type: EventType
   dateTime: string
+  meetTime: string | null
+  endTime: string | null
   location: string
   placeId: string | null
   lat: number | null
@@ -161,6 +163,8 @@ export interface EventFormInput {
   title: string
   type: EventType
   dateTime: string
+  meetTime?: string | null
+  endTime?: string | null
   location: string
   placeId?: string
   lat?: number

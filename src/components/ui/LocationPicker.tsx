@@ -48,6 +48,7 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY?.trim()
+const mapSearchRegion = import.meta.env.VITE_MAP_SEARCH_REGION?.trim()
 let googleMapsConfigured = false
 
 type GoogleAutocompleteElement = google.maps.places.PlaceAutocompleteElement & {
@@ -76,11 +77,21 @@ function loadGooglePlaces() {
 // ── Nominatim search ─────────────────────────────────────────────────────────
 
 async function nominatimSearch(query: string): Promise<NominatimResult[]> {
-  const res = await fetch(
-    `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=6`,
-    { headers: { 'Accept-Language': 'en' } },
-  )
-  return res.json() as Promise<NominatimResult[]>
+  const searches = [query, ...(mapSearchRegion ? [`${query}, ${mapSearchRegion}`] : [])]
+  const batches = await Promise.all(searches.map(async (search) => {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(search)}&format=json&addressdetails=1&namedetails=1&limit=8`,
+      { headers: { 'Accept-Language': 'en-GB,en' } },
+    )
+    if (!res.ok) return []
+    return res.json() as Promise<NominatimResult[]>
+  }))
+  const seen = new Set<number>()
+  return batches.flat().filter((result) => {
+    if (seen.has(result.place_id)) return false
+    seen.add(result.place_id)
+    return true
+  }).slice(0, 8)
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────

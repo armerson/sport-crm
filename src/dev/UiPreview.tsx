@@ -9,7 +9,7 @@ import { CoachOverview } from '../components/coach/CoachOverview.tsx'
 import { EventTypeChip } from '../components/ui/EventTypeChip.tsx'
 
 const teams = [{ id: 'demo', name: 'Under 12s', ageGroup: 'U12', isSenior: false, coaches: [], players: ['1', '2', '3'], playerCount: 3, coachCount: 1, photoUrl: null, photoFocusX: 50, photoFocusY: 50, cometTeamId: null, cometCompetitionId: null, cometLastSyncedAt: null, cometLastSyncStatus: null, cometLastSyncError: null, cometLastSyncCount: null, archivedAt: null }]
-const events = [{ id: 'demo', teamId: 'demo', title: 'Wednesday training', type: 'training' as const, dateTime: new Date(Date.now() + 86400000).toISOString(), location: 'Community sports ground', placeId: null, lat: null, lng: null, recurrenceGroupId: null, opponent: null, eventStatus: 'confirmed' as const, externalSource: null, externalId: null, competition: null, homeAway: null }]
+const events = [{ id: 'demo', teamId: 'demo', title: 'Wednesday training', type: 'training' as const, dateTime: new Date(Date.now() + 86400000).toISOString(), meetTime: null, endTime: null, location: 'Community sports ground', placeId: null, lat: null, lng: null, recurrenceGroupId: null, opponent: null, eventStatus: 'confirmed' as const, externalSource: null, externalId: null, competition: null, homeAway: null }]
 
 /** Development-only gallery. No member data or writes. */
 export default function UiPreview() {

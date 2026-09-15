@@ -91,6 +91,8 @@ available to restore.
 Members can add an individual event to Apple Calendar or Google Calendar, or create
 a private, revocable subscription in Settings that keeps all of their accessible
 team schedules updated automatically.
+Events can also include an optional meet time and expected finish time. These are
+shown to coaches and families and carried into calendar entries.
 The existing app also contains billing, forms, posts, bulk import, club branding
 and an activity log.
 
