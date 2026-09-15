@@ -65,7 +65,7 @@ Deno.serve(async (request) => {
   const { data: events, error } = teamIds.length
     ? await supabase
       .from('events')
-      .select('id, title, type, date_time, location, competition, opponent, event_status, teams(name, age_group)')
+      .select('id, title, type, date_time, meet_time, end_time, location, competition, opponent, event_status, teams(name, age_group)')
       .in('team_id', teamIds)
       .or('event_status.is.null,event_status.neq.cancelled')
       .gte('date_time', from)
@@ -89,7 +89,7 @@ Deno.serve(async (request) => {
   for (const event of events ?? []) {
     const start = new Date(event.date_time)
     const durationMinutes = event.type === 'match' ? 120 : 90
-    const end = new Date(start.getTime() + durationMinutes * 60 * 1000)
+    const end = event.end_time ? new Date(event.end_time) : new Date(start.getTime() + durationMinutes * 60 * 1000)
     const team = Array.isArray(event.teams) ? event.teams[0] : event.teams
     const details = [team?.name, team?.age_group, event.competition, event.opponent ? `Opponent: ${event.opponent}` : null]
       .filter(Boolean).join(' · ')
@@ -102,6 +102,7 @@ Deno.serve(async (request) => {
       `SUMMARY:${escapeIcs(event.title)}`,
       `LOCATION:${escapeIcs(event.location ?? '')}`,
       `DESCRIPTION:${escapeIcs(details)}`,
+      ...(event.meet_time ? [`X-CLUBOS-MEET-TIME:${icsDate(new Date(event.meet_time))}`] : []),
       `URL:${appUrl}`,
       'END:VEVENT',
     )

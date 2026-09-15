@@ -15,6 +15,7 @@ import { MatchDayCard } from '../shared/MatchDayCard.tsx'
 import { MotmVotingCard } from '../shared/MotmVotingCard.tsx'
 import { EventComments } from '../events/EventComments.tsx'
 import { EventCalendarActions } from '../events/EventCalendarActions.tsx'
+import { EventTimeDetails } from '../events/EventTimeDetails.tsx'
 import { fetchPublishedReviewsForPlayer, type PlayerReview } from '../../services/playerReviews.ts'
 import type { UserProfile } from '../../types/auth.ts'
 import type { AttendanceStatus } from '../../types/club.ts'
@@ -239,6 +240,7 @@ function ParentEventCard({
                 ) : null}
               </div>
               <p className="mt-0.5 text-xs text-slate-500">{formatDateTimeRelative(event.dateTime)}</p>
+              <EventTimeDetails compact event={event} />
               {team ? <p className="text-xs text-slate-400">{team.name}{team.ageGroup ? ` · ${team.ageGroup}` : ''}</p> : null}
               {shortAddr ? <p className="truncate text-xs text-slate-400">{shortAddr}</p> : null}
             </div>

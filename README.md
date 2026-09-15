@@ -52,6 +52,7 @@ Required frontend variables:
 Optional integrations:
 
 - `VITE_GOOGLE_MAPS_API_KEY` enables Google venue search when coaches create or edit events. Enable Maps JavaScript API and Places API (New) for the key. Without it, the location field falls back to basic address search and Google Maps directions still work.
+- `VITE_MAP_SEARCH_REGION` gives the fallback venue search a local hint such as `Northern Ireland`, which improves results for pitch and ground names.
 
 ## Supabase Setup
 

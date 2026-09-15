@@ -119,6 +119,8 @@ export function mapEventRow(row: Record<string, unknown>): EventRecord {
     title: typeof row.title === 'string' ? row.title : 'Untitled event',
     type: row.type === 'match' ? 'match' : 'training',
     dateTime: typeof row.date_time === 'string' ? row.date_time : '',
+    meetTime: typeof row.meet_time === 'string' ? row.meet_time : null,
+    endTime: typeof row.end_time === 'string' ? row.end_time : null,
     location: typeof row.location === 'string' ? row.location : '',
     placeId: typeof row.place_id === 'string' ? row.place_id : null,
     lat: typeof row.lat === 'number' ? row.lat : null,

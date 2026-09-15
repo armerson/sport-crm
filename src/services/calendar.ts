@@ -47,7 +47,7 @@ function escapeIcs(value: string): string {
 
 function eventDates(event: EventRecord) {
   const start = new Date(event.dateTime)
-  const end = new Date(start.getTime() + (event.type === 'match' ? 120 : 90) * 60 * 1000)
+  const end = event.endTime ? new Date(event.endTime) : new Date(start.getTime() + (event.type === 'match' ? 120 : 90) * 60 * 1000)
   return { start, end }
 }
 

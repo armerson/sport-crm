@@ -86,7 +86,7 @@ export function subscribeToEventsForTeam(
   return subscribeToTables(`team-events-${teamId}`, ['events'], async () => {
     const { data, error } = await client
       .from('events')
-      .select('id, team_id, title, type, date_time, location, place_id, lat, lng, recurrence_group_id, opponent, event_status, external_source, external_id, competition, home_away')
+      .select('id, team_id, title, type, date_time, meet_time, end_time, location, place_id, lat, lng, recurrence_group_id, opponent, event_status, external_source, external_id, competition, home_away')
       .eq('team_id', teamId)
       .order('date_time', { ascending: true })
 
@@ -111,7 +111,7 @@ export function subscribeToEventsForTeams(
   return subscribeToTables(key, ['events'], async () => {
     const { data, error } = await client
       .from('events')
-      .select('id, team_id, title, type, date_time, location, place_id, lat, lng, recurrence_group_id, opponent, event_status, external_source, external_id, competition, home_away')
+      .select('id, team_id, title, type, date_time, meet_time, end_time, location, place_id, lat, lng, recurrence_group_id, opponent, event_status, external_source, external_id, competition, home_away')
       .in('team_id', teamIds)
       .order('date_time', { ascending: true })
 
@@ -205,11 +205,17 @@ export async function createEventWithAttendance(
   const eventsToInsert = Array.from({ length: sessionCount }, (_, i) => {
     const date = new Date(input.dateTime)
     date.setDate(date.getDate() + i * daysInterval)
+    const meetTime = input.meetTime ? new Date(input.meetTime) : null
+    const endTime = input.endTime ? new Date(input.endTime) : null
+    if (meetTime) meetTime.setDate(meetTime.getDate() + i * daysInterval)
+    if (endTime) endTime.setDate(endTime.getDate() + i * daysInterval)
     return {
       team_id: input.teamId,
       title: input.title,
       type: input.type,
       date_time: date.toISOString(),
+      meet_time: meetTime?.toISOString() ?? null,
+      end_time: endTime?.toISOString() ?? null,
       location: input.location,
       place_id: input.placeId ?? null,
       lat: input.lat ?? null,
@@ -253,6 +259,8 @@ export async function updateEvent(eventId: string, input: Partial<EventFormInput
   if (input.title !== undefined) updates.title = input.title
   if (input.type !== undefined) updates.type = input.type
   if (input.dateTime !== undefined) updates.date_time = input.dateTime
+  if (input.meetTime !== undefined) updates.meet_time = input.meetTime
+  if (input.endTime !== undefined) updates.end_time = input.endTime
   if (input.location !== undefined) updates.location = input.location
   if (input.placeId !== undefined) updates.place_id = input.placeId ?? null
   if (input.lat !== undefined) updates.lat = input.lat ?? null
