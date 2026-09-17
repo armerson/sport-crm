@@ -18,15 +18,13 @@ interface StatCardProps {
 }
 
 function StatCard({ value, label, variant = 'dark' }: StatCardProps) {
-  const bg =
-    variant === 'green' ? 'bg-[#1565ff]' : variant === 'orange' ? 'bg-[#f18a3f]' : 'bg-slate-950'
-  const textMain = variant === 'orange' ? 'text-slate-950' : 'text-white'
-  const textSub = variant === 'orange' ? 'text-slate-800/70' : 'text-white/70'
+  const accent = variant === 'green' ? 'bg-[var(--ui-accent)]' : variant === 'orange' ? 'bg-amber-500' : 'bg-slate-300'
 
   return (
-    <div className={`rounded-3xl ${bg} p-4`}>
-      <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${textSub}`}>{label}</p>
-      <p className={`mt-2 text-3xl font-bold tabular-nums ${textMain}`}>{value}</p>
+    <div className="ui-panel relative overflow-hidden p-4 sm:p-5">
+      <span aria-hidden="true" className={`absolute inset-y-0 left-0 w-1 ${accent}`} />
+      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--ui-muted)]">{label}</p>
+      <p className="mt-2 text-3xl font-bold tabular-nums tracking-tight text-[var(--ui-ink)]">{value}</p>
     </div>
   )
 }

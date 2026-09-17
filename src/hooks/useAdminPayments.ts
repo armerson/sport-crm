@@ -5,6 +5,7 @@ import {
   createProduct,
   fetchAllPlayerProducts,
   fetchFamilyBillingSummaries,
+  fetchFinanceTransactions,
   fetchPricingRules,
   fetchProducts,
   removeAssignment,
@@ -15,6 +16,7 @@ import {
 } from '../services/payments.ts'
 import type {
   FamilyBillingSummary,
+  FinanceTransaction,
   PlayerProduct,
   PricingRule,
   Product,
@@ -30,11 +32,13 @@ export function useAdminPayments() {
   const [rules, setRules] = useState<PricingRule[]>([])
   const [assignments, setAssignments] = useState<PlayerProduct[]>([])
   const [families, setFamilies] = useState<FamilyBillingSummary[]>([])
+  const [financeTransactions, setFinanceTransactions] = useState<FinanceTransaction[]>([])
 
   const [loadingProducts, setLoadingProducts] = useState(true)
   const [loadingRules, setLoadingRules] = useState(true)
   const [loadingAssignments, setLoadingAssignments] = useState(true)
   const [loadingFamilies, setLoadingFamilies] = useState(false)
+  const [loadingFinance, setLoadingFinance] = useState(false)
 
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -223,9 +227,21 @@ export function useAdminPayments() {
     }
   }
 
-  async function refreshFamilies(): Promise<void> {
+  const refreshFamilies = useCallback(async (): Promise<void> => {
     await loadFamilies(rules)
-  }
+  }, [loadFamilies, rules])
+
+  const refreshFinance = useCallback(async (): Promise<void> => {
+    if (!isConfigured) return
+    try {
+      setLoadingFinance(true)
+      setFinanceTransactions(await fetchFinanceTransactions())
+    } catch (err) {
+      setError(getError(err, 'Failed to load payment transactions.'))
+    } finally {
+      setLoadingFinance(false)
+    }
+  }, [isConfigured])
 
   return {
     isConfigured,
@@ -233,10 +249,12 @@ export function useAdminPayments() {
     rules,
     assignments,
     families,
+    financeTransactions,
     loadingProducts,
     loadingRules,
     loadingAssignments,
     loadingFamilies,
+    loadingFinance,
     error,
     isSubmitting,
     addProduct,
@@ -247,5 +265,6 @@ export function useAdminPayments() {
     editAssignment,
     unassign,
     refreshFamilies,
+    refreshFinance,
   }
 }

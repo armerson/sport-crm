@@ -17,6 +17,7 @@ import { EventComments } from '../events/EventComments.tsx'
 import { EventCalendarActions } from '../events/EventCalendarActions.tsx'
 import { EventTimeDetails } from '../events/EventTimeDetails.tsx'
 import { fetchPublishedReviewsForPlayer, type PlayerReview } from '../../services/playerReviews.ts'
+import { fetchDevelopmentGoals, type DevelopmentGoal } from '../../services/playerDevelopment.ts'
 import type { UserProfile } from '../../types/auth.ts'
 import type { AttendanceStatus } from '../../types/club.ts'
 import { formatDateTimeRelative, dateBox, shortenAddress, groupByWeek } from '../../utils/date.ts'
@@ -26,6 +27,7 @@ import { SelectField } from '../ui/SelectField.tsx'
 import { TabNav } from '../ui/TabNav.tsx'
 import { TextField } from '../ui/TextField.tsx'
 import { RegistrationStatusCard } from '../registration/RegistrationStatusCard.tsx'
+import { PortalAttendanceSummary } from '../shared/PortalAttendanceSummary.tsx'
 
 const TeamMessagesPanel = lazy(async () => {
   const module = await import('../messages/TeamMessagesPanel.tsx')
@@ -394,6 +396,7 @@ function DevelopmentTab(props: { players: import('../../types/club.ts').PlayerRe
 
 function DevelopmentContent({ players, loadingPlayers }: { players: import('../../types/club.ts').PlayerRecord[]; loadingPlayers: boolean }) {
   const [reviewsByPlayer, setReviewsByPlayer] = useState<Record<string, PlayerReview[]>>({})
+  const [goalsByPlayer, setGoalsByPlayer] = useState<Record<string, DevelopmentGoal[]>>({})
   const [loading, setLoading] = useState(players.length > 0)
   // Player rows get a new array reference on every realtime tick — key by ids so we don't refetch in a tight loop.
   const playerIdsKey = useMemo(() => players.map((p) => p.id).sort().join('|'), [players])
@@ -403,29 +406,33 @@ function DevelopmentContent({ players, loadingPlayers }: { players: import('../.
       return
     }
     const ids = playerIdsKey.split('|')
-    Promise.all(ids.map((id) => fetchPublishedReviewsForPlayer(id).then((r) => [id, r] as const)))
+    Promise.all(ids.map(async (id) => {
+      const [reviews, goals] = await Promise.all([fetchPublishedReviewsForPlayer(id), fetchDevelopmentGoals(id)])
+      return [id, reviews, goals] as const
+    }))
       .then((entries) => {
-        setReviewsByPlayer(Object.fromEntries(entries))
+        setReviewsByPlayer(Object.fromEntries(entries.map(([id, reviews]) => [id, reviews])))
+        setGoalsByPlayer(Object.fromEntries(entries.map(([id, , goals]) => [id, goals])))
         setLoading(false)
       })
       .catch(() => setLoading(false))
   }, [playerIdsKey])
 
-  const hasAnyReview = Object.values(reviewsByPlayer).some((r) => r.length > 0)
+  const hasAnyDevelopment = Object.values(reviewsByPlayer).some((reviews) => reviews.length > 0)
+    || Object.values(goalsByPlayer).some((goals) => goals.length > 0)
 
   return (
     <section className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-semibold tracking-tight text-slate-950">Development</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          Review reports written by your child's coach — published at mid-season and end of season.
-        </p>
+      <div className="ui-module-header rounded-[var(--ui-radius)] border border-[var(--ui-border)]">
+        <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--ui-accent)]">My development</p>
+        <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">Goals and coach feedback</h2>
+        <p className="mt-1 text-sm text-slate-500">See current development goals and reviews that the coaching team has chosen to share.</p>
       </div>
 
       {loadingPlayers || loading ? (
         <p className="text-sm text-slate-400">Loading…</p>
-      ) : !hasAnyReview ? (
-        <div className="rounded-2xl border border-dashed border-slate-300 px-4 py-10 text-center">
+      ) : !hasAnyDevelopment ? (
+        <div className="ui-empty">
           <svg className="mx-auto mb-3 text-slate-300" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
           </svg>
@@ -435,12 +442,35 @@ function DevelopmentContent({ players, loadingPlayers }: { players: import('../.
       ) : (
         players.map((child) => {
           const reviews = reviewsByPlayer[child.id] ?? []
-          if (!reviews.length) return null
+          const goals = goalsByPlayer[child.id] ?? []
+          if (!reviews.length && !goals.length) return null
           return (
             <div key={child.id} className="space-y-3">
               {players.length > 1 && (
                 <h3 className="text-base font-bold text-slate-800">{child.name}</h3>
               )}
+              {goals.length > 0 ? (
+                <div className="ui-panel p-5">
+                  <h4 className="font-semibold text-slate-900">Current goals</h4>
+                  <div className="mt-3 space-y-3">
+                    {goals.map((goal) => (
+                      <article key={goal.id} className="rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface-raised)] p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="font-semibold text-slate-900">{goal.title}</p>
+                            <p className="mt-1 text-xs text-slate-500">{goal.categoryName ?? 'Development goal'}</p>
+                          </div>
+                          <span className="text-sm font-bold text-[var(--ui-accent)]">{goal.progress}%</span>
+                        </div>
+                        {goal.description ? <p className="mt-2 text-sm text-slate-600">{goal.description}</p> : null}
+                        <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200" aria-label={`${goal.progress}% complete`}>
+                          <div className="h-full rounded-full bg-[var(--ui-accent)]" style={{ width: `${goal.progress}%` }} />
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
               {reviews.map((review) => (
                 <ReviewCard key={review.id} review={review} mode="parent" />
               ))}
@@ -545,7 +575,8 @@ export function ParentPortal({ profile, activeTab, onTabChange }: ParentPortalPr
           })()}
 
           <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
-            <article className="rounded-[1.75rem] border border-white/70 bg-white/85 p-5 shadow-lg shadow-slate-900/5 backdrop-blur-sm">
+            <article className="ui-module">
+              <div className="ui-module-header">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                 <h2 className="text-2xl font-semibold tracking-tight text-slate-950">
                   {players.length === 1 ? "Your child's schedule" : 'Choose a child'}
@@ -556,6 +587,8 @@ export function ParentPortal({ profile, activeTab, onTabChange }: ParentPortalPr
                     : `${players.length} linked ${players.length === 1 ? 'child' : 'children'}`}
                 </p>
               </div>
+              </div>
+              <div className="ui-module-body">
 
               {players.length > 1 ? (
                 <div className="mt-4">
@@ -583,12 +616,13 @@ export function ParentPortal({ profile, activeTab, onTabChange }: ParentPortalPr
               {activeChild ? (
                 <div className="mt-4 space-y-3">
                   <RegistrationStatusCard player={activeChild} />
-                  <div className="rounded-[1.5rem] bg-slate-50 p-4">
-                    <p className="font-semibold text-slate-950">{activeChild.name}</p>
+                  <div className="flex items-center gap-4 rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface-raised)] p-4">
+                    {activeChild.photoUrl ? <img src={activeChild.photoUrl} alt="" className="h-14 w-14 rounded-xl object-cover" /> : <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--ui-accent)_10%,white)] text-xl font-bold text-[var(--ui-accent)]">{activeChild.name.charAt(0)}</div>}
+                    <div className="min-w-0"><p className="truncate font-semibold text-slate-950">{activeChild.name}</p>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {activeChild.teams.length > 0 ? (
                         activeChild.teams.map((teamId) => (
-                          <span key={teamId} className="rounded-full bg-[#1565ff] px-3 py-1 text-xs font-semibold text-white">
+                          <span key={teamId} className="rounded-full bg-[var(--ui-accent)] px-3 py-1 text-xs font-semibold text-white">
                             {teamById.get(teamId)?.name ?? 'Team'}
                           </span>
                         ))
@@ -596,37 +630,17 @@ export function ParentPortal({ profile, activeTab, onTabChange }: ParentPortalPr
                         <span className="text-sm text-slate-400">No teams assigned yet.</span>
                       )}
                     </div>
+                    </div>
                   </div>
                 </div>
               ) : null}
+              </div>
             </article>
 
-            <article className="rounded-[1.75rem] border border-white/70 bg-white/85 p-5 shadow-lg shadow-slate-900/5 backdrop-blur-sm">
-              <h2 className="text-2xl font-semibold tracking-tight text-slate-950">Attendance summary</h2>
-              {childAttendanceCounts ? (
-                <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-3xl bg-[#1565ff] p-4 text-white">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">Going</p>
-                    <p className="mt-2 text-3xl font-semibold">{childAttendanceCounts.yes}</p>
-                  </div>
-                  <div className="rounded-3xl bg-[#f18a3f] p-4 text-slate-950">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-900/70">Pending</p>
-                    <p className="mt-2 text-3xl font-semibold">{childAttendanceCounts.pending}</p>
-                  </div>
-                  <div className="rounded-3xl bg-slate-950 p-4 text-white">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">Not going</p>
-                    <p className="mt-2 text-3xl font-semibold">{childAttendanceCounts.no}</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="mt-4 rounded-2xl border border-dashed border-slate-300 px-4 py-10 text-center text-sm text-slate-500">
-                  Select a child to see their attendance summary.
-                </div>
-              )}
-            </article>
+            <PortalAttendanceSummary counts={childAttendanceCounts} emptyLabel="Select a child to see their attendance summary." />
           </div>
 
-          <section className="ui-panel p-6 shadow-lg shadow-slate-900/5 backdrop-blur-sm">
+          <section className="ui-module p-5 sm:p-6">
             <div className="flex items-end justify-between gap-3">
               <h2 className="text-2xl font-semibold tracking-tight text-slate-950">
                 {activeChild ? `${activeChild.name}'s events` : 'Upcoming events'}

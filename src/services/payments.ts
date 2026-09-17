@@ -2,6 +2,7 @@ import { requireSupabase } from './supabaseHelpers.ts'
 import { calculateFamilyPrice } from '../lib/pricing.ts'
 import type {
   FamilyBillingSummary,
+  FinanceTransaction,
   FamilySubscription,
   OneOffPayment,
   PlayerProduct,
@@ -292,6 +293,33 @@ export async function fetchOneOffPayments(parentId: string): Promise<OneOffPayme
       createdAt: r.created_at as string,
     }
   })
+}
+
+export async function fetchFinanceTransactions(): Promise<FinanceTransaction[]> {
+  const client = requireSupabase()
+  const { data, error } = await client
+    .from('finance_transactions')
+    .select('id, source_type, external_id, parent_id, player_id, product_id, payer_name, payer_email, description, amount_pence, currency, status, paid_at, created_at')
+    .order('created_at', { ascending: false })
+    .limit(1000)
+
+  if (error) throw new Error(error.message)
+  return (data ?? []).map((row) => ({
+    id: row.id as string,
+    sourceType: row.source_type as FinanceTransaction['sourceType'],
+    externalId: (row.external_id as string | null) ?? null,
+    parentId: (row.parent_id as string | null) ?? null,
+    playerId: (row.player_id as string | null) ?? null,
+    productId: (row.product_id as string | null) ?? null,
+    payerName: (row.payer_name as string | null) ?? null,
+    payerEmail: (row.payer_email as string | null) ?? null,
+    description: row.description as string,
+    amountPence: row.amount_pence as number,
+    currency: row.currency as string,
+    status: row.status as FinanceTransaction['status'],
+    paidAt: (row.paid_at as string | null) ?? null,
+    createdAt: row.created_at as string,
+  }))
 }
 
 // ── Admin: Family Billing Overview ────────────────────────────────────────

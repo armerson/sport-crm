@@ -144,10 +144,16 @@ Deno.serve(async (request) => {
     cancel_url: `${returnBase}?billing=cancelled`,
     metadata: {
       crm_parent_id: profile.id,
-      crm_player_ids: playerIds.join(','),
+      crm_player_ids: [...new Set(filtered.map((item) => item.player_id))].join(','),
+      crm_product_ids: [...new Set(filtered.map((item) => item.product_id))].join(','),
+      crm_description: filtered.map((item) => item.products.name).join(', ').slice(0, 450),
     },
     ...(mode === 'subscription'
-      ? { subscription_data: { metadata: { crm_parent_id: profile.id, crm_player_ids: playerIds.join(',') } } }
+      ? { subscription_data: { metadata: {
+          crm_parent_id: profile.id,
+          crm_player_ids: [...new Set(filtered.map((item) => item.player_id))].join(','),
+          crm_product_ids: [...new Set(filtered.map((item) => item.product_id))].join(','),
+        } } }
       : {}),
   })
 

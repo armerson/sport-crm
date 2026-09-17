@@ -833,16 +833,17 @@ export function PlayerProfileCard({ playerId, role, currentUserId }: PlayerProfi
   }
 
   const sectionTabs = [
-    { label: 'Profile', value: 'profile' as const },
+    { label: 'Overview', value: 'profile' as const },
     { label: 'Emergency contacts', value: 'contacts' as const },
-    { label: 'Club fields', value: 'registration' as const },
+    { label: 'Registration', value: 'registration' as const },
     ...(perms.canViewDocuments ? [{ label: 'Documents', value: 'documents' as const }] : []),
   ]
 
   return (
-    <div className="rounded-[1.75rem] border border-white/70 bg-white/85 shadow-lg shadow-slate-900/5 backdrop-blur-sm">
+    <div className="ui-panel overflow-hidden">
       {/* Header */}
-      <div className="flex flex-col items-center gap-4 border-b border-slate-100 p-6 sm:flex-row sm:items-start">
+      <div className="relative flex flex-col items-center gap-5 border-b border-[var(--ui-border)] bg-gradient-to-br from-white via-white to-slate-50 p-5 sm:flex-row sm:items-start sm:p-7">
+        <span aria-hidden="true" className="absolute inset-x-0 top-0 h-1 bg-[var(--ui-accent)]" />
         <PlayerAvatar
           player={player}
           canUpload={perms.canEditSportsProfile}
@@ -852,16 +853,16 @@ export function PlayerProfileCard({ playerId, role, currentUserId }: PlayerProfi
         />
         <div className="flex-1 text-center sm:text-left">
           <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-            <h2 className="text-2xl font-bold text-slate-900">{player.name}</h2>
+            <h2 className="text-2xl font-bold tracking-tight text-[var(--ui-ink)] sm:text-3xl">{player.name}</h2>
             {player.jerseyNumber && (
               <span className="rounded-full bg-[#1565ff]/10 px-2.5 py-0.5 text-sm font-bold text-[var(--ui-accent)]">#{player.jerseyNumber}</span>
             )}
           </div>
-          <div className="mt-1 flex flex-wrap justify-center gap-x-4 gap-y-1 text-sm text-slate-500 sm:justify-start">
-            <span>DOB: {formatDate(player.dob)}</span>
-            {player.position && <span>{player.position}</span>}
-            {player.dominantFoot && <span className="capitalize">{player.dominantFoot} foot</span>}
-            {player.nationality && <span>{player.nationality}</span>}
+          <div className="mt-2 flex flex-wrap justify-center gap-2 text-sm text-[var(--ui-ink-secondary)] sm:justify-start">
+            <span className="rounded-full border border-[var(--ui-border)] bg-white px-3 py-1">Born {formatDate(player.dob)}</span>
+            {player.position && <span className="rounded-full border border-[var(--ui-border)] bg-white px-3 py-1">{player.position}</span>}
+            {player.dominantFoot && <span className="rounded-full border border-[var(--ui-border)] bg-white px-3 py-1 capitalize">{player.dominantFoot} foot</span>}
+            {player.nationality && <span className="rounded-full border border-[var(--ui-border)] bg-white px-3 py-1">{player.nationality}</span>}
           </div>
           {player.bio && <p className="mt-2 text-sm text-slate-600 italic max-w-md">{player.bio}</p>}
           {role === 'admin' && registrationCode ? (
@@ -901,14 +902,14 @@ export function PlayerProfileCard({ playerId, role, currentUserId }: PlayerProfi
       </div>
 
       {/* Section tabs */}
-      <div className="border-b border-slate-100 px-6">
-        <div className="flex gap-4">
+      <div className="border-b border-[var(--ui-border)] px-4 sm:px-6">
+        <div className="flex gap-5 overflow-x-auto">
           {sectionTabs.map((tab) => (
             <button
               key={tab.value}
               type="button"
               onClick={() => { setActiveSection(tab.value); setEditing(false) }}
-              className={`border-b-2 py-3 text-sm font-semibold transition ${
+              className={`min-h-12 shrink-0 border-b-2 py-3 text-sm font-semibold transition ${
                 activeSection === tab.value
                   ? 'border-[#1565ff] text-[var(--ui-accent)]'
                   : 'border-transparent text-slate-400 hover:text-slate-600'

@@ -7,8 +7,8 @@ import { MotmVotingCard } from '../shared/MotmVotingCard.tsx'
 import { EventComments } from '../events/EventComments.tsx'
 import { EventCalendarActions } from '../events/EventCalendarActions.tsx'
 import { EventTimeDetails } from '../events/EventTimeDetails.tsx'
-import { PlayerProfileCard } from '../players/PlayerProfileCard.tsx'
-import { PlayerReviewsPanel } from '../reviews/PlayerReviewsPanel.tsx'
+import { PlayerWorkspace } from '../players/PlayerWorkspace.tsx'
+import { TestingEventsPanel } from '../testing/TestingEventsPanel.tsx'
 import { InviteButton } from '../shared/InviteButton.tsx'
 import { LocationPicker, LocationMapCard } from '../ui/LocationPicker.tsx'
 import { UndoToast } from '../ui/UndoToast.tsx'
@@ -448,6 +448,8 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
     return matchesPeriod && `${event.title} ${event.location} ${team?.name ?? ''}`.toLowerCase().includes(eventSearch.trim().toLowerCase())
   })
   const visibleSquad = players.filter((player) => `${player.name} ${player.jerseyNumber ?? ''}`.toLowerCase().includes(squadSearch.trim().toLowerCase()))
+  const squadProfilesReady = players.filter((player) => player.photoUrl && player.position).length
+  const squadPositionsSet = players.filter((player) => player.position).length
   const visibleAttendance = attendance.filter((entry) => (attendanceFilter === 'all' || entry.status === attendanceFilter)
     && (playersById.get(entry.playerId)?.name ?? '').toLowerCase().includes(attendanceSearch.trim().toLowerCase()))
 
@@ -1547,6 +1549,14 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
 
       {activeTab === 'stats' ? (
         <section className="space-y-5">
+        {activeTeamId ? (
+          <TestingEventsPanel
+            teamId={activeTeamId}
+            teamName={selectedTeam?.name ?? 'Team'}
+            players={players}
+            currentUserId={profile.id}
+          />
+        ) : null}
         {/* Season record */}
         {(() => {
           const now = new Date()
@@ -1778,9 +1788,12 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
       {/* SQUAD TAB */}
       {activeTab === 'squad' ? (
         <section className="space-y-5">
-          <div>
-            <h2 className="text-2xl font-semibold tracking-tight text-slate-950">Your squad</h2>
-            <p className="mt-1 text-sm text-slate-500">Player profiles, emergency contacts, and identity documents for your team.</p>
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--ui-accent)]">Coaching workspace</p>
+              <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">Squad</h2>
+              <p className="mt-1 text-sm text-slate-500">Open a player to review development, performance, and pathway progress.</p>
+            </div>
           </div>
 
           {!isSingleTeamCoach ? (
@@ -1797,11 +1810,20 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
             </div>
           ) : null}
 
-          {activeTeamId ? (
-            <InviteButton teamId={activeTeamId} teamName={selectedTeam?.name ?? ''} role="parent" />
+          {activeTeamId && !squadViewPlayerId ? (
+            <article className="ui-panel overflow-hidden">
+              {selectedTeam?.photoUrl ? <div className="relative h-28 overflow-hidden sm:h-36"><img src={selectedTeam.photoUrl} alt="" className="h-full w-full object-cover" style={{ objectPosition: `${selectedTeam.photoFocusX}% ${selectedTeam.photoFocusY}%` }} /><div className="absolute inset-0 bg-gradient-to-t from-slate-950/75 to-transparent" /><div className="absolute inset-x-5 bottom-4"><p className="text-xl font-bold text-white">{selectedTeam.name}</p><p className="text-sm text-white/75">{selectedTeam.ageGroup}</p></div></div> : null}
+              <div className="grid grid-cols-3 divide-x divide-[var(--ui-border)] border-b border-[var(--ui-border)]">
+                {[['Players', players.length], ['Positions set', squadPositionsSet], ['Profiles ready', squadProfilesReady]].map(([label, value]) => <div key={label} className="px-3 py-4 text-center"><p className="text-xl font-bold tabular-nums text-[var(--ui-ink)]">{value}</p><p className="mt-1 text-xs text-[var(--ui-muted)]">{label}</p></div>)}
+              </div>
+              <div className="grid gap-3 p-4 sm:grid-cols-[1fr_auto] sm:items-end">
+                <TextField label="Find a player" type="search" placeholder="Search by name or shirt number" value={squadSearch} onChange={(event) => setSquadSearch(event.target.value)} />
+                <InviteButton teamId={activeTeamId} teamName={selectedTeam?.name ?? ''} role="parent" />
+              </div>
+              <p role="status" className="px-4 pb-4 text-xs text-slate-500">Showing {visibleSquad.length} of {players.length} players</p>
+            </article>
           ) : null}
 
-          {activeTeamId && !squadViewPlayerId && !loadingPlayers && players.length > 0 ? <div className="ui-panel p-4"><TextField label="Find a player" type="search" placeholder="Search by name or shirt number" value={squadSearch} onChange={(event) => setSquadSearch(event.target.value)} /><p role="status" className="mt-2 text-xs text-slate-500">{visibleSquad.length} of {players.length} players</p></div> : null}
           {!activeTeamId ? (
             <div className="rounded-2xl border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-500">
               Select a team to view the squad.
@@ -1824,16 +1846,12 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                 </svg>
                 Back to squad
               </button>
-              <PlayerProfileCard
+              <PlayerWorkspace
                 playerId={squadViewPlayerId}
+                playerName={players.find((p) => p.id === squadViewPlayerId)?.name ?? 'Player'}
+                teamId={activeTeamId}
                 role="coach"
                 currentUserId={profile.id}
-              />
-              <PlayerReviewsPanel
-                playerId={squadViewPlayerId}
-                playerName={players.find((p) => p.id === squadViewPlayerId)?.name ?? ''}
-                teamId={activeTeamId}
-                coachId={profile.id}
               />
             </div>
           ) : (
@@ -1851,14 +1869,14 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                   key={player.id}
                   type="button"
                   onClick={() => setSquadViewPlayerId(player.id)}
-                  className="ui-panel p-5 text-left transition hover:border-[var(--ui-accent)] hover:shadow-md"
+                  className="ui-panel group p-4 text-left transition hover:-translate-y-0.5 hover:border-[var(--ui-accent)] hover:shadow-md"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="relative h-11 w-11 shrink-0">
+                    <div className="relative h-14 w-14 shrink-0">
                       {player.photoUrl ? (
-                        <img src={player.photoUrl} alt={player.name} className="h-11 w-11 rounded-full object-cover" />
+                        <img src={player.photoUrl} alt={player.name} className="h-14 w-14 rounded-xl object-cover" />
                       ) : (
-                        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#1565ff]/10 text-lg font-bold text-[#1565ff]">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--ui-accent)_10%,white)] text-lg font-bold text-[var(--ui-accent)]">
                           {player.name.charAt(0)}
                         </div>
                       )}
@@ -1870,10 +1888,10 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                     </div>
                     <div className="min-w-0">
                       <p className="truncate font-semibold text-slate-900">{player.name}</p>
-                      <p className="text-xs text-slate-500">{formatDate(player.dob)}</p>
+                      <p className="mt-0.5 text-xs text-slate-500">{player.position ?? 'Position not set'} · {formatDate(player.dob)}</p>
                     </div>
                   </div>
-                  <p className="mt-2 text-right text-xs font-semibold text-[#1565ff]">View profile →</p>
+                  <p className="mt-3 text-right text-xs font-semibold text-[var(--ui-accent)] group-hover:underline">Open player workspace →</p>
                 </button>
               ))}
             </div>
