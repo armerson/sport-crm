@@ -650,7 +650,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
       {activeTab === 'schedule' ? (
         <section className="space-y-5">
           {!activeEventId ? <CoachOverview name={profile.name} events={events} teams={teams} loading={loadingTeams || loadingEvents}
-            onSelectEvent={selectEvent} onCreate={() => setActiveTab('create')} onSquad={() => setActiveTab('squad')} onMessages={() => setActiveTab('messages')} /> : null}
+            attendanceCounts={attendanceCounts} onSelectEvent={selectEvent} onCreate={() => setActiveTab('create')} onSquad={() => setActiveTab('squad')} onMessages={() => setActiveTab('messages')} /> : null}
           {/* ── Match day hero card ── */}
           {(() => {
             const todayStart = new Date(); todayStart.setHours(0,0,0,0)

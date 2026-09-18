@@ -108,13 +108,23 @@ export function useCoachClubData(coachId: string, selectedTeamId: string, select
     return undefined
   }, [activeTeamId, teams])
 
-  // Results + attendance-counts subscriptions — live alongside the events subscription
+  // Results + attendance counts stay live for every visible team so a multi-team
+  // coach gets useful totals before choosing a squad.
   useEffect(() => {
-    if (!activeTeamId || !isSupabaseConfigured) { setResults([]); setAttendanceCounts(new Map()); return undefined }
-    const unsub1 = subscribeToResultsForTeam(activeTeamId, (next) => setResults(next), () => undefined)
-    const unsub2 = subscribeToAttendanceCountsForTeam(activeTeamId, (next) => setAttendanceCounts(next), () => undefined)
-    return () => { unsub1(); unsub2() }
-  }, [activeTeamId])
+    if (!isSupabaseConfigured) { setResults([]); setAttendanceCounts(new Map()); return undefined }
+    const teamIds = activeTeamId ? [activeTeamId] : teams.map((team) => team.id)
+    if (teamIds.length === 0) { setResults([]); setAttendanceCounts(new Map()); return undefined }
+
+    const resultsByTeam = new Map<string, ResultRecord[]>()
+    const countsByTeam = new Map<string, Map<string, AttendanceCounts>>()
+    const publishResults = () => setResults([...resultsByTeam.values()].flat())
+    const publishCounts = () => setAttendanceCounts(new Map([...countsByTeam.values()].flatMap((counts) => [...counts.entries()])))
+    const unsubscribers = teamIds.flatMap((teamId) => [
+      subscribeToResultsForTeam(teamId, (next) => { resultsByTeam.set(teamId, next); publishResults() }, () => undefined),
+      subscribeToAttendanceCountsForTeam(teamId, (next) => { countsByTeam.set(teamId, next); publishCounts() }, () => undefined),
+    ])
+    return () => { unsubscribers.forEach((unsubscribe) => unsubscribe()) }
+  }, [activeTeamId, teams])
 
   useEffect(() => {
     if (!activeEventId) {
