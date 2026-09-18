@@ -139,6 +139,31 @@ export async function fetchAttendanceRecipientIds(playerIds: string[]): Promise<
   ])]
 }
 
+export async function fetchAttendanceRecipientsByPlayer(playerIds: string[]): Promise<Map<string, string[]>> {
+  const recipients = new Map(playerIds.map((playerId) => [playerId, [] as string[]]))
+  if (!playerIds.length) return recipients
+  const client = requireSupabase()
+  const [parents, players] = await Promise.all([
+    client.from('player_parents').select('player_id, parent_id').in('player_id', playerIds),
+    client.from('profiles').select('id, linked_player_id').in('linked_player_id', playerIds),
+  ])
+  if (parents.error || players.error) throw new Error('Unable to find the members linked to this selection.')
+
+  for (const row of parents.data ?? []) {
+    const current = recipients.get(row.player_id as string) ?? []
+    current.push(row.parent_id as string)
+    recipients.set(row.player_id as string, current)
+  }
+  for (const row of players.data ?? []) {
+    if (!row.linked_player_id) continue
+    const current = recipients.get(row.linked_player_id as string) ?? []
+    current.push(row.id as string)
+    recipients.set(row.linked_player_id as string, current)
+  }
+  for (const [playerId, userIds] of recipients) recipients.set(playerId, [...new Set(userIds)])
+  return recipients
+}
+
 export async function sendPushToUsers(userIds: string[], title: string, body: string, url = '/'): Promise<boolean> {
   if (!userIds.length) return false
 
@@ -155,8 +180,10 @@ export async function sendPushToUsers(userIds: string[], title: string, body: st
       body: JSON.stringify({ userIds, title, body, url }),
     })
     if (!response.ok) return false
-    const result = await response.json() as { sent?: number }
-    return typeof result.sent === 'number' && result.sent > 0
+    // The Edge Function records an in-app notification before attempting browser
+    // push delivery, so an OK response means the reminder reached the member's
+    // notification centre even when that device has no push subscription.
+    return true
   } catch (err) {
     console.error('[push] Failed to send notification:', err)
     return false

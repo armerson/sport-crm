@@ -158,6 +158,14 @@ export interface AttendanceRecord {
   status: AttendanceStatus
 }
 
+export interface AttendanceReminderRecord {
+  eventId: string
+  playerId: string
+  sentAt: string
+  sentBy: string | null
+  source: 'automatic' | 'manual'
+}
+
 export interface EventFormInput {
   teamId: string
   title: string

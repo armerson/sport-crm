@@ -6,9 +6,16 @@ import { BottomNav } from '../components/ui/BottomNav.tsx'
 import { COACH_BOTTOM_NAV } from '../components/ui/bottomNavItems.tsx'
 import { CoachOverview } from '../components/coach/CoachOverview.tsx'
 import { EventTypeChip } from '../components/ui/EventTypeChip.tsx'
+import { AttendanceReminderPanel } from '../components/coach/AttendanceReminderPanel.tsx'
+import type { PlayerRecord } from '../types/club.ts'
 
 const teams = [{ id: 'demo', name: 'Under 12s', ageGroup: 'U12', isSenior: false, coaches: [], players: ['1', '2', '3'], playerCount: 3, coachCount: 1, photoUrl: null, photoFocusX: 50, photoFocusY: 50, cometTeamId: null, cometCompetitionId: null, cometLastSyncedAt: null, cometLastSyncStatus: null, cometLastSyncError: null, cometLastSyncCount: null, archivedAt: null }]
 const events = [{ id: 'demo', teamId: 'demo', title: 'Wednesday training', type: 'training' as const, dateTime: new Date(Date.now() + 86400000).toISOString(), meetTime: null, endTime: null, location: 'Community sports ground', placeId: null, lat: null, lng: null, recurrenceGroupId: null, opponent: null, eventStatus: 'confirmed' as const, externalSource: null, externalId: null, competition: null, homeAway: null }]
+const reminderPlayers = [{ id: '1', name: 'Jamie Carter' }, { id: '2', name: 'Morgan Kelly' }] as PlayerRecord[]
+const reminderAttendance = [
+  { id: 'attendance-1', eventId: 'demo', playerId: '1', status: 'pending' as const },
+  { id: 'attendance-2', eventId: 'demo', playerId: '2', status: 'pending' as const },
+]
 
 /** Development-only gallery. No member data or writes. */
 export default function UiPreview() {
@@ -26,6 +33,7 @@ export default function UiPreview() {
       <div className="mx-auto max-w-6xl space-y-6">
         <CoachOverview name="Alex" teams={teams} events={events} loading={false} attendanceCounts={new Map([['demo', { yes: 2, pending: 1, no: 0 }]])} onCreate={() => setNotice('Create event selected')} onSelectEvent={() => setNotice('Availability selected')} onSquad={() => setActive('squad')} onMessages={() => setActive('messages')} />
         <p role="status" className="text-sm text-slate-600">{notice || `Selected section: ${active}`}</p>
+        <section className="ui-panel p-6"><p className="text-xs font-semibold uppercase tracking-widest text-slate-400">Availability follow-up</p><AttendanceReminderPanel eventId="demo" attendance={reminderAttendance} players={reminderPlayers} reminders={[{ eventId: 'demo', playerId: '2', sentAt: new Date().toISOString(), sentBy: 'coach', source: 'manual' }]} sending={false} onSend={async (playerIds) => { setNotice(`Preview reminder prepared for ${playerIds.length} players.`); return { recipients: playerIds.length, players: playerIds.length, skipped: 0, sentAt: new Date().toISOString() } }} /></section>
         <section className="ui-panel p-6"><div className="mb-6 flex items-center justify-between"><div><p className="text-xs uppercase tracking-widest text-slate-500">Components</p><h2 className="mt-1 text-xl font-bold">Plan your next session</h2></div><EventTypeChip type="training" /></div><div className="grid gap-5 sm:grid-cols-2"><TextField label="Session name" placeholder="e.g. Wednesday training" hint="Use a name your squad will recognise." /><SelectField label="Team" options={[{ value: 'u12', label: 'Under 12s' }]} /><TextField label="Validation example" error="Enter a location before saving." placeholder="Search for a venue" /><TextField label="Disabled field" disabled value="Assigned by your club" /></div><div className="mt-6 flex flex-wrap gap-3"><Button onClick={() => setNotice('Preview saved. No club data was changed.')}>Save session</Button><Button variant="secondary" onClick={() => setNotice('Changes cancelled')}>Cancel</Button><Button loading>Saving session</Button><Button disabled>Unavailable</Button></div></section>
       </div>
     </div><BottomNav items={COACH_BOTTOM_NAV} active={active} onChange={setActive} badges={{ messages: true }} />

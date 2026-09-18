@@ -26,6 +26,7 @@ import { meetTimeFromMinutesBefore, minutesBeforeFromMeetTime, validateSupportin
 import { PostFeed } from '../posts/PostFeed.tsx'
 import { MatchStatsPanel } from './MatchStatsPanel.tsx'
 import { MatchdayGuide } from './MatchdayGuide.tsx'
+import { AttendanceReminderPanel } from './AttendanceReminderPanel.tsx'
 import { fetchMatchStats, fetchSeasonStats } from '../../services/playerMatchStats.ts'
 import { createPost, uploadPostImage } from '../../services/posts.ts'
 import { subscribeToTables } from '../../services/supabaseHelpers.ts'
@@ -341,13 +342,13 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
   const [seasonMatchStats, setSeasonMatchStats] = useState<import('../../types/club.ts').PlayerMatchStat[]>([])
   const [activeMatchStats, setActiveMatchStats] = useState<import('../../types/club.ts').PlayerMatchStat[]>([])
   const [sendingReminder, setSendingReminder] = useState(false)
-  const [reminderMsg, setReminderMsg] = useState<string | null>(null)
   const [syncingComet, setSyncingComet] = useState(false)
 
   const {
     activeEventId,
     activeTeamId,
     attendance,
+    attendanceReminders,
     createEvent,
     updateAttendance,
     updateEvent,
@@ -960,36 +961,22 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                     </div>
                   </div>
 
-                  {/* Attendance reminder */}
-                  {activeEventCounts.pending > 0 && activeEvent && (
-                    <div className="mt-3 flex items-center gap-3">
-                      <button
-                        type="button"
-                        disabled={sendingReminder}
-                        onClick={() => {
-                          setSendingReminder(true)
-                          setReminderMsg(null)
-                          void sendAttendanceReminder(activeEventId, activeEvent.title).then((count) => {
-                            setReminderMsg(
-                              count > 0
-                                ? `Reminder sent to ${count} member${count === 1 ? '' : 's'}.`
-                                : 'No linked parent or player accounts were found.'
-                            )
-                          }).catch(() => setReminderMsg('The reminder could not be sent. Please try again.')).finally(() => setSendingReminder(false))
-                        }}
-                        className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800 transition hover:bg-amber-100 disabled:opacity-60"
-                      >
-                        {sendingReminder ? 'Sending…' : `Remind ${activeEventCounts.pending} pending`}
-                      </button>
-                      {reminderMsg && (
-                        <p className="text-xs font-medium text-slate-500">{reminderMsg}</p>
-                      )}
-                    </div>
-                  )}
                   {activeEventCounts.pending > 0 && activeEvent ? (
-                    <p className="mt-2 text-xs leading-5 text-slate-500">
-                      Anyone still awaiting a response will also receive one automatic reminder about a day before the {activeEvent.meetTime ? 'meet time' : 'start time'}.
-                    </p>
+                    <AttendanceReminderPanel
+                      eventId={activeEventId}
+                      attendance={attendance}
+                      players={players}
+                      reminders={attendanceReminders}
+                      sending={sendingReminder}
+                      onSend={async (playerIds) => {
+                        setSendingReminder(true)
+                        try {
+                          return await sendAttendanceReminder(activeEventId, activeEvent.title, playerIds)
+                        } finally {
+                          setSendingReminder(false)
+                        }
+                      }}
+                    />
                   ) : null}
 
                   {attendance.length > 0 && !loadingAttendance && (
