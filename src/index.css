@@ -68,9 +68,14 @@ h1, h2, h3 { text-wrap: balance; }
   .ui-tab[aria-pressed=true] { background: white; color: var(--ui-ink); box-shadow: 0 1px 4px #182b2918; }
   .ui-workspace { background: var(--ui-canvas); }
   .ui-workspace-header { background: #ffffffed; backdrop-filter: blur(16px); border-bottom: 1px solid var(--ui-border); }
-  .ui-desktop-section-select { display: grid; grid-template-columns: auto minmax(118px, 176px); align-items: center; gap: 8px; min-height: 42px; border: 1px solid var(--ui-border); border-radius: 12px; background: var(--ui-surface-raised); padding: 4px 5px 4px 11px; }
-  .ui-desktop-section-select > span { color: var(--ui-muted); font-size: 10px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
-  .ui-desktop-section-select select { min-width: 0; border: 0; background: white; border-radius: 8px; padding: 7px 28px 7px 9px; color: var(--ui-ink); font-size: 13px; font-weight: 650; outline: none; }
+  .ui-desktop-section-nav { border-top: 1px solid var(--ui-border); background: #ffffffc7; }
+  .ui-desktop-section-nav > div { scrollbar-width: none; }
+  .ui-desktop-section-nav > div::-webkit-scrollbar { display: none; }
+  .ui-desktop-section-link { position: relative; min-height: 48px; flex: 0 0 auto; padding: 0 14px; color: var(--ui-muted); font-size: 13px; font-weight: 650; white-space: nowrap; transition: color 150ms, background 150ms; }
+  .ui-desktop-section-link:hover { color: var(--ui-ink); background: var(--ui-surface-raised); }
+  .ui-desktop-section-link[aria-current=page] { color: var(--ui-accent); }
+  .ui-desktop-section-link[aria-current=page]::after { content: ''; position: absolute; right: 12px; bottom: -1px; left: 12px; height: 3px; border-radius: 3px 3px 0 0; background: currentColor; }
+  .ui-desktop-section-badge { position: absolute; top: 10px; right: 5px; width: 7px; height: 7px; border-radius: 50%; background: #f04438; box-shadow: 0 0 0 2px white; }
   .ui-bottom-nav { left: 10px; right: 10px; bottom: calc(10px + env(safe-area-inset-bottom)); border-radius: 18px; padding: 4px; box-shadow: 0 12px 36px #182b2920; }
   .ui-bottom-nav button { min-height: 62px; border-radius: 14px; }
   .ui-bottom-nav button[aria-current=page] { color: var(--ui-accent); }

@@ -396,14 +396,6 @@ export function DashboardPage() {
             <div><p className="font-bold tracking-tight text-slate-950">{clubSettings.name}</p><p className="text-xs text-slate-500">{activeContent.title}</p></div>
           </div>
           <div className="flex items-center gap-3">
-            {!showSettings && !showNotifications ? (
-              <label className="ui-desktop-section-select">
-                <span>Section</span>
-                <select aria-label="Section" value={activeTab} onChange={(event) => handleTabChange(event.target.value)}>
-                  {workspaceSections.map((section) => <option key={section.value} value={section.value}>{section.label}</option>)}
-                </select>
-              </label>
-            ) : null}
             {hasMultipleRoles ? <select aria-label="Workspace" value={activeRole} onChange={(event) => setActiveRole(event.target.value as UserRole)} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium">
               {sortedRoles.map((role) => <option key={role} value={role}>{ROLE_LABELS[role]} workspace</option>)}
             </select> : null}
@@ -413,6 +405,27 @@ export function DashboardPage() {
             <button type="button" onClick={() => void signOutUser()} className="rounded-xl p-3 text-slate-500 hover:bg-slate-100" aria-label="Sign out"><SignOutIcon /></button>
           </div>
         </div>
+        {!showSettings && !showNotifications ? (
+          <nav aria-label={`${ROLE_LABELS[activeRole]} sections`} className="ui-desktop-section-nav">
+            <div className="mx-auto flex max-w-7xl gap-1 overflow-x-auto px-8">
+              {workspaceSections.map((section) => {
+                const selected = section.value === activeTab
+                return (
+                  <button
+                    key={section.value}
+                    type="button"
+                    aria-current={selected ? 'page' : undefined}
+                    onClick={() => handleTabChange(section.value)}
+                    className="ui-desktop-section-link"
+                  >
+                    {section.label}
+                    {section.value === 'messages' && hasUnreadMessages ? <span className="ui-desktop-section-badge" aria-label="Unread messages" /> : null}
+                  </button>
+                )
+              })}
+            </div>
+          </nav>
+        ) : null}
       </header>
 
       {/* ── Main content ── */}
