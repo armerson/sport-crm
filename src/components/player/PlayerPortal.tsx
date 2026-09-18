@@ -6,7 +6,6 @@ import { PostFeed } from '../posts/PostFeed.tsx'
 import { PlayerProfileCard } from '../players/PlayerProfileCard.tsx'
 import type { UserProfile } from '../../types/auth.ts'
 import type { AttendanceStatus } from '../../types/club.ts'
-import { TabNav } from '../ui/TabNav.tsx'
 import { RegistrationStatusCard } from '../registration/RegistrationStatusCard.tsx'
 import { PortalAttendanceSummary } from '../shared/PortalAttendanceSummary.tsx'
 
@@ -17,21 +16,13 @@ const TeamMessagesPanel = lazy(async () => {
 
 export type PlayerTab = 'schedule' | 'profile' | 'billing' | 'messages' | 'feed'
 
-const PLAYER_TABS = [
-  { label: 'Schedule', value: 'schedule' as PlayerTab },
-  { label: 'Feed', value: 'feed' as PlayerTab },
-  { label: 'My profile', value: 'profile' as PlayerTab },
-  { label: 'Billing', value: 'billing' as PlayerTab },
-  { label: 'Messages', value: 'messages' as PlayerTab },
-] as const
-
 interface PlayerPortalProps {
   profile: UserProfile
   activeTab: PlayerTab
   onTabChange: (tab: PlayerTab) => void
 }
 
-export function PlayerPortal({ profile, activeTab, onTabChange }: PlayerPortalProps) {
+export function PlayerPortal({ profile, activeTab }: PlayerPortalProps) {
   const linkedId = profile.linkedPlayerId ?? ''
   const childIds = useMemo(() => (linkedId ? [linkedId] : []), [linkedId])
 
@@ -86,11 +77,6 @@ export function PlayerPortal({ profile, activeTab, onTabChange }: PlayerPortalPr
 
   return (
     <section className="space-y-5">
-      <div className="ui-workspace-navigation hidden sm:block">
-        <p className="ui-navigation-label">Workspace</p>
-        <TabNav tabs={PLAYER_TABS} active={activeTab} onChange={onTabChange} />
-      </div>
-
       {!isConfigured ? (
         <div className="rounded-3xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           Supabase is not configured. Add your project values to .env.local before using the player portal.

@@ -5,7 +5,6 @@ import { AdminDashboardStats } from './AdminDashboardStats.tsx'
 import { ConfirmInline } from '../ui/ConfirmInline.tsx'
 import { SelectField } from '../ui/SelectField.tsx'
 import { SuccessMessage } from '../ui/SuccessMessage.tsx'
-import { TabNav } from '../ui/TabNav.tsx'
 import { TextField } from '../ui/TextField.tsx'
 import { useAdminClubData } from '../../hooks/useAdminClubData.ts'
 import { useAuditLogs } from '../../hooks/useAuditLogs.ts'
@@ -82,19 +81,6 @@ const PlayerRegistrationSection = lazy(async () => {
 
 export type AdminTab = 'overview' | 'players' | 'manage' | 'members' | 'activity' | 'messages' | 'billing' | 'forms' | 'registration' | 'posts'
 type ManageSection = 'import' | 'team' | 'player' | 'coach' | 'parent' | 'staff' | 'groups' | 'testing' | 'pathway'
-
-const ADMIN_TABS = [
-  { label: 'Overview', value: 'overview' as AdminTab },
-  { label: 'Players', value: 'players' as AdminTab },
-  { label: 'Manage', value: 'manage' as AdminTab },
-  { label: 'Members', value: 'members' as AdminTab },
-  { label: 'Posts', value: 'posts' as AdminTab },
-  { label: 'Forms', value: 'forms' as AdminTab },
-  { label: 'Player reg', value: 'registration' as AdminTab },
-  { label: 'Billing', value: 'billing' as AdminTab },
-  { label: 'Activity', value: 'activity' as AdminTab },
-  { label: 'Messages', value: 'messages' as AdminTab },
-] as const
 
 const MANAGE_SECTIONS = [
   { label: 'Teams', value: 'team' as ManageSection, group: 'People & teams' },
@@ -419,11 +405,6 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
 
   return (
     <section className="space-y-5">
-      <div className="ui-workspace-navigation hidden sm:block">
-        <p className="ui-navigation-label">Workspace</p>
-        <TabNav tabs={ADMIN_TABS} active={activeTab} onChange={setActiveTab} />
-      </div>
-
       {!isConfigured ? (
         <div className="rounded-3xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           Supabase is not configured. Add your project values to .env.local before using club management.

@@ -64,15 +64,6 @@ function toLocalDateTimeInput(value: string | null): string {
 
 export type CoachTab = 'schedule' | 'create' | 'stats' | 'squad' | 'messages' | 'feed'
 
-const COACH_TABS = [
-  { label: 'Schedule', value: 'schedule' as CoachTab },
-  { label: 'Create event', value: 'create' as CoachTab },
-  { label: 'Squad', value: 'squad' as CoachTab },
-  { label: 'Stats', value: 'stats' as CoachTab },
-  { label: 'Feed', value: 'feed' as CoachTab },
-  { label: 'Messages', value: 'messages' as CoachTab },
-] as const
-
 const WEEK_OPTIONS = Array.from({ length: 19 }, (_, i) => ({
   label: `${i + 2} sessions`,
   value: String(i + 2),
@@ -643,11 +634,6 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
 
   return (
     <section className="space-y-5">
-      <div className="ui-workspace-navigation hidden sm:block">
-        <p className="ui-navigation-label">Workspace</p>
-        <TabNav tabs={COACH_TABS} active={activeTab} onChange={setActiveTab} />
-      </div>
-
       {!isConfigured ? (
         <div className="rounded-3xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           Supabase is not configured. Add your project values to .env.local before using coach workflows.

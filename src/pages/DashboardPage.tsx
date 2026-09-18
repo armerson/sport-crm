@@ -65,6 +65,44 @@ const roleContent: Record<UserRole, { title: string; summary: string }> = {
   },
 }
 
+const WORKSPACE_SECTIONS: Record<UserRole, readonly { label: string; value: string }[]> = {
+  admin: [
+    { label: 'Overview', value: 'overview' },
+    { label: 'Players', value: 'players' },
+    { label: 'Manage', value: 'manage' },
+    { label: 'Members', value: 'members' },
+    { label: 'Posts', value: 'posts' },
+    { label: 'Forms', value: 'forms' },
+    { label: 'Player registration', value: 'registration' },
+    { label: 'Finance & billing', value: 'billing' },
+    { label: 'Activity', value: 'activity' },
+    { label: 'Messages', value: 'messages' },
+  ],
+  coach: [
+    { label: 'Schedule', value: 'schedule' },
+    { label: 'Create event', value: 'create' },
+    { label: 'Squad', value: 'squad' },
+    { label: 'Stats', value: 'stats' },
+    { label: 'News feed', value: 'feed' },
+    { label: 'Messages', value: 'messages' },
+  ],
+  parent: [
+    { label: 'Schedule', value: 'schedule' },
+    { label: 'Development', value: 'development' },
+    { label: 'My children', value: 'children' },
+    { label: 'News feed', value: 'feed' },
+    { label: 'Billing', value: 'billing' },
+    { label: 'Messages', value: 'messages' },
+  ],
+  player: [
+    { label: 'Schedule', value: 'schedule' },
+    { label: 'News feed', value: 'feed' },
+    { label: 'My profile', value: 'profile' },
+    { label: 'Billing', value: 'billing' },
+    { label: 'Messages', value: 'messages' },
+  ],
+}
+
 const tabDescriptions: Record<UserRole, Record<string, string>> = {
   admin: {
     overview: 'See club activity, pending registrations, and the work that needs attention.',
@@ -246,6 +284,7 @@ export function DashboardPage() {
   const isPlayer = activeRole === 'player'
 
   const activeContent = roleContent[activeRole]
+  const workspaceSections = WORKSPACE_SECTIONS[activeRole]
 
   const bottomNavItems = isAdmin
     ? ADMIN_BOTTOM_NAV
@@ -255,9 +294,7 @@ export function DashboardPage() {
         ? PLAYER_BOTTOM_NAV
         : PARENT_BOTTOM_NAV
 
-  const activeTabLabel = activeRole === 'coach' && activeTab === 'create'
-    ? 'New event'
-    : bottomNavItems.find((item) => item.value === activeTab)?.label ?? activeContent.title
+  const activeTabLabel = workspaceSections.find((item) => item.value === activeTab)?.label ?? activeContent.title
   const activeTabDescription = tabDescriptions[activeRole][activeTab] ?? activeContent.summary
   const pageTitle = showSettings ? 'Settings' : showNotifications ? 'Notifications' : activeTabLabel
   const pageDescription = showSettings ? 'Manage your profile, notifications, security, and app updates.' : showNotifications ? 'Team alerts and important updates in one place.' : activeTabDescription
@@ -359,6 +396,14 @@ export function DashboardPage() {
             <div><p className="font-bold tracking-tight text-slate-950">{clubSettings.name}</p><p className="text-xs text-slate-500">{activeContent.title}</p></div>
           </div>
           <div className="flex items-center gap-3">
+            {!showSettings && !showNotifications ? (
+              <label className="ui-desktop-section-select">
+                <span>Section</span>
+                <select aria-label="Section" value={activeTab} onChange={(event) => handleTabChange(event.target.value)}>
+                  {workspaceSections.map((section) => <option key={section.value} value={section.value}>{section.label}</option>)}
+                </select>
+              </label>
+            ) : null}
             {hasMultipleRoles ? <select aria-label="Workspace" value={activeRole} onChange={(event) => setActiveRole(event.target.value as UserRole)} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium">
               {sortedRoles.map((role) => <option key={role} value={role}>{ROLE_LABELS[role]} workspace</option>)}
             </select> : null}

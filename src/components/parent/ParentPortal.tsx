@@ -24,7 +24,6 @@ import { formatDateTimeRelative, dateBox, shortenAddress, groupByWeek } from '..
 import { EventTypeChip } from '../ui/EventTypeChip.tsx'
 import { Button } from '../ui/Button.tsx'
 import { SelectField } from '../ui/SelectField.tsx'
-import { TabNav } from '../ui/TabNav.tsx'
 import { TextField } from '../ui/TextField.tsx'
 import { RegistrationStatusCard } from '../registration/RegistrationStatusCard.tsx'
 import { PortalAttendanceSummary } from '../shared/PortalAttendanceSummary.tsx'
@@ -41,15 +40,6 @@ interface ParentPortalProps {
 }
 
 export type ParentTab = 'schedule' | 'messages' | 'billing' | 'children' | 'feed' | 'development'
-
-const PARENT_TABS = [
-  { label: 'Schedule', value: 'schedule' as ParentTab },
-  { label: 'Development', value: 'development' as ParentTab },
-  { label: 'My children', value: 'children' as ParentTab },
-  { label: 'Feed', value: 'feed' as ParentTab },
-  { label: 'Billing', value: 'billing' as ParentTab },
-  { label: 'Messages', value: 'messages' as ParentTab },
-] as const
 
 function SectionFallback() {
   return (
@@ -482,8 +472,7 @@ function DevelopmentContent({ players, loadingPlayers }: { players: import('../.
   )
 }
 
-export function ParentPortal({ profile, activeTab, onTabChange }: ParentPortalProps) {
-  const setActiveTab = onTabChange
+export function ParentPortal({ profile, activeTab }: ParentPortalProps) {
   const [selectedChildId, setSelectedChildId] = useState('')
   const { attendance, error, events, isConfigured, isSubmitting, loadingAttendance, loadingEvents, loadingPlayers, players, resultByEventId, teams, updateAttendance } =
     useParentClubData(profile.children)
@@ -533,11 +522,6 @@ export function ParentPortal({ profile, activeTab, onTabChange }: ParentPortalPr
 
   return (
     <section className="space-y-5">
-      <div className="ui-workspace-navigation hidden sm:block">
-        <p className="ui-navigation-label">Workspace</p>
-        <TabNav tabs={PARENT_TABS} active={activeTab} onChange={setActiveTab} />
-      </div>
-
       {!isConfigured ? (
         <div className="rounded-3xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           Supabase is not configured. Add your project values to .env.local before using the parent portal.
