@@ -8,13 +8,14 @@ interface CoachOverviewProps {
   events: EventRecord[]
   teams: TeamRecord[]
   loading: boolean
+  attendanceCounts: Map<string, { yes: number; pending: number; no: number }>
   onSelectEvent: (event: EventRecord) => void
   onCreate: () => void
   onSquad: () => void
   onMessages: () => void
 }
 
-export function CoachOverview({ name, events, teams, loading, onSelectEvent, onCreate, onSquad, onMessages }: CoachOverviewProps) {
+export function CoachOverview({ name, events, teams, loading, attendanceCounts, onSelectEvent, onCreate, onSquad, onMessages }: CoachOverviewProps) {
   const [copyStatus, setCopyStatus] = useState('')
   const now = new Date()
   const upcoming = events.filter((event) => event.eventStatus !== 'cancelled' && new Date(event.dateTime) >= now)
@@ -22,7 +23,10 @@ export function CoachOverview({ name, events, teams, loading, onSelectEvent, onC
   const next = upcoming[0]
   const weekEnd = new Date(now); weekEnd.setDate(weekEnd.getDate() + 7)
   const thisWeek = upcoming.filter((event) => new Date(event.dateTime) < weekEnd).length
+  const weekEvents = upcoming.filter((event) => new Date(event.dateTime) < weekEnd)
+  const repliesDue = weekEvents.reduce((sum, event) => sum + (attendanceCounts.get(event.id)?.pending ?? 0), 0)
   const players = new Set(teams.flatMap((team) => team.players)).size
+  const nextCounts = next ? attendanceCounts.get(next.id) : undefined
   const registrationUrl = `${window.location.origin}/register`
 
   async function copyRegistration() {
@@ -54,7 +58,12 @@ export function CoachOverview({ name, events, teams, loading, onSelectEvent, onC
               <h2 className="mt-1 text-2xl font-semibold tracking-tight">{next.title}</h2>
               <p className="mt-3 text-sm text-white/80">{formatDateTimeRelative(next.dateTime)}</p>
               <p className="mt-1 text-sm text-white/60">{next.location || 'Location to be confirmed'}</p>
-              <button type="button" onClick={() => onSelectEvent(next)} className="mt-5 inline-flex items-center gap-3 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 hover:bg-blue-50">View availability <span aria-hidden="true">→</span></button>
+              {nextCounts ? <div className="mt-5 flex flex-wrap gap-2" aria-label="Next event availability">
+                <span className="rounded-full bg-emerald-400/15 px-3 py-1.5 text-xs font-semibold text-emerald-100">{nextCounts.yes} going</span>
+                <span className={`rounded-full px-3 py-1.5 text-xs font-semibold ${nextCounts.pending > 0 ? 'bg-amber-300/20 text-amber-100' : 'bg-white/10 text-white/65'}`}>{nextCounts.pending} awaiting</span>
+                <span className="rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/65">{nextCounts.no} unavailable</span>
+              </div> : null}
+              <button type="button" onClick={() => onSelectEvent(next)} className="mt-5 inline-flex items-center gap-3 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 hover:bg-blue-50">{nextCounts?.pending ? `Review ${nextCounts.pending} response${nextCounts.pending === 1 ? '' : 's'}` : 'Open event'} <span aria-hidden="true">→</span></button>
             </> : <>
               <h2 className="mt-5 text-2xl font-semibold">{teams.length ? 'Your next session starts here.' : 'Welcome to the coaching team.'}</h2>
               <p className="mt-3 max-w-md text-sm leading-6 text-white/70">{teams.length ? 'Add a training session or fixture so your squad can let you know who’s coming.' : 'Ask your club administrator to assign you to a team. Your squad and schedule will appear here.'}</p>
@@ -63,7 +72,7 @@ export function CoachOverview({ name, events, teams, loading, onSelectEvent, onC
         </article>
         <div className="ui-panel flex flex-col p-6">
           <div className="grid grid-cols-3 gap-3 border-b border-slate-100 pb-5">
-            {[['Players', players], ['Teams', teams.length], ['Next 7 days', thisWeek]].map(([label, value]) => <div key={label}><p className="text-2xl font-bold tabular-nums tracking-tight text-slate-950">{loading ? '—' : value}</p><p className="mt-1 text-xs text-slate-500">{label}</p></div>)}
+            {[['Players', players], ['Next 7 days', thisWeek], ['Replies due', repliesDue]].map(([label, value]) => <div key={label}><p className={`text-2xl font-bold tabular-nums tracking-tight ${label === 'Replies due' && Number(value) > 0 ? 'text-amber-700' : 'text-slate-950'}`}>{loading ? '—' : value}</p><p className="mt-1 text-xs text-slate-500">{label}</p></div>)}
           </div>
           <p className="mb-2 mt-4 text-xs font-semibold uppercase tracking-wider text-slate-400">Quick actions</p>
           {[{ label: 'Open squad', action: onSquad }, { label: 'Team messages', action: onMessages }, { label: 'Copy registration link', action: () => void copyRegistration() }].map(({ label, action }) => <button key={label} type="button" onClick={action} className="flex w-full items-center justify-between rounded-lg py-2.5 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-blue-700">{label}<span aria-hidden="true" className="text-slate-400">↗</span></button>)}
