@@ -1,11 +1,16 @@
-import { useState } from 'react'
-import { StarRating } from './StarRating.tsx'
+import { useEffect, useState } from 'react'
 import {
   saveReview,
   publishReview,
   type PlayerReview,
   type ReviewFormInput,
 } from '../../services/playerReviews.ts'
+import {
+  fetchAssessmentAreas,
+  fetchAssessmentScores,
+  saveAssessmentScores,
+  type AssessmentArea,
+} from '../../services/playerDevelopment.ts'
 
 interface ReviewEditorProps {
   playerId: string
@@ -24,13 +29,6 @@ const PERIOD_PRESETS = [
   'End of Season 2026/27',
 ]
 
-const RATING_FIELDS: { key: keyof Pick<ReviewFormInput, 'ratingTechnical' | 'ratingTactical' | 'ratingPhysical' | 'ratingAttitude'>; label: string; hint: string }[] = [
-  { key: 'ratingTechnical', label: 'Technical', hint: 'Ball control, passing, shooting, dribbling' },
-  { key: 'ratingTactical',  label: 'Tactical',  hint: 'Positioning, decision-making, game awareness' },
-  { key: 'ratingPhysical',  label: 'Physical',  hint: 'Pace, stamina, strength, agility' },
-  { key: 'ratingAttitude',  label: 'Attitude',  hint: 'Effort, teamwork, coachability, punctuality' },
-]
-
 export function ReviewEditor({ playerId, playerName, teamId, coachId, existing, onSaved, onCancel }: ReviewEditorProps) {
   const [form, setForm] = useState<ReviewFormInput>({
     periodLabel:       existing?.periodLabel    ?? '',
@@ -45,6 +43,23 @@ export function ReviewEditor({ playerId, playerName, teamId, coachId, existing, 
   const [saving,     setSaving]     = useState(false)
   const [publishing, setPublishing] = useState(false)
   const [error,      setError]      = useState<string | null>(null)
+  const [areas, setAreas] = useState<AssessmentArea[]>([])
+  const [scores, setScores] = useState<Record<string, number>>({})
+
+  useEffect(() => {
+    let cancelled = false
+    Promise.all([
+      fetchAssessmentAreas(),
+      existing ? fetchAssessmentScores([existing.id]) : Promise.resolve([]),
+    ]).then(([nextAreas, nextScores]) => {
+      if (cancelled) return
+      setAreas(nextAreas)
+      setScores(Object.fromEntries(nextScores.map((entry) => [entry.assessmentAreaId, entry.score])))
+    }).catch((reason) => {
+      if (!cancelled) setError(reason instanceof Error ? reason.message : 'Unable to load assessment areas.')
+    })
+    return () => { cancelled = true }
+  }, [existing])
 
   function set<K extends keyof ReviewFormInput>(key: K, value: ReviewFormInput[K]) {
     setForm((prev) => ({ ...prev, [key]: value }))
@@ -55,7 +70,18 @@ export function ReviewEditor({ playerId, playerName, teamId, coachId, existing, 
     setError(null)
     setSaving(true)
     try {
-      const saved = await saveReview(playerId, teamId, coachId, form, existing?.id)
+      const scoreFor = (name: string) => {
+        const area = areas.find((item) => item.name === name)
+        return area ? scores[area.id] ?? null : null
+      }
+      const saved = await saveReview(playerId, teamId, coachId, {
+        ...form,
+        ratingTechnical: scoreFor('Technical'),
+        ratingTactical: scoreFor('Tactical'),
+        ratingPhysical: scoreFor('Physical'),
+        ratingAttitude: scoreFor('Psychological'),
+      }, existing?.id)
+      await saveAssessmentScores(saved.id, Object.entries(scores).map(([assessmentAreaId, score]) => ({ assessmentAreaId, score })))
       if (andPublish) {
         setPublishing(true)
         await publishReview(saved.id)
@@ -107,16 +133,32 @@ export function ReviewEditor({ playerId, playerName, teamId, coachId, existing, 
       {/* Ratings */}
       <div className="space-y-3 rounded-2xl bg-slate-50 p-4">
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Skill ratings</p>
-        {RATING_FIELDS.map(({ key, label, hint }) => (
-          <div key={key} className="flex items-center justify-between gap-3">
+        {areas.map((area) => (
+          <div key={area.id} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-slate-800">{label}</p>
-              <p className="text-xs text-slate-400">{hint}</p>
+              <p className="text-sm font-semibold text-slate-800">{area.name}</p>
+              {area.description ? <p className="text-xs text-slate-400">{area.description}</p> : null}
             </div>
-            <StarRating
-              value={form[key] as number | null}
-              onChange={(v) => set(key, v === form[key] ? null : v)}
-            />
+            <div className="flex gap-1" role="group" aria-label={`${area.name} score`}>
+              {Array.from({ length: area.scoreMax - area.scoreMin + 1 }, (_, index) => area.scoreMin + index).map((score) => (
+                <button
+                  key={score}
+                  type="button"
+                  aria-pressed={scores[area.id] === score}
+                  onClick={() => setScores((current) => {
+                    if (current[area.id] === score) {
+                      const next = { ...current }
+                      delete next[area.id]
+                      return next
+                    }
+                    return { ...current, [area.id]: score }
+                  })}
+                  className={`flex h-11 w-11 items-center justify-center rounded-xl text-sm font-bold transition ${scores[area.id] === score ? 'bg-[var(--ui-accent)] text-white' : 'border border-slate-200 bg-white text-slate-600 hover:border-[var(--ui-accent)]'}`}
+                >
+                  {score}
+                </button>
+              ))}
+            </div>
           </div>
         ))}
       </div>

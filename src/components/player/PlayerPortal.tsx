@@ -6,8 +6,8 @@ import { PostFeed } from '../posts/PostFeed.tsx'
 import { PlayerProfileCard } from '../players/PlayerProfileCard.tsx'
 import type { UserProfile } from '../../types/auth.ts'
 import type { AttendanceStatus } from '../../types/club.ts'
-import { TabNav } from '../ui/TabNav.tsx'
 import { RegistrationStatusCard } from '../registration/RegistrationStatusCard.tsx'
+import { PortalAttendanceSummary } from '../shared/PortalAttendanceSummary.tsx'
 
 const TeamMessagesPanel = lazy(async () => {
   const module = await import('../messages/TeamMessagesPanel.tsx')
@@ -16,21 +16,13 @@ const TeamMessagesPanel = lazy(async () => {
 
 export type PlayerTab = 'schedule' | 'profile' | 'billing' | 'messages' | 'feed'
 
-const PLAYER_TABS = [
-  { label: 'Schedule', value: 'schedule' as PlayerTab },
-  { label: 'Feed', value: 'feed' as PlayerTab },
-  { label: 'My profile', value: 'profile' as PlayerTab },
-  { label: 'Billing', value: 'billing' as PlayerTab },
-  { label: 'Messages', value: 'messages' as PlayerTab },
-] as const
-
 interface PlayerPortalProps {
   profile: UserProfile
   activeTab: PlayerTab
   onTabChange: (tab: PlayerTab) => void
 }
 
-export function PlayerPortal({ profile, activeTab, onTabChange }: PlayerPortalProps) {
+export function PlayerPortal({ profile, activeTab }: PlayerPortalProps) {
   const linkedId = profile.linkedPlayerId ?? ''
   const childIds = useMemo(() => (linkedId ? [linkedId] : []), [linkedId])
 
@@ -85,11 +77,6 @@ export function PlayerPortal({ profile, activeTab, onTabChange }: PlayerPortalPr
 
   return (
     <section className="space-y-5">
-      <div className="ui-workspace-navigation hidden sm:block">
-        <p className="ui-navigation-label">Workspace</p>
-        <TabNav tabs={PLAYER_TABS} active={activeTab} onChange={onTabChange} />
-      </div>
-
       {!isConfigured ? (
         <div className="rounded-3xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           Supabase is not configured. Add your project values to .env.local before using the player portal.
@@ -115,11 +102,14 @@ export function PlayerPortal({ profile, activeTab, onTabChange }: PlayerPortalPr
       {activeTab === 'schedule' ? (
         <section className="space-y-5">
           <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
-            <article className="rounded-[1.75rem] border border-white/70 bg-white/85 p-5 shadow-lg shadow-slate-900/5 backdrop-blur-sm">
+            <article className="ui-module">
+              <div className="ui-module-header">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                <h2 className="text-2xl font-semibold tracking-tight text-slate-950">Your schedule</h2>
+                <div><p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--ui-accent)]">My ClubOS</p><h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">Your football week</h2></div>
                 <p className="text-sm text-slate-500">{loadingPlayers ? 'Loading...' : selfPlayer ? 'Linked player' : 'No player row'}</p>
               </div>
+              </div>
+              <div className="ui-module-body">
 
               {!linkedId || (!loadingPlayers && !selfPlayer) ? (
                 <div className="mt-4 rounded-2xl border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-500">
@@ -130,12 +120,13 @@ export function PlayerPortal({ profile, activeTab, onTabChange }: PlayerPortalPr
               ) : null}
 
               {selfPlayer ? (
-                <div className="mt-4 rounded-[1.5rem] bg-slate-50 p-4">
-                  <p className="font-semibold text-slate-950">{selfPlayer.name}</p>
+                <div className="flex items-center gap-4 rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface-raised)] p-4">
+                  {selfPlayer.photoUrl ? <img src={selfPlayer.photoUrl} alt="" className="h-14 w-14 rounded-xl object-cover" /> : <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--ui-accent)_10%,white)] text-xl font-bold text-[var(--ui-accent)]">{selfPlayer.name.charAt(0)}</div>}
+                  <div className="min-w-0"><p className="truncate font-semibold text-slate-950">{selfPlayer.name}</p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {selfPlayer.teams.length > 0 ? (
                       selfPlayer.teams.map((teamId) => (
-                        <span key={teamId} className="rounded-full bg-[#1565ff] px-3 py-1 text-xs font-semibold text-white">
+                        <span key={teamId} className="rounded-full bg-[var(--ui-accent)] px-3 py-1 text-xs font-semibold text-white">
                           {teamById.get(teamId)?.name ?? 'Team'}
                         </span>
                       ))
@@ -143,36 +134,16 @@ export function PlayerPortal({ profile, activeTab, onTabChange }: PlayerPortalPr
                       <span className="text-sm text-slate-400">No teams assigned yet.</span>
                     )}
                   </div>
+                  </div>
                 </div>
               ) : null}
+              </div>
             </article>
 
-            <article className="rounded-[1.75rem] border border-white/70 bg-white/85 p-5 shadow-lg shadow-slate-900/5 backdrop-blur-sm">
-              <h2 className="text-2xl font-semibold tracking-tight text-slate-950">Attendance summary</h2>
-              {attendanceCounts && selfPlayer ? (
-                <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-3xl bg-[#1565ff] p-4 text-white">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">Going</p>
-                    <p className="mt-2 text-3xl font-semibold">{attendanceCounts.yes}</p>
-                  </div>
-                  <div className="rounded-3xl bg-[#f18a3f] p-4 text-slate-950">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-900/70">Pending</p>
-                    <p className="mt-2 text-3xl font-semibold">{attendanceCounts.pending}</p>
-                  </div>
-                  <div className="rounded-3xl bg-slate-950 p-4 text-white">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">Not going</p>
-                    <p className="mt-2 text-3xl font-semibold">{attendanceCounts.no}</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="mt-4 rounded-2xl border border-dashed border-slate-300 px-4 py-10 text-center text-sm text-slate-500">
-                  {selfPlayer ? 'No attendance data yet.' : 'Link your player record to see attendance.'}
-                </div>
-              )}
-            </article>
+            <PortalAttendanceSummary counts={attendanceCounts && selfPlayer ? attendanceCounts : null} emptyLabel={selfPlayer ? 'No attendance data yet.' : 'Link your player record to see attendance.'} />
           </div>
 
-          <section className="ui-panel p-6 shadow-lg shadow-slate-900/5 backdrop-blur-sm">
+          <section className="ui-module p-5 sm:p-6">
             <div className="flex items-end justify-between gap-3">
               <h2 className="text-2xl font-semibold tracking-tight text-slate-950">Your events</h2>
               <p className="text-sm text-slate-500">

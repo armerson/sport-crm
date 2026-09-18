@@ -9,6 +9,9 @@ export type SubscriptionStatus = 'active' | 'past_due' | 'cancelled' | 'incomple
 
 export type OneOffPaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded'
 
+export type FinanceTransactionStatus = OneOffPaymentStatus
+export type FinanceTransactionSource = 'subscription_invoice' | 'member_checkout' | 'guest_checkout' | 'manual'
+
 // ── Products ──────────────────────────────────
 
 export interface Product {
@@ -145,6 +148,24 @@ export interface OneOffPayment {
   stripeInvoiceId: string | null
   amountPence: number
   status: OneOffPaymentStatus
+  paidAt: string | null
+  createdAt: string
+}
+
+/** Normalised payment record used by the admin finance dashboard. */
+export interface FinanceTransaction {
+  id: string
+  sourceType: FinanceTransactionSource
+  externalId: string | null
+  parentId: string | null
+  playerId: string | null
+  productId: string | null
+  payerName: string | null
+  payerEmail: string | null
+  description: string
+  amountPence: number
+  currency: string
+  status: FinanceTransactionStatus
   paidAt: string | null
   createdAt: string
 }

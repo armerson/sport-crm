@@ -260,7 +260,7 @@ export function FormsManageSection({ profile, teams }: FormsManageSectionProps) 
         </div>
         {error && <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
         {success && <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{success}</div>}
-        <form onSubmit={handleSaveClubSettings} className="space-y-4">
+        <form onSubmit={handleSaveClubSettings} className="ui-form-surface space-y-4">
           <TextField
             label="Club name"
             value={clubInput.name}
@@ -295,7 +295,7 @@ export function FormsManageSection({ profile, teams }: FormsManageSectionProps) 
 
         <form onSubmit={handleSaveForm} className="space-y-5">
           {/* Form details */}
-          <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div className="ui-form-surface space-y-4">
             <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Form details</p>
             <TextField
               label="Form name"

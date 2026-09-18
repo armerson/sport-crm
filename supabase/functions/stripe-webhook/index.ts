@@ -51,16 +51,38 @@ Deno.serve(async (request) => {
         if (session.metadata?.crm_guest_checkout === 'true' && session.metadata?.guest_registration_id) {
           if (session.mode === 'payment' && session.payment_intent) {
             const gid = session.metadata.guest_registration_id
-            await db
+            const paidAt = new Date().toISOString()
+            const { data: registration } = await db
               .from('guest_checkout_registrations')
               .update({
                 status: 'paid',
                 stripe_payment_intent_id: session.payment_intent as string,
-                paid_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
+                paid_at: paidAt,
+                updated_at: paidAt,
               })
               .eq('id', gid)
               .eq('status', 'pending_payment')
+              .select('id, product_id, guardian_name, guardian_email, child_name, amount_pence, products(name)')
+              .maybeSingle()
+
+            if (registration) {
+              const product = registration.products as { name?: string } | null
+              await db.from('finance_transactions').upsert({
+                source_type: 'guest_checkout',
+                external_id: session.payment_intent as string,
+                stripe_payment_intent_id: session.payment_intent as string,
+                product_id: registration.product_id,
+                guest_registration_id: registration.id,
+                payer_name: registration.guardian_name,
+                payer_email: registration.guardian_email,
+                description: product?.name ?? `Guest registration · ${registration.child_name}`,
+                amount_pence: registration.amount_pence,
+                currency: session.currency ?? 'gbp',
+                status: 'paid',
+                paid_at: paidAt,
+                updated_at: paidAt,
+              }, { onConflict: 'external_id' })
+            }
           }
           break
         }
@@ -88,15 +110,40 @@ Deno.serve(async (request) => {
           )
         } else if (session.mode === 'payment' && session.payment_intent) {
           const playerIds = (session.metadata?.crm_player_ids ?? '').split(',').filter(Boolean)
+          const productIds = (session.metadata?.crm_product_ids ?? '').split(',').filter(Boolean)
           if (playerIds.length > 0) {
-            await db.from('one_off_payments').insert({
+            const paidAt = new Date().toISOString()
+            await db.from('one_off_payments').upsert({
               parent_id: parentId,
               player_id: playerIds[0],
+              product_id: productIds.length === 1 ? productIds[0] : null,
               stripe_payment_intent_id: session.payment_intent as string,
               amount_pence: session.amount_total ?? 0,
               status: 'paid',
-              paid_at: new Date().toISOString(),
-            })
+              paid_at: paidAt,
+            }, { onConflict: 'stripe_payment_intent_id' })
+
+            const { data: profile } = await db
+              .from('profiles')
+              .select('name, email')
+              .eq('id', parentId)
+              .maybeSingle()
+            await db.from('finance_transactions').upsert({
+              source_type: 'member_checkout',
+              external_id: session.payment_intent as string,
+              stripe_payment_intent_id: session.payment_intent as string,
+              parent_id: parentId,
+              player_id: playerIds.length === 1 ? playerIds[0] : null,
+              product_id: productIds.length === 1 ? productIds[0] : null,
+              payer_name: profile?.name ?? null,
+              payer_email: profile?.email ?? null,
+              description: session.metadata?.crm_description || 'Club payment',
+              amount_pence: session.amount_total ?? 0,
+              currency: session.currency ?? 'gbp',
+              status: 'paid',
+              paid_at: paidAt,
+              updated_at: paidAt,
+            }, { onConflict: 'external_id' })
           }
         }
         break
@@ -128,10 +175,30 @@ Deno.serve(async (request) => {
       case 'invoice.payment_failed': {
         const invoice = event.data.object as Stripe.Invoice
         if (invoice.subscription) {
-          await db
+          const { data: subscription } = await db
             .from('family_subscriptions')
             .update({ status: 'past_due', updated_at: new Date().toISOString() })
             .eq('stripe_subscription_id', invoice.subscription as string)
+            .select('parent_id')
+            .maybeSingle()
+          const { data: profile } = subscription?.parent_id
+            ? await db.from('profiles').select('name, email').eq('id', subscription.parent_id).maybeSingle()
+            : { data: null }
+          await db.from('finance_transactions').upsert({
+            source_type: 'subscription_invoice',
+            external_id: invoice.id,
+            stripe_payment_intent_id: typeof invoice.payment_intent === 'string' ? invoice.payment_intent : null,
+            stripe_invoice_id: invoice.id,
+            parent_id: subscription?.parent_id ?? null,
+            payer_name: profile?.name ?? invoice.customer_name ?? null,
+            payer_email: profile?.email ?? invoice.customer_email ?? null,
+            description: 'Monthly club fees',
+            amount_pence: invoice.amount_due ?? 0,
+            currency: invoice.currency ?? 'gbp',
+            status: 'failed',
+            paid_at: null,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'external_id' })
         }
         break
       }
@@ -139,10 +206,47 @@ Deno.serve(async (request) => {
       case 'invoice.payment_succeeded': {
         const invoice = event.data.object as Stripe.Invoice
         if (invoice.subscription) {
-          await db
+          const paidAt = invoice.status_transitions?.paid_at
+            ? new Date(invoice.status_transitions.paid_at * 1000).toISOString()
+            : new Date().toISOString()
+          const { data: subscription } = await db
             .from('family_subscriptions')
             .update({ status: 'active', updated_at: new Date().toISOString() })
             .eq('stripe_subscription_id', invoice.subscription as string)
+            .select('parent_id')
+            .maybeSingle()
+          const { data: profile } = subscription?.parent_id
+            ? await db.from('profiles').select('name, email').eq('id', subscription.parent_id).maybeSingle()
+            : { data: null }
+          await db.from('finance_transactions').upsert({
+            source_type: 'subscription_invoice',
+            external_id: invoice.id,
+            stripe_payment_intent_id: typeof invoice.payment_intent === 'string' ? invoice.payment_intent : null,
+            stripe_invoice_id: invoice.id,
+            parent_id: subscription?.parent_id ?? null,
+            payer_name: profile?.name ?? invoice.customer_name ?? null,
+            payer_email: profile?.email ?? invoice.customer_email ?? null,
+            description: 'Monthly club fees',
+            amount_pence: invoice.amount_paid ?? 0,
+            currency: invoice.currency ?? 'gbp',
+            status: 'paid',
+            paid_at: paidAt,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'external_id' })
+        }
+        break
+      }
+
+      case 'charge.refunded': {
+        const charge = event.data.object as Stripe.Charge
+        const paymentIntent = typeof charge.payment_intent === 'string' ? charge.payment_intent : null
+        const invoiceId = typeof charge.invoice === 'string' ? charge.invoice : null
+        if (paymentIntent) {
+          await db.from('one_off_payments').update({ status: 'refunded' }).eq('stripe_payment_intent_id', paymentIntent)
+          await db.from('finance_transactions').update({ status: 'refunded', updated_at: new Date().toISOString() }).eq('stripe_payment_intent_id', paymentIntent)
+        }
+        if (invoiceId) {
+          await db.from('finance_transactions').update({ status: 'refunded', updated_at: new Date().toISOString() }).eq('stripe_invoice_id', invoiceId)
         }
         break
       }

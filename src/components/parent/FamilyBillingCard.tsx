@@ -11,6 +11,7 @@ import { isSupabaseConfigured } from '../../lib/supabase.ts'
 import type { FamilySubscription, OneOffPayment, PlayerProduct, PricingResult, PricingRule } from '../../types/payments.ts'
 import type { PlayerRecord } from '../../types/club.ts'
 import type { UserProfile } from '../../types/auth.ts'
+import { Button } from '../ui/Button.tsx'
 
 interface FamilyBillingCardProps {
   profile: UserProfile
@@ -101,16 +102,17 @@ export function FamilyBillingCard({ profile, players }: FamilyBillingCardProps) 
 
   if (loading) {
     return (
-      <div className="rounded-[1.75rem] border border-white/70 bg-white/85 p-5 shadow-lg shadow-slate-900/5 backdrop-blur-sm">
-        <p className="text-sm text-slate-500">Loading billing…</p>
+      <div className="ui-module" aria-label="Loading family billing">
+        <div className="ui-module-header space-y-2"><div className="ui-skeleton h-4 w-24 rounded-lg" /><div className="ui-skeleton h-7 w-44 rounded-lg" /></div>
+        <div className="ui-module-body space-y-3"><div className="ui-skeleton h-24 rounded-xl" /><div className="ui-skeleton h-20 rounded-xl" /></div>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="rounded-[1.75rem] border border-white/70 bg-white/85 p-5 shadow-lg shadow-slate-900/5 backdrop-blur-sm">
-        <p className="text-sm text-rose-600">{error}</p>
+      <div className="ui-module">
+        <div className="ui-module-body"><p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700" role="alert">{error}</p></div>
       </div>
     )
   }
@@ -138,30 +140,32 @@ export function FamilyBillingCard({ profile, players }: FamilyBillingCardProps) 
   const hasStripeAccount = !!subscription?.stripeCustomerId
 
   return (
-    <div className="space-y-4 rounded-[1.75rem] border border-white/70 bg-white/85 p-5 shadow-lg shadow-slate-900/5 backdrop-blur-sm sm:p-6">
+    <section className="ui-module ui-view-enter">
       {/* Header */}
-      <div className="flex items-start justify-between gap-3">
+      <div className="ui-module-header flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold tracking-tight text-slate-950">Family billing</h2>
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--ui-accent)]">Payments</p>
+          <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">Family billing</h2>
           <p className="mt-0.5 text-sm text-slate-500">Your current club fees and payment status.</p>
         </div>
         {subscription && <SubscriptionStatusBadge status={subscription.status} />}
       </div>
 
+      <div className="ui-module-body space-y-5">
       {!hasAssignments ? (
-        <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-8 text-center">
-          <p className="text-sm text-slate-500">No products have been assigned to your children yet.</p>
-          <p className="mt-1 text-xs text-slate-400">Contact your club admin if you think this is wrong.</p>
+        <div className="ui-empty">
+          <p className="font-semibold text-slate-700">No fees assigned</p>
+          <p className="mt-1">Contact your club admin if you think something is missing.</p>
         </div>
       ) : (
         <>
           {/* Monthly total */}
           {pricing && pricing.monthlyPence > 0 && (
-            <div className="rounded-2xl border border-slate-100 bg-gradient-to-br from-[#1565ff]/5 to-white p-4">
+            <div className="rounded-xl border border-[var(--ui-accent)]/20 bg-[var(--ui-accent)]/[0.045] p-4 sm:p-5">
               <div className="flex items-end justify-between">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Monthly total</p>
-                  <p className="mt-1 text-3xl font-bold text-[#1565ff]">
+                  <p className="mt-1 text-3xl font-bold tracking-tight text-[var(--ui-accent)]">
                     {formatPence(pricing.monthlyPence)}
                     <span className="ml-1 text-base font-normal text-slate-400">/month</span>
                   </p>
@@ -199,8 +203,8 @@ export function FamilyBillingCard({ profile, players }: FamilyBillingCardProps) 
               const playerLineItems = pricing?.lineItems.filter((li) => li.playerId === player.id) ?? []
 
               return (
-                <div key={player.id} className="rounded-2xl border border-slate-100 bg-white p-4">
-                  <p className="font-semibold text-slate-900">{player.name}</p>
+                <article key={player.id} className="rounded-xl border border-[var(--ui-border)] bg-white p-4 shadow-[0_1px_2px_#10182808]">
+                  <div className="flex items-center gap-3"><span className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-sm font-bold text-slate-600">{player.name.charAt(0)}</span><p className="font-semibold text-slate-900">{player.name}</p></div>
                   <div className="mt-2 divide-y divide-slate-50">
                     {playerLineItems.map((item) => (
                       <div key={`${item.playerId}-${item.productId}`} className="flex items-center justify-between py-1.5">
@@ -222,7 +226,7 @@ export function FamilyBillingCard({ profile, players }: FamilyBillingCardProps) 
                       </div>
                     ))}
                   </div>
-                </div>
+                </article>
               )
             })}
           </div>
@@ -231,7 +235,7 @@ export function FamilyBillingCard({ profile, players }: FamilyBillingCardProps) 
           {oneOffPayments.length > 0 && (
             <div className="space-y-2">
               <p className="text-sm font-semibold text-slate-700">One-off payments</p>
-              <div className="divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white">
+              <div className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-[var(--ui-border)] bg-white">
                 {oneOffPayments.slice(0, 5).map((payment) => {
                   const assignment = assignments.find((a) => a.productId === payment.productId)
                   return (
@@ -270,73 +274,63 @@ export function FamilyBillingCard({ profile, players }: FamilyBillingCardProps) 
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             {/* Monthly subscription setup */}
             {hasMonthlyProducts && !subscriptionActive && (
-              <button
-                className="flex items-center justify-center gap-2 rounded-2xl bg-[#1565ff] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1a4d35] disabled:opacity-60"
+              <Button
+                className="w-full sm:w-auto"
                 disabled={stripeLoading !== null}
                 onClick={() => void handleStripeAction('subscription')}
                 type="button"
+                loading={stripeLoading === 'subscription'}
               >
-                {stripeLoading === 'subscription' ? (
-                  <svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                    <path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" strokeOpacity="0.25" />
-                    <path d="M21 12a9 9 0 0 1-9 9" />
-                  </svg>
-                ) : (
+                {stripeLoading !== 'subscription' ? (
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                     <rect x="1" y="4" width="22" height="16" rx="2" /><line x1="1" y1="10" x2="23" y2="10" />
                   </svg>
-                )}
+                ) : null}
                 Set up monthly payments
-              </button>
+              </Button>
             )}
 
             {/* One-off / membership payment */}
             {hasOneOffProducts && (
-              <button
-                className="flex items-center justify-center gap-2 rounded-2xl bg-[#f18a3f] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#d97832] disabled:opacity-60"
+              <Button
+                className="w-full sm:w-auto"
                 disabled={stripeLoading !== null}
                 onClick={() => void handleStripeAction('payment')}
                 type="button"
+                loading={stripeLoading === 'payment'}
               >
-                {stripeLoading === 'payment' ? (
-                  <svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                    <path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" strokeOpacity="0.25" />
-                    <path d="M21 12a9 9 0 0 1-9 9" />
-                  </svg>
-                ) : (
+                {stripeLoading !== 'payment' ? (
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                     <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
                   </svg>
-                )}
+                ) : null}
                 Pay outstanding fees
-              </button>
+              </Button>
             )}
 
             {/* Billing portal (manage existing subscription) */}
             {hasStripeAccount && (
-              <button
-                className="flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+              <Button
+                className="w-full sm:w-auto"
                 disabled={stripeLoading !== null}
                 onClick={() => void handleStripeAction('portal')}
                 type="button"
+                variant="secondary"
+                loading={stripeLoading === 'portal'}
               >
-                {stripeLoading === 'portal' ? (
-                  <svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                    <path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" strokeOpacity="0.25" />
-                    <path d="M21 12a9 9 0 0 1-9 9" />
-                  </svg>
-                ) : (
+                {stripeLoading !== 'portal' ? (
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                     <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
                     <polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
                   </svg>
-                )}
+                ) : null}
                 Manage billing ↗
-              </button>
+              </Button>
             )}
           </div>
         </>
       )}
-    </div>
+      </div>
+    </section>
   )
 }

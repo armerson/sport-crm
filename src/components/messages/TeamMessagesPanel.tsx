@@ -85,10 +85,11 @@ export function TeamMessagesPanel({ profile, initialTeamId = '' }: TeamMessagesP
   }
 
   return (
-    <section className="ui-panel p-4 sm:p-6">
+    <section className="ui-module ui-view-enter">
+      <div className="ui-module-header">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <p className="text-sm font-medium text-slate-500">Team messaging</p>
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--ui-accent)]">Communications</p>
           <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">
             {isSingleTeam
               ? `Messages for ${teams[0]?.name ?? 'your team'}`
@@ -104,10 +105,13 @@ export function TeamMessagesPanel({ profile, initialTeamId = '' }: TeamMessagesP
               : 'Keep plans and updates together. Choose your team to join the conversation.'}
           </p>
         </div>
-        <p className="text-sm text-slate-500">
+        <p className="rounded-full border border-[var(--ui-border)] bg-white px-3 py-1.5 text-xs font-semibold text-slate-600">
           {loadingTeams ? 'Loading…' : `${teams.length} ${teams.length === 1 ? 'team' : 'teams'}`}
         </p>
       </div>
+      </div>
+
+      <div className="ui-module-body">
 
       {!isConfigured ? (
         <div className="mt-5 rounded-3xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
@@ -174,14 +178,14 @@ export function TeamMessagesPanel({ profile, initialTeamId = '' }: TeamMessagesP
         </div>
       ) : null}
 
-      <div className="mt-6 space-y-4">
+      <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(20rem,0.75fr)] lg:items-start">
         {/* Conversation thread */}
-        <article className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 sm:p-5">
+        <article className="rounded-xl border border-[var(--ui-border)] bg-slate-50/60 p-4 sm:p-5">
           <div className="flex items-center justify-between gap-3">
             <h3 className="text-lg font-semibold text-slate-950">Conversation</h3>
             <p className="text-sm text-slate-500">{loadingMessages ? 'Loading…' : `${messages.length} messages`}</p>
           </div>
-          <div className="mt-4 max-h-[32rem] min-h-40 space-y-3 overflow-y-auto pr-1">
+          <div className="mt-4 max-h-[36rem] min-h-56 space-y-3 overflow-y-auto pr-1">
             {messages.length > 0 ? (
               messages.map((message) => {
                 const isCurrentUser = message.senderId === profile.id
@@ -190,8 +194,8 @@ export function TeamMessagesPanel({ profile, initialTeamId = '' }: TeamMessagesP
                 return (
                   <div
                     key={message.id}
-                    className={`rounded-2xl px-4 py-3 ${
-                      isCurrentUser ? 'ml-6 bg-[var(--ui-accent)] text-white' : 'mr-6 bg-white text-slate-900'
+                    className={`max-w-[88%] rounded-2xl px-4 py-3 shadow-[0_1px_2px_#10182808] ${
+                      isCurrentUser ? 'ml-auto rounded-br-md bg-[var(--ui-accent)] text-white' : 'mr-auto rounded-bl-md border border-[var(--ui-border)] bg-white text-slate-900'
                     }`}
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-medium">
@@ -205,7 +209,7 @@ export function TeamMessagesPanel({ profile, initialTeamId = '' }: TeamMessagesP
                 )
               })
             ) : (
-              <div className="rounded-2xl border border-dashed border-slate-300 px-4 py-10 text-center text-sm text-slate-500">
+              <div className="ui-empty">
                 {loadingMessages ? 'Loading conversation…' : activeTarget
                   ? 'No messages yet. Start the conversation below.'
                   : isAdmin
@@ -217,7 +221,7 @@ export function TeamMessagesPanel({ profile, initialTeamId = '' }: TeamMessagesP
         </article>
 
         {/* Send form */}
-        <article className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 sm:p-5">
+        <article className="rounded-xl border border-[var(--ui-border)] bg-white p-4 shadow-[0_1px_2px_#10182808] sm:p-5 lg:sticky lg:top-4">
           <h3 className="text-lg font-semibold text-slate-950">New message</h3>
           <p className="mt-2 text-sm leading-6 text-slate-600">
             {activeTarget === 'club'
@@ -234,7 +238,7 @@ export function TeamMessagesPanel({ profile, initialTeamId = '' }: TeamMessagesP
               <span>Message</span>
               <textarea
                 id="team-message-draft"
-                className="ui-input min-h-32 resize-y"
+                className="ui-input min-h-36 resize-y"
                 onChange={(e) => {
                   setDraft(e.target.value)
                   if (activeTarget) {
@@ -262,6 +266,7 @@ export function TeamMessagesPanel({ profile, initialTeamId = '' }: TeamMessagesP
             </Button>
           </form>
         </article>
+      </div>
       </div>
     </section>
   )

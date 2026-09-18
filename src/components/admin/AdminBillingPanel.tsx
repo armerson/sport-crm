@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { TabNav } from '../ui/TabNav.tsx'
 import { SuccessMessage } from '../ui/SuccessMessage.tsx'
 import { ConfirmInline } from '../ui/ConfirmInline.tsx'
@@ -7,7 +8,7 @@ import { useAdminPayments } from '../../hooks/useAdminPayments.ts'
 import { useAuth } from '../../hooks/useAuth.ts'
 import { formatPence, penceToPounds, poundsToPence } from '../../lib/pricing.ts'
 import { fetchAllPlayers } from '../../services/payments.ts'
-import type { BillingType, FamilyCapConfig, Product, ProductFormInput, TieredDiscountConfig } from '../../types/payments.ts'
+import type { BillingType, FamilyCapConfig, FinanceTransaction, Product, ProductFormInput, TieredDiscountConfig } from '../../types/payments.ts'
 import type { SimplePlayer } from '../../services/payments.ts'
 
 type BillingTab = 'products' | 'rules' | 'assign' | 'overview'
@@ -18,6 +19,13 @@ const BILLING_TABS = [
   { label: 'Assign', value: 'assign' as BillingTab },
   { label: 'Overview', value: 'overview' as BillingTab },
 ] as const
+
+const BILLING_TAB_META: Record<BillingTab, { eyebrow: string; title: string; description: string }> = {
+  products: { eyebrow: 'Fees catalogue', title: 'Products', description: 'Create and manage the fees available to players and families.' },
+  rules: { eyebrow: 'Pricing controls', title: 'Pricing rules', description: 'Manage sibling discounts and family caps in one place.' },
+  assign: { eyebrow: 'Player billing', title: 'Assign products', description: 'Choose a player, then manage the fees linked to their account.' },
+  overview: { eyebrow: 'Club finances', title: 'Finance', description: 'See cash received, payments needing attention, subscriptions, and expected fees.' },
+}
 
 // ── Icon helpers ────────────────────────────────────────────────────────────
 
@@ -118,7 +126,7 @@ function ProductsSection() {
       {error && <p className="text-sm text-rose-600">{error}</p>}
 
       {showForm && (
-        <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+        <form onSubmit={(e) => void handleSubmit(e)} className="ui-form-surface space-y-4">
           <h4 className="font-semibold text-slate-800">{editingId ? 'Edit product' : 'New product'}</h4>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1">
@@ -129,7 +137,7 @@ function ProductsSection() {
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                 placeholder="e.g. U10 Monthly Membership"
                 required
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1565ff]/30"
+                className="ui-input"
               />
             </div>
             <div className="space-y-1">
@@ -142,7 +150,7 @@ function ProductsSection() {
                 onChange={(e) => setPriceInput(e.target.value)}
                 placeholder="25.00"
                 required
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1565ff]/30"
+                className="ui-input"
               />
             </div>
             <div className="space-y-1">
@@ -150,7 +158,7 @@ function ProductsSection() {
               <select
                 value={form.billingType}
                 onChange={(e) => setForm((f) => ({ ...f, billingType: e.target.value as BillingType }))}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1565ff]/30"
+                className="ui-input"
               >
                 <option value="monthly">Monthly subscription</option>
                 <option value="membership">Membership fee (one-off, seasonal)</option>
@@ -169,7 +177,7 @@ function ProductsSection() {
                   value={form.durationMonths}
                   onChange={(e) => setForm((f) => ({ ...f, durationMonths: e.target.value }))}
                   placeholder="Leave blank for ongoing"
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1565ff]/30"
+                  className="ui-input"
                 />
                 <p className="text-xs text-slate-400">e.g. 10 months for a Sept–June season. Leave blank for ongoing until cancelled.</p>
               </div>
@@ -184,7 +192,7 @@ function ProductsSection() {
                   value={form.seasonLabel}
                   onChange={(e) => setForm((f) => ({ ...f, seasonLabel: e.target.value }))}
                   placeholder="e.g. 2025/26 Season"
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1565ff]/30"
+                  className="ui-input"
                 />
               </div>
             )}
@@ -195,7 +203,7 @@ function ProductsSection() {
                 value={form.description}
                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                 placeholder="Brief description for parents"
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1565ff]/30"
+                className="ui-input"
               />
             </div>
           </div>
@@ -209,15 +217,13 @@ function ProductsSection() {
       )}
 
       {loadingProducts ? (
-        <p className="text-sm text-slate-500">Loading products…</p>
+        <div aria-label="Loading products" className="space-y-2">{[1, 2, 3].map((item) => <div key={item} className="ui-skeleton h-16 rounded-xl" />)}</div>
       ) : products.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-500">
-          No products yet. Create your first product above.
-        </div>
+        <div className="ui-empty"><p className="font-semibold text-slate-700">No products yet</p><p className="mt-1">Create the first fee using the button above.</p></div>
       ) : (
-        <div className="divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white">
+        <div className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-[var(--ui-border)] bg-white">
           {products.map((product) => (
-            <div key={product.id} className="flex items-center justify-between gap-4 px-4 py-3.5">
+            <div key={product.id} className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <p className="truncate font-medium text-slate-900">{product.name}</p>
@@ -228,7 +234,7 @@ function ProductsSection() {
                   <p className="mt-0.5 truncate text-xs text-slate-500">{product.description}</p>
                 )}
               </div>
-              <div className="flex shrink-0 items-center gap-3">
+              <div className="flex shrink-0 flex-wrap items-center gap-3">
                 <span className="font-semibold text-slate-800">{formatPence(product.pricePence)}</span>
                 <button
                   type="button"
@@ -330,7 +336,7 @@ function PricingRulesSection() {
 
       <div className="space-y-4">
         {rules.map((rule) => (
-          <div key={rule.id} className="rounded-2xl border border-slate-200 bg-white p-5">
+          <div key={rule.id} className="rounded-xl border border-[var(--ui-border)] bg-white p-5 shadow-[0_1px_2px_#10182808]">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2">
@@ -556,9 +562,9 @@ function AssignSection() {
             onChange={(e) => {
               setPlayerSearch(e.target.value)
             }}
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1565ff]/30"
+            className="ui-input"
           />
-          <div className="max-h-72 overflow-y-auto rounded-2xl border border-slate-200 bg-white divide-y divide-slate-100">
+          <div className="max-h-72 divide-y divide-slate-100 overflow-y-auto rounded-xl border border-[var(--ui-border)] bg-white">
             {filteredPlayers.length === 0 ? (
               <p className="px-4 py-3 text-sm text-slate-500">No players found.</p>
             ) : (
@@ -574,7 +580,7 @@ function AssignSection() {
                       setEditingAssignmentId(null)
                     }}
                     className={`w-full px-4 py-3 text-left transition ${
-                      selectedPlayerId === player.id ? 'bg-[#1565ff]/5 font-semibold text-[#1565ff]' : 'hover:bg-slate-50'
+                      selectedPlayerId === player.id ? 'bg-[var(--ui-accent)]/[0.06] font-semibold text-[var(--ui-accent)]' : 'hover:bg-slate-50'
                     }`}
                   >
                     <p className="text-sm font-medium text-slate-900">{player.name}</p>
@@ -591,7 +597,7 @@ function AssignSection() {
         {/* Product assignment */}
         <div>
           {!selectedPlayer ? (
-            <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-slate-200 px-4 py-10 text-center text-sm text-slate-400">
+            <div className="ui-empty flex h-full items-center justify-center">
               Select a player to manage their products
             </div>
           ) : (
@@ -600,7 +606,7 @@ function AssignSection() {
               {activeProducts.length === 0 ? (
                 <p className="text-sm text-slate-500">No active products. Create products first.</p>
               ) : (
-                <div className="divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white">
+                <div className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-[var(--ui-border)] bg-white">
                   {activeProducts.map((product) => {
                     const isAssigned = assignedProductIds.has(product.id)
                     const assignment = playerAssignments.find((a) => a.productId === product.id)
@@ -753,66 +759,230 @@ function AssignSection() {
 
 // ── Overview section ────────────────────────────────────────────────────────
 
+function financeSourceLabel(source: FinanceTransaction['sourceType']) {
+  if (source === 'subscription_invoice') return 'Subscription'
+  if (source === 'guest_checkout') return 'Guest checkout'
+  if (source === 'member_checkout') return 'Member checkout'
+  return 'Manual'
+}
+
+function financeStatusClass(status: FinanceTransaction['status']) {
+  if (status === 'paid') return 'bg-emerald-100 text-emerald-800'
+  if (status === 'failed') return 'bg-rose-100 text-rose-800'
+  if (status === 'refunded') return 'bg-violet-100 text-violet-800'
+  return 'bg-amber-100 text-amber-800'
+}
+
+function csvCell(value: string | number) {
+  const raw = String(value)
+  const safe = /^[=+\-@]/.test(raw) ? `'${raw}` : raw
+  return `"${safe.replaceAll('"', '""')}"`
+}
+
 function OverviewSection() {
-  const { families, loadingFamilies, rules, refreshFamilies } = useAdminPayments()
+  const { families, financeTransactions, loadingFamilies, loadingFinance, loadingRules, rules, refreshFamilies, refreshFinance } = useAdminPayments()
   const [loaded, setLoaded] = useState(false)
+  const [transactionSearch, setTransactionSearch] = useState('')
+  const [transactionStatus, setTransactionStatus] = useState<'all' | FinanceTransaction['status']>('all')
 
   async function handleLoad() {
-    await refreshFamilies()
+    await Promise.all([refreshFamilies(), refreshFinance()])
     setLoaded(true)
   }
 
+  useEffect(() => {
+    if (!loadingRules && !loaded) void handleLoad()
+    // handleLoad is deliberately tied to the loaded state and completed rule fetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadingRules, loaded])
+
+  const filteredTransactions = useMemo(() => {
+    const query = transactionSearch.trim().toLowerCase()
+    return financeTransactions.filter((transaction) => {
+      if (transactionStatus !== 'all' && transaction.status !== transactionStatus) return false
+      if (!query) return true
+      return [transaction.payerName, transaction.payerEmail, transaction.description, financeSourceLabel(transaction.sourceType)]
+        .some((value) => value?.toLowerCase().includes(query))
+    })
+  }, [financeTransactions, transactionSearch, transactionStatus])
+
   if (!loaded) {
     return (
-      <div className="space-y-5">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-slate-900">Family billing overview</h3>
-          <Button variant="primary" onClick={() => void handleLoad()} disabled={loadingFamilies}>
-            {loadingFamilies ? 'Loading…' : 'Load billing data'}
-          </Button>
-        </div>
-        <p className="text-sm text-slate-500">
-          Click to calculate billing totals for every family based on current products, assignments, and pricing rules.
-        </p>
+      <div className="space-y-4" aria-label="Loading finance overview">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{[1, 2, 3, 4].map((item) => <div key={item} className="ui-skeleton h-28 rounded-xl" />)}</div>
+        <div className="grid gap-4 lg:grid-cols-2"><div className="ui-skeleton h-72 rounded-xl" /><div className="ui-skeleton h-72 rounded-xl" /></div>
       </div>
     )
   }
 
   const totalMonthly = families.reduce((s, f) => s + f.pricing.monthlyPence, 0)
+  const totalOneOff = families.reduce((s, f) => s + f.pricing.oneOffPence, 0)
+  const totalDiscounts = families.reduce((s, f) => s + f.pricing.totalDiscountPence, 0)
+  const monthStart = new Date()
+  monthStart.setDate(1)
+  monthStart.setHours(0, 0, 0, 0)
+  const paidTransactions = financeTransactions.filter((transaction) => transaction.status === 'paid')
+  const receivedThisMonth = paidTransactions
+    .filter((transaction) => new Date(transaction.paidAt ?? transaction.createdAt) >= monthStart)
+    .reduce((sum, transaction) => sum + transaction.amountPence, 0)
+  const receivedAllTime = paidTransactions.reduce((sum, transaction) => sum + transaction.amountPence, 0)
+  const failedOrPending = financeTransactions.filter((transaction) => transaction.status === 'failed' || transaction.status === 'pending')
+  const failedOrPendingPence = failedOrPending.reduce((sum, transaction) => sum + transaction.amountPence, 0)
+  const refundedPence = financeTransactions.filter((transaction) => transaction.status === 'refunded').reduce((sum, transaction) => sum + transaction.amountPence, 0)
+  const activeSubscriptions = families.filter((family) => family.subscriptionStatus === 'active' || family.subscriptionStatus === 'trialing').length
+  const attentionSubscriptions = families.filter((family) => family.subscriptionStatus === 'past_due' || family.subscriptionStatus === 'incomplete').length
+  const statusData = [
+    { name: 'Active / trial', value: activeSubscriptions, color: '#087a55' },
+    { name: 'Needs attention', value: attentionSubscriptions, color: '#b42318' },
+    { name: 'Paused / cancelled', value: families.filter((family) => family.subscriptionStatus === 'paused' || family.subscriptionStatus === 'cancelled').length, color: '#667085' },
+    { name: 'Not set up', value: families.filter((family) => !family.subscriptionStatus && family.pricing.monthlyPence > 0).length, color: '#f59e0b' },
+  ].filter((item) => item.value > 0)
+  const productTotals = new Map<string, number>()
+  for (const family of families) {
+    for (const item of family.pricing.lineItems) {
+      productTotals.set(item.productName, (productTotals.get(item.productName) ?? 0) + item.finalPricePence)
+    }
+  }
+  const productData = [...productTotals.entries()]
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 6)
+
+  function exportTransactions() {
+    const headings = ['Date', 'Payer', 'Email', 'Description', 'Type', 'Status', 'Amount (GBP)', 'Reference']
+    const rows = filteredTransactions.map((transaction) => [
+      new Date(transaction.paidAt ?? transaction.createdAt).toLocaleDateString('en-GB'),
+      transaction.payerName ?? '',
+      transaction.payerEmail ?? '',
+      transaction.description,
+      financeSourceLabel(transaction.sourceType),
+      transaction.status,
+      (transaction.amountPence / 100).toFixed(2),
+      transaction.externalId ?? '',
+    ])
+    const csv = [headings, ...rows].map((row) => row.map(csvCell).join(',')).join('\n')
+    const href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
+    const link = document.createElement('a')
+    link.href = href
+    link.download = `club-finance-${new Date().toISOString().slice(0, 10)}.csv`
+    link.click()
+    URL.revokeObjectURL(href)
+  }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-slate-900">Family billing overview</h3>
-        <Button variant="secondary" onClick={() => void handleLoad()} disabled={loadingFamilies}>
-          {loadingFamilies ? 'Refreshing…' : 'Refresh'}
+        <div><h3 className="text-lg font-semibold text-slate-900">Finance control centre</h3><p className="mt-1 text-sm text-slate-500">Confirmed cash, payment issues, and expected club fees.</p></div>
+        <Button variant="secondary" onClick={() => void handleLoad()} disabled={loadingFamilies || loadingFinance}>
+          {loadingFamilies || loadingFinance ? 'Refreshing…' : 'Refresh'}
         </Button>
       </div>
 
-      {/* Active rules summary */}
-      <div className="flex flex-wrap gap-2">
-        {rules.filter((r) => r.active).map((r) => (
-          <span key={r.id} className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800">
-            {r.label ?? r.type}
-          </span>
-        ))}
-        {!rules.some((r) => r.active) && (
-          <span className="text-xs text-slate-400">No pricing rules active — full price billing.</span>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="ui-metric border-emerald-200 bg-emerald-50/60">
+          <p className="ui-metric-label">Received this month</p>
+          <p className="mt-1 text-3xl font-bold tracking-tight text-emerald-700">{formatPence(receivedThisMonth)}</p>
+          <p className="mt-1 text-xs text-slate-500">Confirmed Stripe payments</p>
+        </div>
+        <div className="ui-metric">
+          <p className="ui-metric-label">Received all time</p>
+          <p className="ui-metric-value">{formatPence(receivedAllTime)}</p>
+          <p className="mt-1 text-xs text-slate-500">{paidTransactions.length} successful payment{paidTransactions.length === 1 ? '' : 's'}</p>
+        </div>
+        <div className={`ui-metric ${failedOrPending.length > 0 ? 'border-rose-200 bg-rose-50/60' : ''}`}>
+          <p className="ui-metric-label">Needs attention</p>
+          <p className={`ui-metric-value ${failedOrPending.length > 0 ? 'text-rose-700' : ''}`}>{formatPence(failedOrPendingPence)}</p>
+          <p className="mt-1 text-xs text-slate-500">{failedOrPending.length} pending or failed</p>
+        </div>
+        <div className="ui-metric">
+          <p className="ui-metric-label">Refunded</p>
+          <p className="ui-metric-value">{formatPence(refundedPence)}</p>
+          <p className="mt-1 text-xs text-slate-500">Recorded from Stripe refunds</p>
+        </div>
+      </div>
+
+      <article className="overflow-hidden rounded-xl border border-[var(--ui-border)] bg-white">
+        <div className="flex flex-col gap-3 border-b border-slate-100 p-4 sm:flex-row sm:items-end sm:justify-between sm:p-5">
+          <div><h4 className="font-semibold text-slate-900">Payment activity</h4><p className="mt-1 text-sm text-slate-500">Who paid, what they paid for, and payment status.</p></div>
+          <Button variant="secondary" onClick={exportTransactions} disabled={filteredTransactions.length === 0}>Export CSV</Button>
+        </div>
+        <div className="grid gap-3 border-b border-slate-100 bg-slate-50/70 p-4 sm:grid-cols-[1fr_12rem]">
+          <input className="ui-input" value={transactionSearch} onChange={(event) => setTransactionSearch(event.target.value)} placeholder="Search payer, email or payment…" aria-label="Search payments" />
+          <select className="ui-input" value={transactionStatus} onChange={(event) => setTransactionStatus(event.target.value as typeof transactionStatus)} aria-label="Filter payment status">
+            <option value="all">All statuses</option><option value="paid">Paid</option><option value="pending">Pending</option><option value="failed">Failed</option><option value="refunded">Refunded</option>
+          </select>
+        </div>
+        {filteredTransactions.length === 0 ? (
+          <div className="ui-empty m-4"><p className="font-semibold text-slate-700">No matching payments</p><p className="mt-1">New Stripe payments will appear here automatically.</p></div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-[760px] w-full text-left text-sm">
+              <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-3 font-semibold">Date</th><th className="px-4 py-3 font-semibold">Payer</th><th className="px-4 py-3 font-semibold">Payment</th><th className="px-4 py-3 font-semibold">Status</th><th className="px-4 py-3 text-right font-semibold">Amount</th></tr></thead>
+              <tbody className="divide-y divide-slate-100">{filteredTransactions.slice(0, 100).map((transaction) => <tr key={transaction.id} className="hover:bg-slate-50/70">
+                <td className="whitespace-nowrap px-4 py-3 text-slate-500">{new Date(transaction.paidAt ?? transaction.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
+                <td className="px-4 py-3"><p className="font-medium text-slate-900">{transaction.payerName || 'Unknown payer'}</p><p className="text-xs text-slate-500">{transaction.payerEmail || 'No email recorded'}</p></td>
+                <td className="px-4 py-3"><p className="font-medium text-slate-800">{transaction.description}</p><p className="text-xs text-slate-500">{financeSourceLabel(transaction.sourceType)}</p></td>
+                <td className="px-4 py-3"><span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold capitalize ${financeStatusClass(transaction.status)}`}>{transaction.status}</span></td>
+                <td className="whitespace-nowrap px-4 py-3 text-right font-semibold text-slate-900">{formatPence(transaction.amountPence)}</td>
+              </tr>)}</tbody>
+            </table>
+          </div>
         )}
+      </article>
+
+      <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm leading-6 text-blue-950">
+        <strong>Expected fees:</strong> the figures below use current product assignments and pricing rules, so they may differ from confirmed cash received above.
       </div>
 
-      {/* Summary stat */}
-      <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-[#1565ff]/5 to-white p-5">
-        <p className="text-sm text-slate-500">Total club monthly revenue (calculated)</p>
-        <p className="mt-1 text-3xl font-bold text-[#1565ff]">{formatPence(totalMonthly)}</p>
-        <p className="text-xs text-slate-400 mt-0.5">After discounts · {families.filter(f => f.pricing.monthlyPence > 0).length} paying families</p>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="ui-metric border-[var(--ui-accent)]/20 bg-[var(--ui-accent)]/[0.045]">
+          <p className="ui-metric-label">Expected monthly fees</p>
+          <p className="mt-1 text-3xl font-bold tracking-tight text-[var(--ui-accent)]">{formatPence(totalMonthly)}</p>
+          <p className="mt-1 text-xs text-slate-500">Current recurring assignments</p>
+        </div>
+        <div className="ui-metric">
+          <p className="ui-metric-label">Active subscriptions</p>
+          <p className="ui-metric-value">{activeSubscriptions}</p>
+          <p className="mt-1 text-xs text-slate-500">Active or trialling</p>
+        </div>
+        <div className={`ui-metric ${attentionSubscriptions > 0 ? 'border-rose-200 bg-rose-50/60' : ''}`}>
+          <p className="ui-metric-label">Needs attention</p>
+          <p className={`ui-metric-value ${attentionSubscriptions > 0 ? 'text-rose-700' : ''}`}>{attentionSubscriptions}</p>
+          <p className="mt-1 text-xs text-slate-500">Past due or incomplete</p>
+        </div>
+        <div className="ui-metric">
+          <p className="ui-metric-label">Discounts applied</p>
+          <p className="ui-metric-value">{formatPence(totalDiscounts)}</p>
+          <p className="mt-1 text-xs text-slate-500">Across current family pricing</p>
+        </div>
       </div>
 
-      {/* Family table */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <article className="rounded-xl border border-[var(--ui-border)] bg-white p-4 sm:p-5">
+          <div className="flex items-start justify-between gap-3"><div><h4 className="font-semibold text-slate-900">Subscription health</h4><p className="mt-1 text-sm text-slate-500">Families with recurring fees</p></div><span className="text-xs font-semibold text-slate-500">{statusData.reduce((sum, item) => sum + item.value, 0)} accounts</span></div>
+          {statusData.length > 0 ? <div className="mt-4 grid items-center gap-4 sm:grid-cols-[12rem_1fr]">
+            <div className="h-48" aria-label="Subscription status chart"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={statusData} dataKey="value" nameKey="name" innerRadius={48} outerRadius={75} paddingAngle={2}>{statusData.map((item) => <Cell key={item.name} fill={item.color} />)}</Pie><Tooltip /></PieChart></ResponsiveContainer></div>
+            <div className="space-y-2">{statusData.map((item) => <div key={item.name} className="flex items-center justify-between gap-3 text-sm"><span className="flex items-center gap-2 text-slate-600"><span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />{item.name}</span><strong className="text-slate-900">{item.value}</strong></div>)}</div>
+          </div> : <div className="ui-empty mt-4"><p>No recurring subscription data yet.</p></div>}
+        </article>
+
+        <article className="rounded-xl border border-[var(--ui-border)] bg-white p-4 sm:p-5">
+          <div><h4 className="font-semibold text-slate-900">Fees by product</h4><p className="mt-1 text-sm text-slate-500">Top current assignments after discounts</p></div>
+          {productData.length > 0 ? <div className="mt-4 h-56" aria-label="Calculated fees by product chart"><ResponsiveContainer width="100%" height="100%"><BarChart data={productData} layout="vertical" margin={{ left: 4, right: 12 }}><CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e4e7ec" /><XAxis type="number" tickFormatter={(value) => `£${Math.round(Number(value) / 100)}`} tick={{ fontSize: 11, fill: '#667085' }} /><YAxis dataKey="name" type="category" width={92} tick={{ fontSize: 11, fill: '#475467' }} tickLine={false} axisLine={false} /><Tooltip formatter={(value) => formatPence(Number(value))} /><Bar dataKey="value" fill="var(--ui-accent)" radius={[0, 5, 5, 0]} maxBarSize={24} /></BarChart></ResponsiveContainer></div> : <div className="ui-empty mt-4"><p>No product assignments yet.</p></div>}
+        </article>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="ui-metric"><p className="ui-metric-label">Families with monthly fees</p><p className="ui-metric-value">{families.filter((family) => family.pricing.monthlyPence > 0).length}</p></div>
+        <div className="ui-metric"><p className="ui-metric-label">Assigned one-off fees</p><p className="ui-metric-value">{formatPence(totalOneOff)}</p></div>
+        <div className="ui-metric"><p className="ui-metric-label">Active pricing rules</p><p className="ui-metric-value">{rules.filter((rule) => rule.active).length}</p></div>
+      </div>
+
+      <div className="flex items-end justify-between gap-3"><div><h4 className="font-semibold text-slate-900">Family accounts</h4><p className="mt-1 text-sm text-slate-500">Drill down into current assigned fees.</p></div><span className="text-xs font-semibold text-slate-500">{families.length} total</span></div>
       {families.length === 0 ? (
-        <p className="text-sm text-slate-500">No families found.</p>
+        <div className="ui-empty"><p className="font-semibold text-slate-700">No families found</p><p className="mt-1">Family billing records will appear here.</p></div>
       ) : (
-        <div className="divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white">
+        <div className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-[var(--ui-border)] bg-white">
           {families.map((family) => (
             <div key={family.parentId} className="px-4 py-4">
               <div className="flex items-start justify-between gap-4">
@@ -882,9 +1052,10 @@ interface AdminBillingPanelProps {
 
 export function AdminBillingPanel({ activeTab, onTabChange }: AdminBillingPanelProps) {
   const { isConfigured } = useAdminPayments()
+  const meta = BILLING_TAB_META[activeTab]
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 ui-view-enter">
       <div className="hidden sm:block">
         <TabNav tabs={BILLING_TABS} active={activeTab} onChange={onTabChange} />
       </div>
@@ -895,12 +1066,19 @@ export function AdminBillingPanel({ activeTab, onTabChange }: AdminBillingPanelP
         </div>
       )}
 
-      <div className="rounded-[1.75rem] border border-white/70 bg-white/85 p-5 shadow-lg shadow-slate-900/5 backdrop-blur-sm sm:p-6">
+      <section className="ui-module">
+        <div className="ui-module-header">
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--ui-accent)]">{meta.eyebrow}</p>
+          <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">{meta.title}</h2>
+          <p className="mt-1 text-sm leading-6 text-slate-600">{meta.description}</p>
+        </div>
+        <div className="ui-module-body">
         {activeTab === 'products' && <ProductsSection />}
         {activeTab === 'rules' && <PricingRulesSection />}
         {activeTab === 'assign' && <AssignSection />}
         {activeTab === 'overview' && <OverviewSection />}
-      </div>
+        </div>
+      </section>
     </div>
   )
 }
