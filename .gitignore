@@ -25,6 +25,8 @@ functions/lib
 *.sw?
 .vercel
 dev-dist
+playwright-report
+test-results
 
 # Supabase temp files
 supabase/.temp
