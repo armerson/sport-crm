@@ -1,4 +1,4 @@
-import type { AttendanceStat, AttendanceRecord, EventFormInput, EventRecord, LineupEntry, MotmTally, MotmVote, RecurrenceOptions, ResultFormInput, ResultRecord, TeamRecord } from '../types/club.ts'
+import type { AttendanceStat, AttendanceRecord, AttendanceReminderRecord, EventFormInput, EventRecord, LineupEntry, MotmTally, MotmVote, RecurrenceOptions, ResultFormInput, ResultRecord, TeamRecord } from '../types/club.ts'
 import { mapAttendanceRow, mapEventRow, mapLineupRow, mapMotmVoteRow, mapResultRow, mapTeamRow, requireSupabase, subscribeToTables } from './supabaseHelpers.ts'
 
 export function subscribeToCoachTeams(
@@ -145,6 +145,53 @@ export function subscribeToAttendanceForEvent(
 
     onData((data ?? []).map((row) => mapAttendanceRow(row as Record<string, unknown>)))
   })
+}
+
+export function subscribeToAttendanceRemindersForEvent(
+  eventId: string,
+  onData: (reminders: AttendanceReminderRecord[]) => void,
+  onError: (message: string) => void,
+): () => void {
+  const client = requireSupabase()
+
+  return subscribeToTables(`event-attendance-reminders-${eventId}`, ['attendance_reminders'], async () => {
+    const { data, error } = await client
+      .from('attendance_reminders')
+      .select('event_id, player_id, sent_at, sent_by, source')
+      .eq('event_id', eventId)
+      .order('sent_at', { ascending: false })
+
+    if (error) {
+      onError('Unable to load reminder history.')
+      return
+    }
+
+    onData((data ?? []).map((row) => ({
+      eventId: row.event_id as string,
+      playerId: row.player_id as string,
+      sentAt: row.sent_at as string,
+      sentBy: typeof row.sent_by === 'string' ? row.sent_by : null,
+      source: row.source === 'manual' ? 'manual' : 'automatic',
+    })))
+  })
+}
+
+export async function recordAttendanceReminders(eventId: string, playerIds: string[], sentBy: string): Promise<string> {
+  if (!playerIds.length) return new Date().toISOString()
+  const client = requireSupabase()
+  const sentAt = new Date().toISOString()
+  const { error } = await client.from('attendance_reminders').upsert(
+    playerIds.map((playerId) => ({
+      event_id: eventId,
+      player_id: playerId,
+      sent_at: sentAt,
+      sent_by: sentBy,
+      source: 'manual',
+    })),
+    { onConflict: 'event_id,player_id' },
+  )
+  if (error) throw new Error(error.message)
+  return sentAt
 }
 
 export interface AttendanceCounts { yes: number; pending: number; no: number }

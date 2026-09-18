@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { isSupabaseConfigured, supabaseConfigError } from '../lib/supabase.ts'
-import { fetchAttendanceRecipientIds, fetchTeamParentIds, sendPushToUsers } from '../lib/pushNotifications.ts'
+import { fetchAttendanceRecipientsByPlayer, fetchTeamParentIds, sendPushToUsers } from '../lib/pushNotifications.ts'
 import {
   castMotmVote,
   coachUpdateAttendance,
@@ -9,8 +9,10 @@ import {
   deleteEvent,
   deleteEventSeries,
   removeLineupPlayer,
+  recordAttendanceReminders,
   subscribeToAttendanceForEvent,
   subscribeToAttendanceCountsForTeam,
+  subscribeToAttendanceRemindersForEvent,
   subscribeToCoachTeams,
   subscribeToEventsForTeam,
   subscribeToEventsForTeams,
@@ -23,7 +25,7 @@ import {
   upsertResult,
   type AttendanceCounts,
 } from '../services/coachClub.ts'
-import type { AttendanceRecord, EventFormInput, EventRecord, LineupEntry, MotmTally, MotmVote, RecurrenceOptions, ResultFormInput, ResultRecord, TeamRecord } from '../types/club.ts'
+import type { AttendanceRecord, AttendanceReminderRecord, EventFormInput, EventRecord, LineupEntry, MotmTally, MotmVote, RecurrenceOptions, ResultFormInput, ResultRecord, TeamRecord } from '../types/club.ts'
 
 function getCoachErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback
@@ -33,6 +35,7 @@ export function useCoachClubData(coachId: string, selectedTeamId: string, select
   const [teams, setTeams] = useState<TeamRecord[]>([])
   const [events, setEvents] = useState<EventRecord[]>([])
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([])
+  const [attendanceReminders, setAttendanceReminders] = useState<AttendanceReminderRecord[]>([])
   const [results, setResults] = useState<ResultRecord[]>([])
   const [attendanceCounts, setAttendanceCounts] = useState<Map<string, AttendanceCounts>>(new Map())
   const [lineup, setLineup] = useState<LineupEntry[]>([])
@@ -157,6 +160,18 @@ export function useCoachClubData(coachId: string, selectedTeamId: string, select
     return unsubscribe
   }, [activeEventId])
 
+  useEffect(() => {
+    if (!activeEventId || !isSupabaseConfigured) {
+      setAttendanceReminders([])
+      return undefined
+    }
+    return subscribeToAttendanceRemindersForEvent(
+      activeEventId,
+      setAttendanceReminders,
+      () => undefined,
+    )
+  }, [activeEventId])
+
   // Lineup subscription — only for match events
   useEffect(() => {
     if (!activeEventId || activeEventType !== 'match' || !isSupabaseConfigured) {
@@ -204,6 +219,7 @@ export function useCoachClubData(coachId: string, selectedTeamId: string, select
     teams,
     events,
     attendance,
+    attendanceReminders,
     results,
     resultByEventId,
     attendanceCounts,
@@ -387,24 +403,29 @@ export function useCoachClubData(coachId: string, selectedTeamId: string, select
       }
     },
 
-    sendAttendanceReminder: async (eventId: string, eventTitle: string): Promise<number> => {
+    sendAttendanceReminder: async (eventId: string, eventTitle: string, selectedPlayerIds: string[]) => {
+      const selected = new Set(selectedPlayerIds)
       const pendingPlayerIds = attendance
-        .filter((a) => a.eventId === eventId && a.status === 'pending')
+        .filter((a) => a.eventId === eventId && a.status === 'pending' && selected.has(a.playerId))
         .map((a) => a.playerId)
 
-      if (!pendingPlayerIds.length) return 0
+      if (!pendingPlayerIds.length) return { recipients: 0, players: 0, skipped: 0, sentAt: null }
 
-      const recipientIds = await fetchAttendanceRecipientIds(pendingPlayerIds)
-      if (!recipientIds.length) return 0
+      const recipientsByPlayer = await fetchAttendanceRecipientsByPlayer(pendingPlayerIds)
+      const linkedPlayerIds = pendingPlayerIds.filter((playerId) => (recipientsByPlayer.get(playerId)?.length ?? 0) > 0)
+      const recipientIds = [...new Set(linkedPlayerIds.flatMap((playerId) => recipientsByPlayer.get(playerId) ?? []))]
+      if (!recipientIds.length) return { recipients: 0, players: 0, skipped: pendingPlayerIds.length, sentAt: null }
 
-      await sendPushToUsers(
+      const recorded = await sendPushToUsers(
         recipientIds,
         'Attendance reminder',
         `Please confirm attendance for: ${eventTitle}`,
         '/',
       )
+      if (!recorded) throw new Error('The reminder could not be sent.')
 
-      return recipientIds.length
+      const sentAt = await recordAttendanceReminders(eventId, linkedPlayerIds, coachId)
+      return { recipients: recipientIds.length, players: linkedPlayerIds.length, skipped: pendingPlayerIds.length - linkedPlayerIds.length, sentAt }
     },
   }
 }
