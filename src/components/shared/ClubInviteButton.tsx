@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { clubShareUrl } from '../../clubos/runtime.ts'
 import { createClubInvite } from '../../services/teamInvites.ts'
 
 interface ClubInviteButtonProps {
@@ -14,7 +15,7 @@ export function ClubInviteButton({ role }: ClubInviteButtonProps) {
     setState('loading')
     try {
       const code = await createClubInvite(role)
-      setLink(`${window.location.origin}/join/club/${code}`)
+      setLink(clubShareUrl(`/join/club/${code}`))
       setOpen(true)
       setState('idle')
     } catch {

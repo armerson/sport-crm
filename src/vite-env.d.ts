@@ -3,6 +3,9 @@
 declare const __APP_VERSION__: string
 
 interface ImportMetaEnv {
+  readonly VITE_CLUBOS_MODE?: 'standalone' | 'directory' | 'multi'
+  readonly VITE_CLUBOS_REGISTRY_JSON?: string
+  readonly VITE_CLUBOS_BACKEND_HOSTS?: string
   readonly VITE_CLUB_DIRECTORY_JSON?: string
   readonly VITE_CLUB_DIRECTORY_ONLY?: string
   readonly VITE_CLUB_PUBLIC_SITE_JSON?: string
@@ -14,8 +17,9 @@ interface ImportMetaEnv {
   readonly VITE_CLUB_HOME_VENUE_ALIASES?: string
   readonly VITE_CLUB_HOME_VENUE_LAT?: string
   readonly VITE_CLUB_HOME_VENUE_LNG?: string
-  readonly VITE_SUPABASE_URL: string
-  readonly VITE_SUPABASE_ANON_KEY: string
+  readonly VITE_SUPABASE_URL?: string
+  readonly VITE_SUPABASE_ANON_KEY?: string
+  readonly VITE_VAPID_PUBLIC_KEY?: string
 }
 
 interface ImportMeta {

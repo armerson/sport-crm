@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { parsePublicClubSite } from '../utils/clubDirectory.ts'
+import { parsePublicClubSite } from '../utils/publicClubSite.ts'
 
 function loadSite() {
   try { return parsePublicClubSite(import.meta.env.VITE_CLUB_PUBLIC_SITE_JSON) } catch { return null }

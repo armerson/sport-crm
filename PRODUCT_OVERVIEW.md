@@ -42,9 +42,12 @@ Each club should have:
 The same application code can be reused across these deployments. This avoids
 hardcoding Ambassadors FC into the product and keeps each club’s records separate.
 
-A single shared platform with a club switcher is not part of the initial release.
-The current database is not designed to safely mix independent clubs in one
-backend; that would require explicit tenant membership and access policies.
+Clubs will not share a database. The current schema is not designed to mix
+independent clubs in one backend. Instead, one ClubOS app can serve many clubs:
+members find their club, and the app connects to that club's own backend from an
+operator-managed registry. Standalone branded deployments keep working
+unchanged. See [ARCHITECTURE.md](ARCHITECTURE.md) and
+[ADR 0001](docs/adr/0001-club-isolation-model.md).
 
 ## Who uses it
 
@@ -180,6 +183,11 @@ verified Brownlow Road map pin.
 - [REVIEW_GAPS.md](REVIEW_GAPS.md): an earlier technical review; some findings may
   have changed since it was written.
 
-## Multi-club foundation (proposed)
+## ClubOS platform direction
 
-See [MULTI_CLUB_ROADMAP.md](MULTI_CLUB_ROADMAP.md) for the directory-only deployment and optional public website starter. These changes retain separate club backends; native switching and a website CMS are later phases.
+- [AGENTS.md](AGENTS.md): product vision, architectural rules and conventions.
+- [MULTI_CLUB_ROADMAP.md](MULTI_CLUB_ROADMAP.md): audit findings and prioritised phases.
+- [SECURITY.md](SECURITY.md): security and club-isolation model.
+- [MOBILE_APP_ROADMAP.md](MOBILE_APP_ROADMAP.md) and
+  [WEBSITE_BUILDER_ROADMAP.md](WEBSITE_BUILDER_ROADMAP.md).
+- [CHANGELOG.md](CHANGELOG.md).

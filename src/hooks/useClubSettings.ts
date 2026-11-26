@@ -1,20 +1,21 @@
 import { useEffect, useState } from 'react'
 import { fetchClubSettings, saveClubSettings, uploadClubLogo } from '../services/forms.ts'
 import type { ClubSettings } from '../types/forms.ts'
+import { clubSessionStorage } from '../clubos/runtime.ts'
 
 const DEFAULT: ClubSettings = { name: 'My Club', logoUrl: null, primaryColor: '#1565ff', instagramTagline: '', instagramHashtags: '' }
 const STORAGE_KEY = 'clubos_settings'
 
 function readStoredSettings(): ClubSettings | null {
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY)
+    const raw = clubSessionStorage()?.getItem(STORAGE_KEY)
     if (!raw) return null
     return JSON.parse(raw) as ClubSettings
   } catch { return null }
 }
 
 function writeStoredSettings(s: ClubSettings) {
-  try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(s)) } catch { /* ignore */ }
+  try { clubSessionStorage()?.setItem(STORAGE_KEY, JSON.stringify(s)) } catch { /* ignore */ }
 }
 
 /** Module-level cache so multiple consumers don't re-fetch on every mount. */

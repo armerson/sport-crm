@@ -9,6 +9,7 @@ import {
 } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { isSupabaseConfigured, supabase, supabaseConfigError } from '../lib/supabase.ts'
+import { clubSessionStorage, clubShareUrl } from '../clubos/runtime.ts'
 import { normalizeRoles } from '../services/supabaseHelpers.ts'
 import type {
   AuthContextValue,
@@ -28,7 +29,7 @@ const PROFILE_CACHE_KEY = 'crm_profile_cache'
 
 function readCachedProfile(userId: string): UserProfile | null {
   try {
-    const raw = sessionStorage.getItem(PROFILE_CACHE_KEY)
+    const raw = clubSessionStorage()?.getItem(PROFILE_CACHE_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw) as { userId: string; profile: UserProfile }
     if (parsed.userId !== userId) return null
@@ -40,12 +41,12 @@ function readCachedProfile(userId: string): UserProfile | null {
 
 function writeCachedProfile(userId: string, profile: UserProfile) {
   try {
-    sessionStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify({ userId, profile }))
+    clubSessionStorage()?.setItem(PROFILE_CACHE_KEY, JSON.stringify({ userId, profile }))
   } catch { /* sessionStorage unavailable — ignore */ }
 }
 
 function clearCachedProfile() {
-  try { sessionStorage.removeItem(PROFILE_CACHE_KEY) } catch { /* ignore */ }
+  try { clubSessionStorage()?.removeItem(PROFILE_CACHE_KEY) } catch { /* ignore */ }
 }
 // --------------------------------------------------
 
@@ -115,8 +116,8 @@ async function loadUserProfile(user: User): Promise<UserProfile> {
 async function completePendingRegistration(user: User, profile: UserProfile): Promise<boolean> {
   if (!supabase) return false
   const client = supabase
-  let storage: Storage | undefined
-  try { storage = window.sessionStorage } catch { /* Optional browser storage. */ }
+  // Pending invite codes are confined to the active club's namespace.
+  const storage = clubSessionStorage()
   return completeRegistration(user.user_metadata, profile, {
     rpc: (name, args) => client.rpc(name, args),
     clearMetadata: (data) => client.auth.updateUser({ data }),
@@ -304,7 +305,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}${safeReturnPath(emailRedirectPath ?? '/')}`,
+            emailRedirectTo: clubShareUrl(safeReturnPath(emailRedirectPath ?? '/')),
             data: {
               name,
               roles: signupRoles,
@@ -339,7 +340,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         setError(null)
         const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/reset-password`,
+          redirectTo: clubShareUrl('/reset-password'),
         })
 
         if (resetError) {

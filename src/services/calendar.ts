@@ -1,4 +1,5 @@
 import { requireSupabase } from './supabaseHelpers.ts'
+import { supabaseUrl } from '../lib/supabase.ts'
 import type { EventRecord, TeamRecord } from '../types/club.ts'
 
 export interface CalendarFeed {
@@ -7,7 +8,7 @@ export interface CalendarFeed {
 }
 
 function feedFromToken(token: string): CalendarFeed {
-  const base = `${import.meta.env.VITE_SUPABASE_URL as string}/functions/v1/member-calendar?token=${encodeURIComponent(token)}`
+  const base = `${supabaseUrl}/functions/v1/member-calendar?token=${encodeURIComponent(token)}`
   return { httpsUrl: base, webcalUrl: base.replace(/^https:/, 'webcal:') }
 }
 

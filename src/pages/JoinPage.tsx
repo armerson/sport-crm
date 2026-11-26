@@ -1,4 +1,5 @@
 import { applyTeamInvite } from '../services/teamInvites.ts'
+import { clubSessionStorage } from '../clubos/runtime.ts'
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getInviteInfo, type InviteInfo } from '../services/teamInvites.ts'
@@ -100,7 +101,7 @@ function ParentSignupForm({ info, onSuccess }: { info: InviteInfo; onSuccess: ()
       })
       // Store invite code so completePendingRegistration can pick it up
       // It's stored in user metadata via updateUser after session is available
-      sessionStorage.setItem('pending_invite_code', info.code)
+      clubSessionStorage()?.setItem('pending_invite_code', info.code)
       onSuccess()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sign up failed')
@@ -177,7 +178,7 @@ function CoachSignupForm({ info, onSuccess }: { info: InviteInfo; onSuccess: () 
 
     setSubmitting(true)
     try {
-      sessionStorage.setItem('pending_invite_code', info.code)
+      clubSessionStorage()?.setItem('pending_invite_code', info.code)
       await signUp({ name: name.trim(), email: email.trim(), password, roles: ['coach'], emailRedirectPath: `/join/${info.code}` })
       onSuccess()
     } catch (err) {
@@ -221,7 +222,7 @@ function SignInForm({ info, onSuccess }: { info: InviteInfo; onSuccess: () => vo
     setSubmitting(true)
     try {
       await signIn({ email: email.trim(), password })
-      sessionStorage.setItem('pending_invite_code', info.code)
+      clubSessionStorage()?.setItem('pending_invite_code', info.code)
       onSuccess()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sign in failed')

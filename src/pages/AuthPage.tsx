@@ -1,4 +1,5 @@
 import { ageOnDate } from '../utils/birthDate.ts'
+import { activeClub, clubOSMode, clubRegistry } from '../clubos/runtime.ts'
 import { useSearchParams } from 'react-router-dom'
 import { useMemo, useState } from 'react'
 import { Button } from '../components/ui/Button.tsx'
@@ -258,7 +259,12 @@ export function AuthPage() {
         {/* Right: auth card */}
         <section className="ui-panel p-5 sm:p-8">
 
-          {import.meta.env.VITE_CLUB_DIRECTORY_JSON ? <a href="/clubs" className="mb-4 inline-block text-sm font-semibold text-blue-700 underline">Find another club</a> : null}
+          {clubOSMode === 'multi' || clubRegistry.length > 0 ? (
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-sm">
+              {activeClub ? <span className="text-slate-600">Signing in to <strong className="text-slate-900">{activeClub.name}</strong></span> : <span />}
+              <a href="/clubs" className="font-semibold text-blue-700 underline">{activeClub ? 'Change club' : 'Find another club'}</a>
+            </div>
+          ) : null}
           {/* Tab switcher */}
           <div className="flex rounded-2xl bg-slate-100/90 p-1">
             <button
