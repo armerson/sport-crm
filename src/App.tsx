@@ -2,6 +2,8 @@ import { Suspense, lazy } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { ProtectedRoute } from './router/ProtectedRoute.tsx'
 import { PublicOnlyRoute } from './router/PublicOnlyRoute.tsx'
+import { ClubDirectoryPage } from './pages/ClubDirectoryPage.tsx'
+import { PublicClubSitePage } from './pages/PublicClubSitePage.tsx'
 
 const RegistrationLandingPage = lazy(async () => {
   const module = await import('./pages/RegistrationLandingPage.tsx')
@@ -66,9 +68,14 @@ function RouteFallback() {
 }
 
 function App() {
+  if (import.meta.env.VITE_CLUB_DIRECTORY_ONLY === 'true') {
+    return <Routes><Route path="/clubs" element={<ClubDirectoryPage />} /><Route path="*" element={<Navigate to="/clubs" replace />} /></Routes>
+  }
   return (
     <Suspense fallback={<RouteFallback />}>
       <Routes>
+        <Route path="/clubs" element={<ClubDirectoryPage />} />
+        <Route path="/club-website" element={<PublicClubSitePage />} />
         {UiPreview && <Route path="/ui-preview" element={<UiPreview />} />}
         <Route element={<PublicOnlyRoute />}>
           <Route path="/login" element={<AuthPage />} />

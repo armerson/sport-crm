@@ -258,6 +258,7 @@ export function AuthPage() {
         {/* Right: auth card */}
         <section className="ui-panel p-5 sm:p-8">
 
+          {import.meta.env.VITE_CLUB_DIRECTORY_JSON ? <a href="/clubs" className="mb-4 inline-block text-sm font-semibold text-blue-700 underline">Find another club</a> : null}
           {/* Tab switcher */}
           <div className="flex rounded-2xl bg-slate-100/90 p-1">
             <button

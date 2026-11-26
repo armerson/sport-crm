@@ -179,3 +179,7 @@ verified Brownlow Road map pin.
 - [WEBSITE_INTEGRATION.md](WEBSITE_INTEGRATION.md): website links and release order.
 - [REVIEW_GAPS.md](REVIEW_GAPS.md): an earlier technical review; some findings may
   have changed since it was written.
+
+## Multi-club foundation (proposed)
+
+See [MULTI_CLUB_ROADMAP.md](MULTI_CLUB_ROADMAP.md) for the directory-only deployment and optional public website starter. These changes retain separate club backends; native switching and a website CMS are later phases.
