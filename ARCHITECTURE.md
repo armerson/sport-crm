@@ -86,8 +86,10 @@ selectable. The whole registry is rejected if any entry is invalid.
 In multi mode, the auth token (`clubos:club:<code>:auth`), profile cache, club
 settings cache and pending invite codes are namespaced per club. Standalone
 deployments keep their original keys, so existing sessions are not signed out.
-Remaining unscoped UI preferences (banner dismissals, message drafts, unread
-markers, selected team) are listed in [MULTI_CLUB_ROADMAP.md](MULTI_CLUB_ROADMAP.md).
+UI preferences (message drafts, unread markers, banner dismissals) use
+`readClubPreference` / `writeClubPreference`. Only the "install app" banner is
+device-wide. `tests/clubStorageGuard.test.ts` fails if code outside
+`src/clubos/` touches `localStorage` or `sessionStorage` directly.
 
 ## Environments
 

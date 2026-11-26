@@ -1,4 +1,5 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
+import { readClubPreference, writeClubPreference } from '../../clubos/runtime.ts'
 import type { BillingTab } from './AdminBillingPanel.tsx'
 import { Button } from '../ui/Button.tsx'
 import { AdminDashboardStats } from './AdminDashboardStats.tsx'
@@ -197,10 +198,10 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
 
   // Onboarding checklist
   const [onboardingDismissed, setOnboardingDismissed] = useState(
-    () => localStorage.getItem('admin-onboarding-dismissed') === '1',
+    () => readClubPreference('admin-onboarding-dismissed') === '1',
   )
   function dismissOnboarding() {
-    localStorage.setItem('admin-onboarding-dismissed', '1')
+    writeClubPreference('admin-onboarding-dismissed', '1')
     setOnboardingDismissed(true)
   }
   const onboardingSteps = [

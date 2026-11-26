@@ -70,6 +70,29 @@ export function clubLocalStorage(): KeyValueStorage | undefined {
 }
 
 /**
+ * Reads a club-scoped UI preference (drafts, unread markers, dismissed
+ * banners). Never throws: preferences are optional.
+ */
+export function readClubPreference(key: string): string | null {
+  try {
+    return clubLocalStorage()?.getItem(key) ?? null
+  } catch {
+    return null
+  }
+}
+
+/** Saves a club-scoped UI preference; `null` removes it. Never throws. */
+export function writeClubPreference(key: string, value: string | null): void {
+  try {
+    const storage = clubLocalStorage()
+    if (value === null) storage?.removeItem(key)
+    else storage?.setItem(key, value)
+  } catch {
+    /* Storage unavailable: keep the in-memory value. */
+  }
+}
+
+/**
  * Switches club with a full reload so no module-level client, cache or
  * realtime channel from the previous club survives into the next one.
  */

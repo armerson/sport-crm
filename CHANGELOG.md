@@ -16,8 +16,12 @@ Builds on PR #30 (`codex/multi-club-foundation`).
 - Club links `/clubs/<code>/...` for sign-in, registration, forms, invitations,
   camp payment and password reset, with a strict route allow-list.
 - Configurable plan catalogue and feature entitlements (`src/clubos/plans.ts`).
+- Club-scoped UI preferences (`readClubPreference` / `writeClubPreference`):
+  message drafts, unread markers, the push-notification banner and the admin
+  onboarding checklist no longer leak between clubs in multi mode. A guard
+  test fails if new code uses browser storage directly.
 - Docs: AGENTS.md, ARCHITECTURE.md, ADR 0001, SECURITY.md, roadmaps.
-- Tests: 20 new unit tests (replacing PR #30's 3; 52 in total) and 3 new browser
+- Tests: 21 new unit tests (replacing PR #30's 3; 53 in total) and 3 new browser
   tests run on desktop and mobile.
 
 ### Changed
@@ -36,8 +40,7 @@ Builds on PR #30 (`codex/multi-club-foundation`).
 
 ### Limitations
 - Registry is build-time JSON; the control-plane service is Phase 2.
-- Some UI preferences (message drafts, unread markers, selected team, banner
-  dismissals) are not yet club-scoped in multi mode.
+- The "install app" banner dismissal stays device-wide by design.
 - Feature entitlements are not yet used to hide features.
 - Migration chain not yet replayed on a fresh Supabase project.
 
