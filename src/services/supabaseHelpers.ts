@@ -149,6 +149,7 @@ export function mapMessageRow(row: Record<string, unknown>): MessageRecord {
     id: typeof row.id === 'string' ? row.id : '',
     teamId: typeof row.team_id === 'string' ? row.team_id : null,
     groupId: typeof row.group_id === 'string' ? row.group_id : null,
+    recipientId: typeof row.recipient_id === 'string' ? row.recipient_id : null,
     senderId: typeof row.sender_id === 'string' ? row.sender_id : '',
     content: typeof row.content === 'string' ? row.content : '',
     timestamp: typeof row.created_at === 'string' ? row.created_at : '',
@@ -265,7 +266,42 @@ export async function writeAuditLog(input: {
 
 export function subscribeToTables(channelName: string, tables: string[], refetch: () => Promise<void>) {
   const client = requireSupabase()
-  void refetch()
+  let disposed = false
+  let refreshInFlight = false
+  let refreshQueued = false
+
+  const runRefetch = async () => {
+    if (disposed) return
+    if (refreshInFlight) {
+      refreshQueued = true
+      return
+    }
+
+    refreshInFlight = true
+    try {
+      await refetch()
+    } catch (error) {
+      // Most subscriptions surface query errors through their onError callback.
+      // Keep an unexpected rejection visible while allowing the next focus or
+      // connectivity event to recover the screen automatically.
+      console.error(`[realtime:${channelName}] refresh failed`, error)
+    } finally {
+      refreshInFlight = false
+      if (refreshQueued && !disposed) {
+        refreshQueued = false
+        void runRefetch()
+      }
+    }
+  }
+
+  const refreshWhenVisible = () => {
+    if (document.visibilityState === 'visible') void runRefetch()
+  }
+
+  void runRefetch()
+  window.addEventListener('focus', runRefetch)
+  window.addEventListener('online', runRefetch)
+  document.addEventListener('visibilitychange', refreshWhenVisible)
 
   // Use a UUID suffix so each invocation always gets a fresh channel.
   // client.channel(name) returns the EXISTING channel when the name matches —
@@ -281,7 +317,7 @@ export function subscribeToTables(channelName: string, tables: string[], refetch
       'postgres_changes',
       { event: '*', schema: 'public', table },
       () => {
-        void refetch()
+        void runRefetch()
       },
     )
   })
@@ -289,6 +325,10 @@ export function subscribeToTables(channelName: string, tables: string[], refetch
   channel.subscribe()
 
   return () => {
+    disposed = true
+    window.removeEventListener('focus', runRefetch)
+    window.removeEventListener('online', runRefetch)
+    document.removeEventListener('visibilitychange', refreshWhenVisible)
     void client.removeChannel(channel)
   }
 }

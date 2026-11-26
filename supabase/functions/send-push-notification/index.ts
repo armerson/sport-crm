@@ -16,22 +16,29 @@ async function authenticate(token: string): Promise<PushActor | null> {
 }
 
 async function allowedRecipients(actor: PushActor): Promise<Set<string>> {
-  const [coaches, parents] = await Promise.all([
+  const [coaches, parents, clubContacts, directMessages] = await Promise.all([
     supabase.from('team_coaches').select('team_id').eq('coach_id', actor.id),
     supabase.from('player_parents').select('player_id').eq('parent_id', actor.id),
+    supabase.from('club_contact_assignments').select('profile_id'),
+    supabase.from('messages').select('sender_id, recipient_id').not('recipient_id', 'is', null).or(`sender_id.eq.${actor.id},recipient_id.eq.${actor.id}`).limit(500),
   ])
-  if (coaches.error || parents.error) throw new Error('Membership lookup failed')
+  if (coaches.error || parents.error || clubContacts.error || directMessages.error) throw new Error('Membership lookup failed')
+  const recipients = new Set<string>((clubContacts.data ?? []).map((contact) => contact.profile_id))
+  for (const message of directMessages.data ?? []) {
+    if (message.sender_id !== actor.id) recipients.add(message.sender_id)
+    if (message.recipient_id !== actor.id) recipients.add(message.recipient_id)
+  }
   const playerIds = [...new Set([...(parents.data ?? []).map((p) => p.player_id), ...(actor.linkedPlayerId ? [actor.linkedPlayerId] : [])])]
   const memberships = playerIds.length ? await supabase.from('player_teams').select('team_id').in('player_id', playerIds) : { data: [], error: null }
   if (memberships.error) throw memberships.error
   const teamIds = [...new Set([...(coaches.data ?? []).map((c) => c.team_id), ...(memberships.data ?? []).map((m) => m.team_id)])]
-  if (!teamIds.length) return new Set()
+  if (!teamIds.length) return recipients
   const [teamCoaches, teamPlayers] = await Promise.all([
     supabase.from('team_coaches').select('coach_id').in('team_id', teamIds),
     supabase.from('player_teams').select('player_id').in('team_id', teamIds),
   ])
   if (teamCoaches.error || teamPlayers.error) throw new Error('Team lookup failed')
-  const recipients = new Set<string>((teamCoaches.data ?? []).map((c) => c.coach_id))
+  for (const coach of teamCoaches.data ?? []) recipients.add(coach.coach_id)
   const squadIds = [...new Set((teamPlayers.data ?? []).map((p) => p.player_id))]
   if (squadIds.length) {
     const [families, players] = await Promise.all([

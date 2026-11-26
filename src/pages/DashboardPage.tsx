@@ -69,6 +69,7 @@ const WORKSPACE_SECTIONS: Record<UserRole, readonly { label: string; value: stri
   admin: [
     { label: 'Overview', value: 'overview' },
     { label: 'Players', value: 'players' },
+    { label: 'Development', value: 'development' },
     { label: 'Manage', value: 'manage' },
     { label: 'Members', value: 'members' },
     { label: 'Posts', value: 'posts' },
@@ -106,6 +107,7 @@ const WORKSPACE_SECTIONS: Record<UserRole, readonly { label: string; value: stri
 const tabDescriptions: Record<UserRole, Record<string, string>> = {
   admin: {
     overview: 'See club activity, pending registrations, and the work that needs attention.',
+    development: 'Review goals, assessments, testing, and pathway actions across the club.',
     manage: 'Manage teams, players, coaches, forms, and club settings.',
     posts: 'Share club news and updates with members.',
     billing: 'Manage fees, subscriptions, and payments.',

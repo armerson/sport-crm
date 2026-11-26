@@ -170,21 +170,23 @@ function EventEntry({
           {eventPlayers.map((player) => {
             const saved = resultByPlayer.get(player.id)
             return (
-              <div key={player.id} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3">
-                <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-slate-900">{player.name}</p>{saved ? <p className="text-xs text-emerald-700">Saved</p> : null}</div>
-                <label className="flex items-center gap-2">
-                  <span className="sr-only">{activeTest.name} result for {player.name}</span>
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    step={10 ** -activeTest.decimalPlaces}
-                    value={values[player.id] ?? (saved ? String(saved.resultValue) : '')}
-                    onChange={(input) => setValues((current) => ({ ...current, [player.id]: input.target.value }))}
-                    className="h-11 w-28 rounded-xl border border-slate-200 px-3 text-base tabular-nums outline-none focus:border-[var(--ui-accent)]"
-                  />
-                  <span className="w-14 text-xs text-slate-500">{activeTest.unit}</span>
-                </label>
-                <Button type="button" loading={savingPlayerId === player.id} onClick={() => void save(player.id)}>Save</Button>
+              <div key={player.id} className="rounded-2xl border border-slate-200 bg-white p-3 sm:flex sm:items-center sm:gap-3">
+                <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-slate-900">{player.name}</p>{saved ? <p className="text-xs font-medium text-emerald-700">Saved</p> : <p className="text-xs text-slate-400">Awaiting result</p>}</div>
+                <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2 sm:mt-0 sm:flex sm:items-center">
+                  <label className="flex min-w-0 items-center gap-2">
+                    <span className="sr-only">{activeTest.name} result for {player.name}</span>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      step={10 ** -activeTest.decimalPlaces}
+                      value={values[player.id] ?? (saved ? String(saved.resultValue) : '')}
+                      onChange={(input) => setValues((current) => ({ ...current, [player.id]: input.target.value }))}
+                      className="h-12 min-w-0 flex-1 rounded-xl border border-slate-200 px-3 text-lg tabular-nums outline-none focus:border-[var(--ui-accent)] sm:h-11 sm:w-28 sm:flex-none sm:text-base"
+                    />
+                    <span className="max-w-20 truncate text-xs font-medium text-slate-500" title={activeTest.unit}>{activeTest.unit}</span>
+                  </label>
+                  <Button className="min-w-20" type="button" loading={savingPlayerId === player.id} onClick={() => void save(player.id)}>Save</Button>
+                </div>
               </div>
             )
           })}
@@ -216,7 +218,7 @@ export function TestingEventsPanel({ teamId, teamName, players, currentUserId }:
   const selectedEvent = events.find((event) => event.id === selectedEventId) ?? null
 
   return (
-    <section className="ui-panel p-5">
+    <section className="ui-panel p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div><p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--ui-accent)]">Performance testing</p><h2 className="mt-1 text-xl font-semibold text-slate-950">{teamName}</h2><p className="mt-1 text-sm text-slate-500">Create an event, choose a test, then work down the squad.</p></div>
         {!creating && !selectedEvent ? <Button type="button" onClick={() => setCreating(true)}>New testing event</Button> : null}

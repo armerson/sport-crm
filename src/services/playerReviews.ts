@@ -72,6 +72,26 @@ export async function fetchPlayerReviews(playerId: string): Promise<PlayerReview
   })
 }
 
+/** Fetch review status across a squad without loading each player workspace. */
+export async function fetchReviewsForPlayers(playerIds: string[]): Promise<PlayerReview[]> {
+  if (playerIds.length === 0) return []
+  const client = requireSupabase()
+  const [{ data, error }, { data: privateNotes, error: notesError }] = await Promise.all([
+    client.from('player_reviews')
+      .select('id, player_id, team_id, coach_id, period_label, assessment_date, rating_technical, rating_tactical, rating_physical, rating_attitude, strengths, areas_to_improve, status, published_at, created_at, updated_at')
+      .in('player_id', playerIds)
+      .order('assessment_date', { ascending: false }),
+    client.from('player_review_private_notes').select('review_id, notes'),
+  ])
+  if (error) throw new Error(error.message)
+  if (notesError) throw new Error(notesError.message)
+  const notesByReview = new Map((privateNotes ?? []).map((row) => [String(row.review_id), String(row.notes)]))
+  return (data ?? []).map((row) => {
+    const review = mapReviewRow(row as Record<string, unknown>)
+    return { ...review, coachNotes: notesByReview.get(review.id) ?? null }
+  })
+}
+
 /** Fetch published reviews for a player (parent view — no coach_notes). */
 export async function fetchPublishedReviewsForPlayer(playerId: string): Promise<PlayerReview[]> {
   const client = requireSupabase()

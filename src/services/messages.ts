@@ -18,6 +18,7 @@ export function subscribeToMessagesForTeam(
       .from('messages')
       .select('id, team_id, group_id, sender_id, content, created_at')
       .eq('team_id', teamId)
+      .is('recipient_id', null)
       .order('created_at', { ascending: true })
 
     if (error) {
@@ -41,6 +42,7 @@ export function subscribeToMessagesForGroup(
       .from('messages')
       .select('id, team_id, group_id, sender_id, content, created_at')
       .eq('group_id', groupId)
+      .is('recipient_id', null)
       .order('created_at', { ascending: true })
 
     if (error) {
@@ -64,6 +66,7 @@ export function subscribeToClubMessages(
       .select('id, team_id, group_id, sender_id, content, created_at')
       .is('team_id', null)
       .is('group_id', null)
+      .is('recipient_id', null)
       .order('created_at', { ascending: true })
 
     if (error) {
@@ -91,6 +94,7 @@ export function subscribeToAnnouncements(
       .from('messages')
       .select('id, team_id, group_id, sender_id, content, created_at')
       .is('team_id', null)
+      .is('recipient_id', null)
       .order('created_at', { ascending: false })
       .limit(50)
 
@@ -155,12 +159,13 @@ export async function sendTeamMessage(input: MessageFormInput): Promise<MessageR
 
   if (input.teamId) payload.team_id = input.teamId
   if (input.groupId) payload.group_id = input.groupId
+  if (input.recipientId) payload.recipient_id = input.recipientId
   // club-wide: neither teamId nor groupId — both remain absent from payload
 
   const { data, error } = await client
     .from('messages')
     .insert(payload)
-    .select('id, team_id, group_id, sender_id, content, created_at')
+    .select('id, team_id, group_id, recipient_id, sender_id, content, created_at')
     .single()
 
   if (error) {
@@ -168,4 +173,70 @@ export async function sendTeamMessage(input: MessageFormInput): Promise<MessageR
   }
 
   return mapMessageRow(data as Record<string, unknown>)
+}
+
+export interface CommunicationContact {
+  id: string
+  name: string
+  label: string
+  teamId: string | null
+}
+
+export async function fetchParentCommunicationContacts(parentId: string): Promise<CommunicationContact[]> {
+  const client = requireSupabase()
+  const { data: links, error: linksError } = await client
+    .from('player_parents')
+    .select('player_id, players!inner(player_teams(team_id))')
+    .eq('parent_id', parentId)
+  if (linksError) throw new Error(linksError.message)
+
+  const teamIds = [...new Set((links ?? []).flatMap((row) => {
+    const player = row.players as unknown as { player_teams?: Array<{ team_id: string }> }
+    return (player.player_teams ?? []).map((link) => link.team_id)
+  }))]
+
+  const [{ data: coachLinks, error: coachError }, { data: assignments, error: assignmentError }] = await Promise.all([
+    teamIds.length
+      ? client.from('team_coaches').select('coach_id, team_id, profiles!team_coaches_coach_id_fkey(name), teams(name)').in('team_id', teamIds)
+      : Promise.resolve({ data: [], error: null }),
+    client.from('club_contact_assignments').select('contact_type, profile_id, profiles!club_contact_assignments_profile_id_fkey(name)'),
+  ])
+  if (coachError) throw new Error(coachError.message)
+  if (assignmentError) throw new Error(assignmentError.message)
+
+  const contacts: CommunicationContact[] = (coachLinks ?? []).map((row) => ({
+    id: String(row.coach_id),
+    name: String((row.profiles as unknown as { name?: string })?.name ?? 'Team coach'),
+    label: `Coach · ${String((row.teams as unknown as { name?: string })?.name ?? 'Your team')}`,
+    teamId: String(row.team_id),
+  }))
+  const labels: Record<string, string> = { finance: 'Finance', kit: 'Kit', welfare: 'Child welfare' }
+  for (const row of assignments ?? []) contacts.push({
+    id: String(row.profile_id),
+    name: String((row.profiles as unknown as { name?: string })?.name ?? 'Club contact'),
+    label: labels[String(row.contact_type)] ?? 'Club contact',
+    teamId: null,
+  })
+  return contacts.filter((contact, index) => contacts.findIndex((candidate) => candidate.id === contact.id && candidate.teamId === contact.teamId) === index)
+}
+
+export function subscribeToDirectMessages(
+  userId: string,
+  onData: (messages: MessageRecord[]) => void,
+  onError: (message: string) => void,
+): () => void {
+  const client = requireSupabase()
+  return subscribeToTables(`direct-messages-${userId}`, ['messages'], async () => {
+    const { data, error } = await client.from('messages')
+      .select('id, team_id, group_id, recipient_id, sender_id, content, created_at')
+      .not('recipient_id', 'is', null)
+      .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)
+      .order('created_at', { ascending: true })
+    if (error) { onError('Unable to load private messages.'); return }
+    onData((data ?? []).map((row) => mapMessageRow(row as Record<string, unknown>)))
+  })
+}
+
+export async function sendDirectMessage(senderId: string, recipientId: string, teamId: string | null, content: string): Promise<MessageRecord> {
+  return sendTeamMessage({ senderId, recipientId, teamId, groupId: null, content })
 }

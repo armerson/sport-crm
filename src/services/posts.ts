@@ -18,6 +18,8 @@ function mapPost(row: Record<string, unknown>, myProfileId: string | null): Post
     teamId: (row.team_id as string | null) ?? null,
     teamName: (row.team_name as string | null) ?? null,
     pinned: (row.pinned as boolean) ?? false,
+    allowReactions: row.allow_reactions !== false,
+    allowComments: row.allow_comments !== false,
     likeCount: likes.length,
     commentCount: (row.comment_count as number) ?? 0,
     likedByMe: myProfileId ? likes.some((l) => (l as Record<string, unknown>).profile_id === myProfileId) : false,
@@ -168,7 +170,7 @@ export async function uploadPostImage(file: File): Promise<string> {
 
 export async function createPost(
   authorId: string,
-  input: { title: string | null; body: string; teamId: string | null; pinned: boolean; imageUrl: string | null },
+  input: { title: string | null; body: string; teamId: string | null; pinned: boolean; allowReactions?: boolean; allowComments?: boolean; imageUrl: string | null },
 ): Promise<string> {
   const client = requireSupabase()
   const { data, error } = await client
@@ -180,6 +182,8 @@ export async function createPost(
       image_url: input.imageUrl,
       team_id: input.teamId,
       pinned: input.pinned,
+      allow_reactions: input.allowReactions ?? true,
+      allow_comments: input.allowComments ?? true,
     })
     .select('id')
     .single()
@@ -189,7 +193,7 @@ export async function createPost(
 
 export async function updatePost(
   postId: string,
-  input: { title: string | null; body: string; teamId: string | null; pinned: boolean; imageUrl: string | null },
+  input: { title: string | null; body: string; teamId: string | null; pinned: boolean; allowReactions?: boolean; allowComments?: boolean; imageUrl: string | null },
 ): Promise<void> {
   const client = requireSupabase()
   const { error } = await client
@@ -200,6 +204,8 @@ export async function updatePost(
       image_url: input.imageUrl,
       team_id: input.teamId,
       pinned: input.pinned,
+      allow_reactions: input.allowReactions ?? true,
+      allow_comments: input.allowComments ?? true,
       updated_at: new Date().toISOString(),
     })
     .eq('id', postId)

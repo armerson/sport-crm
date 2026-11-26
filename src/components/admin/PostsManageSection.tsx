@@ -13,6 +13,7 @@ import { InstagramSharePanel } from './InstagramSharePanel.tsx'
 import { useClubSettings } from '../../hooks/useClubSettings.ts'
 import type { Post, PostInput } from '../../types/posts.ts'
 import type { UserProfile } from '../../types/auth.ts'
+import { fetchAllClubRecipientIds, fetchTeamParentIds, sendPushToUsers } from '../../lib/pushNotifications.ts'
 
 function IgIcon() {
   return (
@@ -29,6 +30,8 @@ const BLANK: PostInput = {
   body: '',
   teamId: null,
   pinned: false,
+  allowReactions: true,
+  allowComments: true,
   imageFile: null,
   imageUrl: null,
 }
@@ -80,6 +83,8 @@ export function PostsManageSection({ profile, teams }: PostsManageSectionProps) 
       body: post.body,
       teamId: post.teamId,
       pinned: post.pinned,
+      allowReactions: post.allowReactions,
+      allowComments: post.allowComments,
       imageFile: null,
       imageUrl: post.imageUrl,
     })
@@ -117,6 +122,8 @@ export function PostsManageSection({ profile, teams }: PostsManageSectionProps) 
         body: input.body.trim(),
         teamId: input.teamId,
         pinned: input.pinned,
+        allowReactions: input.allowReactions,
+        allowComments: input.allowComments,
         imageUrl,
       }
 
@@ -126,6 +133,12 @@ export function PostsManageSection({ profile, teams }: PostsManageSectionProps) 
       } else {
         await createPost(profile.id, payload)
         setSuccess('Post published.')
+        const recipients = input.teamId
+          ? await fetchTeamParentIds(input.teamId)
+          : await fetchAllClubRecipientIds(profile.id)
+        if (recipients.length) {
+          void sendPushToUsers(recipients, input.title.trim() || `${clubSettings.name} update`, input.body.trim().slice(0, 160), '/?view=parent')
+        }
       }
 
       setShowForm(false)
@@ -243,6 +256,17 @@ export function PostsManageSection({ profile, teams }: PostsManageSectionProps) 
                 Pin to top of feed
               </label>
             </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700">
+              <input type="checkbox" className="h-4 w-4 accent-[#1565ff]" checked={input.allowReactions} onChange={(e) => setInput((p) => ({ ...p, allowReactions: e.target.checked }))} />
+              Allow reactions
+            </label>
+            <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700">
+              <input type="checkbox" className="h-4 w-4 accent-[#1565ff]" checked={input.allowComments} onChange={(e) => setInput((p) => ({ ...p, allowComments: e.target.checked }))} />
+              Allow comments
+            </label>
           </div>
 
           <Button className="w-full" loading={submitting} type="submit">

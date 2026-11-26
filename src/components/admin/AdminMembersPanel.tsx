@@ -5,6 +5,8 @@ import { ClubInviteButton } from '../shared/ClubInviteButton.tsx'
 import {
   fetchAllProfiles, fetchDuplicatePlayers, mergePlayers,
   adminSetProfileRolesAndCoachTeams,
+  fetchClubContactAssignments, saveClubContactAssignment,
+  type ClubContactType,
   type DuplicateGroup, type MemberProfile,
 } from '../../services/adminMembers.ts'
 
@@ -485,7 +487,21 @@ function DuplicatesView({ teams }: { teams: TeamRecord[] }) {
 
 // ── Main panel ────────────────────────────────────────────────────
 
-type MembersView = 'list' | 'duplicates'
+function ClubContactsView() {
+  const [members, setMembers] = useState<MemberProfile[]>([])
+  const [values, setValues] = useState<Record<ClubContactType, string>>({ finance: '', kit: '', welfare: '' })
+  const [saving, setSaving] = useState<ClubContactType | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  useEffect(() => { void Promise.all([fetchAllProfiles(), fetchClubContactAssignments()]).then(([nextMembers, assignments]) => {
+    setMembers(nextMembers)
+    setValues({ finance: assignments.find((item) => item.contactType === 'finance')?.profileId ?? '', kit: assignments.find((item) => item.contactType === 'kit')?.profileId ?? '', welfare: assignments.find((item) => item.contactType === 'welfare')?.profileId ?? '' })
+  }).catch((reason) => setError(reason instanceof Error ? reason.message : 'Unable to load club contacts.')) }, [])
+  const labels: Record<ClubContactType, string> = { finance: 'Finance contact', kit: 'Kit contact', welfare: 'Child welfare officer' }
+  return <div className="space-y-4"><p className="text-sm text-slate-600">Choose which existing ClubOS members parents can contact privately. These assignments do not change account roles.</p>{error ? <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{error}</p> : null}{(['finance', 'kit', 'welfare'] as ClubContactType[]).map((type) => <div key={type} className="rounded-2xl border border-slate-200 bg-white p-4"><label className="text-sm font-semibold text-slate-800">{labels[type]}<select className="ui-input mt-2" value={values[type]} onChange={(event) => setValues((current) => ({ ...current, [type]: event.target.value }))}><option value="">Not assigned</option>{members.filter((member) => !member.roles.includes('player')).map((member) => <option key={member.id} value={member.id}>{member.name} · {member.email}</option>)}</select></label><button type="button" disabled={saving === type} onClick={() => { setSaving(type); setMessage(null); setError(null); void saveClubContactAssignment(type, values[type] || null).then(() => setMessage(`${labels[type]} saved.`)).catch((reason) => setError(reason instanceof Error ? reason.message : 'Unable to save club contact.')).finally(() => setSaving(null)) }} className="mt-3 rounded-xl bg-[#1565ff] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{saving === type ? 'Saving…' : 'Save'}</button></div>)}{message ? <p className="text-sm text-emerald-700">{message}</p> : null}</div>
+}
+
+type MembersView = 'list' | 'contacts' | 'duplicates'
 
 export function AdminMembersPanel({ teams }: { teams: TeamRecord[] }) {
   const [view, setView] = useState<MembersView>('list')
@@ -507,6 +523,7 @@ export function AdminMembersPanel({ teams }: { teams: TeamRecord[] }) {
       <div className="flex gap-1 rounded-2xl border border-slate-200 bg-slate-50 p-1">
         {([
           { label: 'All members', value: 'list' as MembersView },
+          { label: 'Club contacts', value: 'contacts' as MembersView },
           { label: 'Duplicates', value: 'duplicates' as MembersView },
         ] as const).map((tab) => (
           <button
@@ -526,6 +543,8 @@ export function AdminMembersPanel({ teams }: { teams: TeamRecord[] }) {
 
       {view === 'list' ? (
         <MembersList teams={teams} />
+      ) : view === 'contacts' ? (
+        <ClubContactsView />
       ) : (
         <DuplicatesView teams={teams} />
       )}

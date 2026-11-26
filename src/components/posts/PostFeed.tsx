@@ -126,7 +126,7 @@ function PostCard({ post, profile, onLikeToggle }: PostCardProps) {
 
         {/* Actions */}
         <div className="mt-4 flex items-center gap-4 border-t border-slate-100 pt-3">
-          <button
+          {post.allowReactions ? <button
             type="button"
             onClick={() => onLikeToggle(post.id, post.likedByMe)}
             className={`flex items-center gap-1.5 text-sm font-semibold transition ${post.likedByMe ? 'text-rose-500' : 'text-slate-400 hover:text-rose-400'}`}
@@ -134,9 +134,9 @@ function PostCard({ post, profile, onLikeToggle }: PostCardProps) {
             <HeartIcon filled={post.likedByMe} />
             {post.likeCount > 0 && <span>{post.likeCount}</span>}
             <span className="sr-only">{post.likedByMe ? 'Unlike' : 'Like'}</span>
-          </button>
+          </button> : null}
 
-          <button
+          {post.allowComments ? <button
             type="button"
             onClick={() => void handleShowComments()}
             className="flex items-center gap-1.5 text-sm font-semibold text-slate-400 transition hover:text-[#1565ff]"
@@ -144,12 +144,12 @@ function PostCard({ post, profile, onLikeToggle }: PostCardProps) {
             <ChatIcon />
             {post.commentCount > 0 ? post.commentCount : null}
             <span>{showComments ? 'Hide' : 'Comments'}</span>
-          </button>
+          </button> : null}
         </div>
       </div>
 
       {/* Comments section */}
-      {showComments && (
+      {showComments && post.allowComments && (
         <div className="border-t border-slate-100 bg-slate-50/60 px-5 py-4">
           {!commentsLoaded ? (
             <p className="text-xs text-slate-400">Loading…</p>
