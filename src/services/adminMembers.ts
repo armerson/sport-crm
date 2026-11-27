@@ -19,6 +19,8 @@ export interface DuplicateGroup {
   dob: string | null
   players: Array<{ id: string; name: string; dob: string | null; teamIds: string[] }>
 }
+export type ClubContactType = 'finance' | 'kit' | 'welfare'
+export interface ClubContactAssignment { contactType: ClubContactType; profileId: string }
 
 // ── Fetch ─────────────────────────────────────────────────────────
 
@@ -104,6 +106,23 @@ export async function fetchDuplicatePlayers(): Promise<DuplicateGroup[]> {
   }
 
   return duplicates
+}
+
+export async function fetchClubContactAssignments(): Promise<ClubContactAssignment[]> {
+  const { data, error } = await requireSupabase().from('club_contact_assignments').select('contact_type, profile_id')
+  if (error) throw new Error(error.message)
+  return (data ?? []).map((row) => ({ contactType: row.contact_type as ClubContactType, profileId: row.profile_id as string }))
+}
+
+export async function saveClubContactAssignment(contactType: ClubContactType, profileId: string | null): Promise<void> {
+  const client = requireSupabase()
+  if (!profileId) {
+    const { error } = await client.from('club_contact_assignments').delete().eq('contact_type', contactType)
+    if (error) throw new Error(error.message)
+    return
+  }
+  const { error } = await client.from('club_contact_assignments').upsert({ contact_type: contactType, profile_id: profileId, updated_by: (await client.auth.getUser()).data.user?.id ?? null })
+  if (error) throw new Error(error.message)
 }
 
 // ── Mutations ─────────────────────────────────────────────────────

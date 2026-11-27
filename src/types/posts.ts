@@ -8,6 +8,8 @@ export interface Post {
   teamId: string | null
   teamName: string | null
   pinned: boolean
+  allowReactions: boolean
+  allowComments: boolean
   likeCount: number
   commentCount: number
   likedByMe: boolean
@@ -29,6 +31,8 @@ export interface PostInput {
   body: string
   teamId: string | null
   pinned: boolean
+  allowReactions: boolean
+  allowComments: boolean
   imageFile: File | null
   imageUrl: string | null
 }

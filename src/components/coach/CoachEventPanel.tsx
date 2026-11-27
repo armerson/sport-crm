@@ -1,5 +1,6 @@
 import { CoachOverview } from './CoachOverview.tsx'
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
+import { clubSessionStorage } from '../../clubos/runtime.ts'
 import { useAttendanceStats } from '../../hooks/useAttendanceStats.ts'
 import { useCoachClubData } from '../../hooks/useCoachClubData.ts'
 import { useTeamPlayers } from '../../hooks/useTeamPlayers.ts'
@@ -22,11 +23,13 @@ import { TabNav } from '../ui/TabNav.tsx'
 import { TextField } from '../ui/TextField.tsx'
 import type { EventType, RecurrencePattern } from '../../types/club.ts'
 import { meetTimeFromMinutesBefore, minutesBeforeFromMeetTime, validateSupportingTimes } from '../../utils/eventTimes.ts'
+import { resultFromTeamPerspective } from '../../utils/matchResults.ts'
 
 import { PostFeed } from '../posts/PostFeed.tsx'
 import { MatchStatsPanel } from './MatchStatsPanel.tsx'
 import { MatchdayGuide } from './MatchdayGuide.tsx'
 import { AttendanceReminderPanel } from './AttendanceReminderPanel.tsx'
+import { SquadAssessmentWorkspace } from '../reviews/SquadAssessmentWorkspace.tsx'
 import { fetchMatchStats, fetchSeasonStats } from '../../services/playerMatchStats.ts'
 import { createPost, uploadPostImage } from '../../services/posts.ts'
 import { subscribeToTables } from '../../services/supabaseHelpers.ts'
@@ -293,14 +296,19 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
     if (tab !== 'create') setCreateTeamId('')
     onTabChange(tab)
   }
-  const [selectedTeamId, setSelectedTeamId] = useState('')
+  const selectedTeamStorageKey = `clubos-coach-team-${coachId}`
+  const [selectedTeamId, setSelectedTeamId] = useState(() => {
+    try { return clubSessionStorage()?.getItem(selectedTeamStorageKey) ?? '' } catch { return '' }
+  })
   const [selectedEventId, setSelectedEventId] = useState('')
   const [scheduleFilter, setScheduleFilter] = useState<'upcoming' | 'past' | 'all'>('upcoming')
   const [eventSearch, setEventSearch] = useState('')
   const [squadSearch, setSquadSearch] = useState('')
+  const [squadFilter, setSquadFilter] = useState<'all' | 'profile' | 'check-in'>('all')
   const [attendanceSearch, setAttendanceSearch] = useState('')
   const [attendanceFilter, setAttendanceFilter] = useState('all')
   const [squadViewPlayerId, setSquadViewPlayerId] = useState<string | null>(null)
+  const [showSquadAssessments, setShowSquadAssessments] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
   type PendingDelete =
     | { kind: 'single'; eventId: string }
@@ -384,6 +392,27 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
     : undefined
   const isSingleTeamCoach = teams.length === 1
 
+  useEffect(() => {
+    if (loadingTeams) return
+
+    const nextTeamId = selectedTeamId && teams.some((team) => team.id === selectedTeamId)
+      ? selectedTeamId
+      : teams.length === 1
+        ? teams[0]?.id ?? ''
+        : ''
+
+    if (nextTeamId !== selectedTeamId) setSelectedTeamId(nextTeamId)
+    try {
+      if (nextTeamId) clubSessionStorage()?.setItem(selectedTeamStorageKey, nextTeamId)
+      else clubSessionStorage()?.removeItem(selectedTeamStorageKey)
+    } catch { /* Continue without session persistence when storage is unavailable. */ }
+  }, [loadingTeams, selectedTeamId, selectedTeamStorageKey, teams])
+
+  useEffect(() => {
+    if (activeTab !== 'create' || !activeTeamId) return
+    setCreateTeamId(activeTeamId)
+  }, [activeTab, activeTeamId])
+
   function jumpToMatchdaySection(target: 'matchday-availability' | 'matchday-squad' | 'matchday-result' | 'matchday-player') {
     document.getElementById(target)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
@@ -439,7 +468,22 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
     const team = teams.find((candidate) => candidate.id === event.teamId)
     return matchesPeriod && `${event.title} ${event.location} ${team?.name ?? ''}`.toLowerCase().includes(eventSearch.trim().toLowerCase())
   })
-  const visibleSquad = players.filter((player) => `${player.name} ${player.jerseyNumber ?? ''}`.toLowerCase().includes(squadSearch.trim().toLowerCase()))
+  const attendanceStatByPlayerId = useMemo(() => new Map(stats.map((stat) => [stat.playerId, stat])), [stats])
+  const playersNeedingProfile = players.filter((player) => !player.photoUrl || !player.position).length
+  const playersNeedingCheckIn = players.filter((player) => {
+    const stat = attendanceStatByPlayerId.get(player.id)
+    return stat?.rate != null && stat.total >= 3 && stat.rate < 60
+  }).length
+  const visibleSquad = players.filter((player) => {
+    const matchesSearch = `${player.name} ${player.jerseyNumber ?? ''}`.toLowerCase().includes(squadSearch.trim().toLowerCase())
+    if (!matchesSearch) return false
+    if (squadFilter === 'profile') return !player.photoUrl || !player.position
+    if (squadFilter === 'check-in') {
+      const stat = attendanceStatByPlayerId.get(player.id)
+      return stat?.rate != null && stat.total >= 3 && stat.rate < 60
+    }
+    return true
+  })
   const squadProfilesReady = players.filter((player) => player.photoUrl && player.position).length
   const squadPositionsSet = players.filter((player) => player.position).length
   const visibleAttendance = attendance.filter((entry) => (attendanceFilter === 'all' || entry.status === attendanceFilter)
@@ -980,10 +1024,10 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                   ) : null}
 
                   {attendance.length > 0 && !loadingAttendance && (
-                    <div className="mt-3 flex gap-2">
+                    <div className="mt-3 flex flex-wrap gap-2">
                       <button
                         type="button"
-                        className="rounded-xl bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 transition hover:bg-emerald-100 active:scale-95"
+                        className="min-h-11 flex-1 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 transition hover:bg-emerald-100 active:scale-95 sm:flex-none"
                         onClick={() => {
                           attendance.forEach((a) => { if (a.status !== 'yes') void updateAttendance(a.id, 'yes') })
                         }}
@@ -992,7 +1036,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                       </button>
                       <button
                         type="button"
-                        className="rounded-xl bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:bg-slate-200 active:scale-95"
+                        className="min-h-11 flex-1 rounded-xl bg-slate-100 px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-200 active:scale-95 sm:flex-none"
                         onClick={() => {
                           attendance.forEach((a) => { if (a.status !== 'pending') void updateAttendance(a.id, 'pending') })
                         }}
@@ -1342,7 +1386,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
       {/* CREATE EVENT TAB */}
       {activeTab === 'create' ? (
         /* ── Multi-team: show photo picker first ── */
-        !isSingleTeamCoach && !createTeamId ? (
+        !isSingleTeamCoach && !createTeamId && !activeTeamId ? (
           <section className="space-y-4">
             <div>
               <h2 className="text-xl font-semibold text-slate-950">Which team?</h2>
@@ -1379,14 +1423,14 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
             <div className="mb-4 flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => setCreateTeamId('')}
+                onClick={() => { setCreateTeamId(''); setSelectedTeamId('') }}
                 className="flex items-center gap-1.5 text-sm font-medium text-[#1565ff] hover:opacity-70"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
                 Teams
               </button>
               <span className="text-sm text-slate-400">·</span>
-              <span className="text-sm font-semibold text-slate-700">{teams.find(t => t.id === createTeamId)?.name}</span>
+              <span className="text-sm font-semibold text-slate-700">{teams.find(t => t.id === (createTeamId || activeTeamId))?.name}</span>
             </div>
           )}
           <h2 className="text-xl font-semibold text-slate-950">
@@ -1539,10 +1583,11 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
           let w = 0, d = 0, l = 0, gf = 0, ga = 0
           for (const match of matchesWithResults) {
             const r = resultByEventId.get(match.id)!
-            gf += r.homeScore
-            ga += r.awayScore
-            if (r.homeScore > r.awayScore) w++
-            else if (r.homeScore === r.awayScore) d++
+            const teamResult = resultFromTeamPerspective(match, r)
+            gf += teamResult.goalsFor
+            ga += teamResult.goalsAgainst
+            if (teamResult.outcome === 'W') w++
+            else if (teamResult.outcome === 'D') d++
             else l++
           }
           const played = matchesWithResults.length
@@ -1592,7 +1637,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                 ) : (
                   recentFive.map((match) => {
                     const r = resultByEventId.get(match.id)!
-                    const outcome = r.homeScore > r.awayScore ? 'W' : r.homeScore === r.awayScore ? 'D' : 'L'
+                    const { outcome } = resultFromTeamPerspective(match, r)
                     const colour = outcome === 'W' ? 'bg-emerald-500 text-white' : outcome === 'D' ? 'bg-amber-400 text-slate-900' : 'bg-rose-500 text-white'
                     return (
                       <span key={match.id} title={`${match.title} — ${r.homeScore}–${r.awayScore}`} className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${colour}`}>
@@ -1611,7 +1656,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                     .sort((a, b) => b.dateTime.localeCompare(a.dateTime))
                     .map((match) => {
                       const r = resultByEventId.get(match.id)!
-                      const outcome = r.homeScore > r.awayScore ? 'W' : r.homeScore === r.awayScore ? 'D' : 'L'
+                      const { outcome } = resultFromTeamPerspective(match, r)
                       const colour = outcome === 'W' ? 'text-emerald-600' : outcome === 'D' ? 'text-amber-600' : 'text-rose-600'
                       return (
                         <div key={match.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3">
@@ -1773,7 +1818,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
             <div className="max-w-sm">
               <SelectField
                 label="Team"
-                onChange={(event) => { setSelectedTeamId(event.target.value); setSquadViewPlayerId(null); setSquadSearch('') }}
+                onChange={(event) => { setSelectedTeamId(event.target.value); setSquadViewPlayerId(null); setShowSquadAssessments(false); setSquadSearch(''); setSquadFilter('all') }}
                 options={[
                   { label: loadingTeams ? 'Loading teams...' : teams.length > 0 ? 'Choose a team' : 'No teams assigned', value: '' },
                   ...teams.map((team) => ({ label: `${team.name} (${team.ageGroup})`, value: team.id })),
@@ -1783,7 +1828,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
             </div>
           ) : null}
 
-          {activeTeamId && !squadViewPlayerId ? (
+          {activeTeamId && !squadViewPlayerId && !showSquadAssessments ? (
             <article className="ui-panel overflow-hidden">
               {selectedTeam?.photoUrl ? <div className="relative h-28 overflow-hidden sm:h-36"><img src={selectedTeam.photoUrl} alt="" className="h-full w-full object-cover" style={{ objectPosition: `${selectedTeam.photoFocusX}% ${selectedTeam.photoFocusY}%` }} /><div className="absolute inset-0 bg-gradient-to-t from-slate-950/75 to-transparent" /><div className="absolute inset-x-5 bottom-4"><p className="text-xl font-bold text-white">{selectedTeam.name}</p><p className="text-sm text-white/75">{selectedTeam.ageGroup}</p></div></div> : null}
               <div className="grid grid-cols-3 divide-x divide-[var(--ui-border)] border-b border-[var(--ui-border)]">
@@ -1791,13 +1836,35 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
               </div>
               <div className="grid gap-3 p-4 sm:grid-cols-[1fr_auto] sm:items-end">
                 <TextField label="Find a player" type="search" placeholder="Search by name or shirt number" value={squadSearch} onChange={(event) => setSquadSearch(event.target.value)} />
-                <InviteButton teamId={activeTeamId} teamName={selectedTeam?.name ?? ''} role="parent" />
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => setShowSquadAssessments(true)} className="min-h-11 flex-1 rounded-xl bg-[var(--ui-accent)] px-4 text-sm font-semibold text-white sm:flex-none">Review squad</button>
+                  <InviteButton teamId={activeTeamId} teamName={selectedTeam?.name ?? ''} role="parent" />
+                </div>
+              </div>
+              <div className="flex gap-2 overflow-x-auto px-4 pb-3" aria-label="Filter squad">
+                {[
+                  { value: 'all' as const, label: `All ${players.length}` },
+                  { value: 'profile' as const, label: `Profile to finish ${playersNeedingProfile}` },
+                  { value: 'check-in' as const, label: `Attendance check-in ${playersNeedingCheckIn}` },
+                ].map((filter) => (
+                  <button
+                    key={filter.value}
+                    type="button"
+                    aria-pressed={squadFilter === filter.value}
+                    onClick={() => setSquadFilter(filter.value)}
+                    className={`min-h-11 shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition ${squadFilter === filter.value ? 'border-[var(--ui-accent)] bg-[var(--ui-accent)] text-white' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'}`}
+                  >
+                    {filter.label}
+                  </button>
+                ))}
               </div>
               <p role="status" className="px-4 pb-4 text-xs text-slate-500">Showing {visibleSquad.length} of {players.length} players</p>
             </article>
           ) : null}
 
-          {!activeTeamId ? (
+          {showSquadAssessments && activeTeamId ? (
+            <SquadAssessmentWorkspace players={players} teamId={activeTeamId} coachId={profile.id} onClose={() => setShowSquadAssessments(false)} />
+          ) : !activeTeamId ? (
             <div className="rounded-2xl border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-500">
               Select a team to view the squad.
             </div>
@@ -1837,36 +1904,51 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
                   if (b.jerseyNumber != null) return 1
                   return a.name.localeCompare(b.name)
                 })
-                .map((player) => (
-                <button
-                  key={player.id}
-                  type="button"
-                  onClick={() => setSquadViewPlayerId(player.id)}
-                  className="ui-panel group p-4 text-left transition hover:-translate-y-0.5 hover:border-[var(--ui-accent)] hover:shadow-md"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="relative h-14 w-14 shrink-0">
-                      {player.photoUrl ? (
-                        <img src={player.photoUrl} alt={player.name} className="h-14 w-14 rounded-xl object-cover" />
-                      ) : (
-                        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--ui-accent)_10%,white)] text-lg font-bold text-[var(--ui-accent)]">
-                          {player.name.charAt(0)}
+                .map((player) => {
+                  const attendanceStat = attendanceStatByPlayerId.get(player.id)
+                  const attendanceTone = attendanceStat?.rate == null
+                    ? 'bg-slate-100 text-slate-500'
+                    : attendanceStat.rate >= 75
+                      ? 'bg-emerald-50 text-emerald-700'
+                      : attendanceStat.rate >= 60
+                        ? 'bg-amber-50 text-amber-700'
+                        : 'bg-rose-50 text-rose-700'
+                  return (
+                    <button
+                      key={player.id}
+                      type="button"
+                      onClick={() => setSquadViewPlayerId(player.id)}
+                      className="ui-panel group p-4 text-left transition hover:-translate-y-0.5 hover:border-[var(--ui-accent)] hover:shadow-md"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="relative h-14 w-14 shrink-0">
+                          {player.photoUrl ? (
+                            <img src={player.photoUrl} alt={player.name} className="h-14 w-14 rounded-xl object-cover" />
+                          ) : (
+                            <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--ui-accent)_10%,white)] text-lg font-bold text-[var(--ui-accent)]">
+                              {player.name.charAt(0)}
+                            </div>
+                          )}
+                          {player.jerseyNumber != null && (
+                            <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#1565ff] text-[10px] font-extrabold text-white ring-2 ring-white">
+                              {player.jerseyNumber}
+                            </span>
+                          )}
                         </div>
-                      )}
-                      {player.jerseyNumber != null && (
-                        <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#1565ff] text-[10px] font-extrabold text-white ring-2 ring-white">
-                          {player.jerseyNumber}
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold text-slate-900">{player.name}</p>
+                          <p className="mt-0.5 text-xs text-slate-500">{player.position ?? 'Position not set'} · {formatDate(player.dob)}</p>
+                        </div>
+                      </div>
+                      <div className="mt-3 flex items-center justify-between gap-2 border-t border-slate-100 pt-3">
+                        <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${attendanceTone}`}>
+                          {attendanceStat?.rate == null ? 'No attendance history' : `${attendanceStat.rate}% attendance`}
                         </span>
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate font-semibold text-slate-900">{player.name}</p>
-                      <p className="mt-0.5 text-xs text-slate-500">{player.position ?? 'Position not set'} · {formatDate(player.dob)}</p>
-                    </div>
-                  </div>
-                  <p className="mt-3 text-right text-xs font-semibold text-[var(--ui-accent)] group-hover:underline">Open player workspace →</p>
-                </button>
-              ))}
+                        <span className="text-xs font-semibold text-[var(--ui-accent)] group-hover:underline">Open →</span>
+                      </div>
+                    </button>
+                  )
+                })}
             </div>
           )}
         </section>

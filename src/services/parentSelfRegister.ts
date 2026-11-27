@@ -13,7 +13,7 @@ function rpcMissing(err: { message?: string; code?: string }): boolean {
   return m.includes('could not find') || m.includes('does not exist') || err.code === 'PGRST202'
 }
 
-/** Creates pending player rows linked to the current user. Uses extended RPC when custom fields are present. */
+/** Creates one additional pending child linked to the signed-in parent/admin. */
 export async function registerChildrenForCurrentUser(children: ChildRegistrationInput[]): Promise<void> {
   const client = requireSupabase()
   const payload = validateChildren(children).map((child) => {
@@ -21,17 +21,12 @@ export async function registerChildrenForCurrentUser(children: ChildRegistration
     return { ...child, custom }
   })
 
-  const hasCustom = payload.some((p) => 'custom' in p && p.custom)
+  if (payload.length !== 1) throw new Error('Add one child at a time.')
 
-  if (hasCustom) {
-    const { error } = await client.rpc('register_signup_children_with_field_values', {
-      p_children: payload,
-    })
-    if (!error) return
-    if (!rpcMissing(error)) throw new Error(error.message)
-    throw new Error('The club’s registration questions are not available yet. Please contact the club; your answers have not been submitted.')
+  const { error } = await client.rpc('register_additional_child', { p_child: payload[0] })
+  if (!error) return
+  if (rpcMissing(error)) {
+    throw new Error('Adding another child needs a club system update. Please contact your administrator; no registration was created.')
   }
-
-  const { error } = await client.rpc('register_signup_children', { children: payload })
-  if (error) throw new Error(error.message)
+  throw new Error(error.message)
 }

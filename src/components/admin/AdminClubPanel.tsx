@@ -1,4 +1,5 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { readClubPreference, writeClubPreference } from '../../clubos/runtime.ts'
 import type { BillingTab } from './AdminBillingPanel.tsx'
 import { Button } from '../ui/Button.tsx'
@@ -13,6 +14,7 @@ import { useClubSettings } from '../../hooks/useClubSettings.ts'
 import { useTeamPlayers } from '../../hooks/useTeamPlayers.ts'
 import { useAllPlayers } from '../../hooks/useAllPlayers.ts'
 import { useAuth } from '../../hooks/useAuth.ts'
+import { useClientErrors } from '../../hooks/useClientErrors.ts'
 import { formatDate, formatDateTime } from '../../utils/date.ts'
 import type { ProvisionableRole } from '../../services/provisioning.ts'
 import { uploadTeamPhoto, saveTeamPhotoFocus } from '../../services/adminClub.ts'
@@ -80,7 +82,12 @@ const PlayerRegistrationSection = lazy(async () => {
   return { default: module.PlayerRegistrationSection }
 })
 
-export type AdminTab = 'overview' | 'players' | 'manage' | 'members' | 'activity' | 'messages' | 'billing' | 'forms' | 'registration' | 'posts'
+const DevelopmentDashboard = lazy(async () => {
+  const module = await import('./DevelopmentDashboard.tsx')
+  return { default: module.DevelopmentDashboard }
+})
+
+export type AdminTab = 'overview' | 'players' | 'development' | 'manage' | 'members' | 'activity' | 'messages' | 'billing' | 'forms' | 'registration' | 'posts'
 type ManageSection = 'import' | 'team' | 'player' | 'coach' | 'parent' | 'staff' | 'groups' | 'testing' | 'pathway'
 
 const MANAGE_SECTIONS = [
@@ -98,7 +105,7 @@ const MANAGE_SECTIONS = [
 function SectionFallback() {
   return (
     <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-6 text-sm text-slate-500">
-      Loading messages...
+      Loading workspace…
     </div>
   )
 }
@@ -121,6 +128,7 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
   } = useAdminClubData()
 
   const { logs: auditLogs, loading: loadingAuditLogs, error: auditLogError } = useAuditLogs()
+  const { errors: clientErrors, loading: loadingClientErrors, error: clientErrorLoadError } = useClientErrors()
   const { players: allPlayers, loading: loadingAllPlayers } = useAllPlayers()
   const activePlayers = useMemo(() => {
     const activeTeamIds = new Set(teams.map((team) => team.id))
@@ -496,7 +504,9 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
                 {pendingRegistrations.length > 0 && (
                   <button
                     type="button"
-                    onClick={() => setActiveTab('manage')}
+                    onClick={() => {
+                      document.getElementById('pending-registrations')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                    }}
                     className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-left transition hover:bg-amber-100 active:scale-[0.98]"
                   >
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-400 text-base font-bold text-white">
@@ -733,7 +743,7 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
           </details>
 
           {pendingRegistrations.length > 0 ? (
-            <article className="rounded-[1.75rem] border border-amber-200 bg-amber-50/80 p-5 shadow-lg shadow-slate-900/5">
+            <article id="pending-registrations" className="scroll-mt-24 rounded-[1.75rem] border border-amber-200 bg-amber-50/80 p-5 shadow-lg shadow-slate-900/5">
               <div className="flex items-center gap-2">
                 <h3 className="text-lg font-semibold text-slate-900">Pending registrations</h3>
                 <span className="rounded-full bg-amber-600 px-2 py-0.5 text-xs font-bold text-white">
@@ -1420,6 +1430,12 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
         </section>
       ) : null}
 
+      {activeTab === 'development' ? (
+        <Suspense fallback={<SectionFallback />}>
+          <DevelopmentDashboard players={activePlayers} onOpenPlayer={setViewingPlayerId} />
+        </Suspense>
+      ) : null}
+
       {/* MANAGE TAB */}
       {activeTab === 'manage' ? (
         <section className="space-y-5">
@@ -1767,6 +1783,39 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
             <div className="rounded-3xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">{auditLogError}</div>
           ) : null}
 
+          <section className="rounded-[1.5rem] border border-[var(--ui-border)] bg-white p-5 shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h3 className="font-semibold text-slate-950">Browser health</h3>
+                <p className="mt-1 text-sm text-slate-500">Unhandled errors reported by signed-in ClubOS members.</p>
+              </div>
+              <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${clientErrors.length > 0 ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                {loadingClientErrors ? 'Checking…' : clientErrors.length > 0 ? `${clientErrors.length} recent` : 'No errors'}
+              </span>
+            </div>
+            {clientErrorLoadError ? <p className="mt-4 text-sm text-rose-700">{clientErrorLoadError}</p> : null}
+            {!loadingClientErrors && !clientErrorLoadError && clientErrors.length === 0 ? (
+              <p className="mt-4 rounded-xl bg-emerald-50 px-3 py-3 text-sm text-emerald-800">No browser failures have been recorded.</p>
+            ) : null}
+            {clientErrors.length > 0 ? (
+              <div className="mt-4 space-y-2">
+                {clientErrors.map((item) => (
+                  <details key={item.id} className="rounded-xl border border-rose-100 bg-rose-50/60 px-4 py-3">
+                    <summary className="cursor-pointer list-none">
+                      <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                        <p className="break-words text-sm font-semibold text-rose-950">{item.message}</p>
+                        <p className="shrink-0 text-xs text-rose-700">{formatAuditTimestamp(item.createdAt)}</p>
+                      </div>
+                      <p className="mt-1 text-xs text-rose-700">{item.route} · {item.source ?? 'browser'}{item.appVersion ? ` · v${item.appVersion}` : ''}</p>
+                    </summary>
+                    {item.stack ? <pre className="mt-3 max-h-52 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-slate-950 p-3 text-xs text-slate-100">{item.stack}</pre> : null}
+                    {item.userAgent ? <p className="mt-2 break-words text-xs text-slate-500">{item.userAgent}</p> : null}
+                  </details>
+                ))}
+              </div>
+            ) : null}
+          </section>
+
           {auditLogs.length === 0 && !loadingAuditLogs ? (
             <div className="rounded-[2rem] border border-dashed border-slate-300 px-4 py-12 text-center">
               <p className="text-sm text-slate-500">No admin activity recorded yet.</p>
@@ -1837,7 +1886,7 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
       ) : null}
 
       {/* PLAYER PROFILE DRAWER */}
-      {viewingPlayerId && profile ? (
+      {viewingPlayerId && profile ? createPortal(
         <div
           className="fixed inset-0 z-50 flex items-end justify-center sm:items-stretch sm:justify-end"
           onClick={(e) => { if (e.target === e.currentTarget) setViewingPlayerId(null) }}
@@ -1849,8 +1898,8 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" />
 
           {/* Drawer panel */}
-          <div className="relative z-10 flex h-[96dvh] w-full max-w-5xl flex-col rounded-t-[1.5rem] bg-[var(--ui-canvas)] shadow-2xl sm:h-full sm:rounded-none sm:border-l sm:border-[var(--ui-border)]">
-            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+          <div className="relative z-10 flex h-[96dvh] w-full min-w-0 flex-col overflow-hidden rounded-t-[1.5rem] bg-[var(--ui-canvas)] shadow-2xl sm:h-full sm:w-[94vw] sm:max-w-7xl sm:rounded-none sm:border-l sm:border-[var(--ui-border)]">
+            <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-4 py-3 sm:px-6 sm:py-4">
               <div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--ui-accent)]">Player record</p><h2 id="player-drawer-title" className="mt-0.5 text-lg font-semibold text-slate-900">Player workspace</h2></div>
               <button
                 type="button"
@@ -1863,7 +1912,7 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
                 </svg>
               </button>
             </div>
-            <div className="overflow-y-auto p-3 sm:p-6">
+            <div className="min-h-0 min-w-0 flex-1 overflow-auto overscroll-contain p-3 sm:p-6">
               <Suspense fallback={<SectionFallback />}>
                 <PlayerWorkspace
                   playerId={viewingPlayerId}
@@ -1875,7 +1924,8 @@ export function AdminClubPanel({ activeTab, onTabChange }: AdminClubPanelProps) 
               </Suspense>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       ) : null}
     </section>
   )

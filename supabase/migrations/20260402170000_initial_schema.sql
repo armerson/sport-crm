@@ -263,4 +263,4 @@ for insert with check (
 );
 
 create policy "audit logs admin only" on public.audit_logs
-for all using (public.is_admin()) with check (public.is_admin());goo
+for all using (public.is_admin()) with check (public.is_admin());

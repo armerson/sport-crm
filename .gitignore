@@ -30,6 +30,7 @@ test-results
 
 # Supabase temp files
 supabase/.temp
+supabase/.branches
 
 # Debug / scratch SQL files (root level)
 check_*.sql

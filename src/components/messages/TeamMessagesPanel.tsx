@@ -5,6 +5,7 @@ import { AnnouncementsPanel } from './AnnouncementsPanel.tsx'
 import type { UserProfile } from '../../types/auth.ts'
 import { formatDateTime } from '../../utils/date.ts'
 import { Button } from '../ui/Button.tsx'
+import { DirectMessagesPanel } from './DirectMessagesPanel.tsx'
 
 interface TeamMessagesPanelProps {
   initialTeamId?: string
@@ -42,6 +43,7 @@ export function TeamMessagesPanel({ profile, initialTeamId = '' }: TeamMessagesP
 
   const isAdmin = profile.roles.includes('admin')
   const isCoachOrParent = !isAdmin
+  const isParentOnly = profile.roles.includes('parent') && !profile.roles.some((role) => role === 'admin' || role === 'coach')
 
   // Derive a display label for the active target
   const activeLabel = useMemo(() => {
@@ -60,7 +62,7 @@ export function TeamMessagesPanel({ profile, initialTeamId = '' }: TeamMessagesP
   const activeError = localError ?? error
 
   // Can the current user send to the active target?
-  const canSend = isAdmin || (isCoachOrParent && !!activeTeamId)
+  const canSend = !isParentOnly && (isAdmin || (isCoachOrParent && !!activeTeamId))
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -103,7 +105,9 @@ export function TeamMessagesPanel({ profile, initialTeamId = '' }: TeamMessagesP
           <p className="mt-2 text-sm leading-6 text-slate-600">
             {isAdmin
               ? 'Send to individual teams, named groups, or the whole club.'
-              : 'Keep plans and updates together. Choose your team to join the conversation.'}
+              : isParentOnly
+                ? 'Read team and club updates here, then contact authorised staff privately.'
+                : 'Keep plans and updates together. Choose your team to join the conversation.'}
           </p>
         </div>
         <p className="rounded-full border border-[var(--ui-border)] bg-white px-3 py-1.5 text-xs font-semibold text-slate-600">
@@ -179,7 +183,7 @@ export function TeamMessagesPanel({ profile, initialTeamId = '' }: TeamMessagesP
         </div>
       ) : null}
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(20rem,0.75fr)] lg:items-start">
+      <div className={`mt-6 grid gap-4 ${isParentOnly ? '' : 'lg:grid-cols-[minmax(0,1.45fr)_minmax(20rem,0.75fr)] lg:items-start'}`}>
         {/* Conversation thread */}
         <article className="rounded-xl border border-[var(--ui-border)] bg-slate-50/60 p-4 sm:p-5">
           <div className="flex items-center justify-between gap-3">
@@ -222,7 +226,7 @@ export function TeamMessagesPanel({ profile, initialTeamId = '' }: TeamMessagesP
         </article>
 
         {/* Send form */}
-        <article className="rounded-xl border border-[var(--ui-border)] bg-white p-4 shadow-[0_1px_2px_#10182808] sm:p-5 lg:sticky lg:top-4">
+        {!isParentOnly ? <article className="rounded-xl border border-[var(--ui-border)] bg-white p-4 shadow-[0_1px_2px_#10182808] sm:p-5 lg:sticky lg:top-4">
           <h3 className="text-lg font-semibold text-slate-950">New message</h3>
           <p className="mt-2 text-sm leading-6 text-slate-600">
             {activeTarget === 'club'
@@ -261,8 +265,9 @@ export function TeamMessagesPanel({ profile, initialTeamId = '' }: TeamMessagesP
                   : 'Send message'}
             </Button>
           </form>
-        </article>
+        </article> : null}
       </div>
+      <DirectMessagesPanel profile={profile} />
       </div>
     </section>
   )

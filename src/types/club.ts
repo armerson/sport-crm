@@ -201,6 +201,8 @@ export interface MessageRecord {
   teamId: string | null
   /** Set when this message is a group broadcast. */
   groupId: string | null
+  /** Set only for private one-to-one messages. */
+  recipientId: string | null
   senderId: string
   content: string
   timestamp: string
@@ -210,6 +212,7 @@ export interface MessageFormInput {
   /** Exactly one of teamId / groupId should be set, or both null for club-wide. */
   teamId: string | null
   groupId: string | null
+  recipientId?: string | null
   senderId: string
   content: string
 }

@@ -67,8 +67,8 @@ Next:
 3. Add a SQL test that creates two local club databases (or two schemas in CI)
    and proves a club A token is rejected by club B's API.
 4. ~~Scope the remaining UI preferences to the club in multi mode.~~ Done:
-   drafts, unread markers and banner dismissals are club-scoped; the coach's
-   selected team is held in memory only, so it never persisted.
+   drafts, unread markers, banner dismissals and the coach's selected team
+   are club-scoped.
 5. Move the dangerous repo-root SQL scripts out of the working tree.
 
 ### Phase 2 — multi-club administration

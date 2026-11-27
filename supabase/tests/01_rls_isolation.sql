@@ -35,7 +35,7 @@ RETURNS void LANGUAGE sql AS $$
     json_build_object('sub', p_user_id::text, 'role', 'authenticated')::text, true);
 $$;
 
-SELECT plan(38);
+SELECT plan(37);
 
 -- ── Aliases ──────────────────────────────────────────────────────
 DO $$ BEGIN
