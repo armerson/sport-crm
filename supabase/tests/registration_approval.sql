@@ -45,7 +45,7 @@ begin
     perform public.admin_approve_pending_player('cd202609-1318-4000-8000-000000000005','cd202609-1318-4000-8000-000000000003');
     raise exception 'TEST FAILED: duplicate approval accepted';
   exception when raise_exception then
-    if sqlerrm <> 'This registration is not pending approval.' then raise; end if;
+    if sqlerrm <> 'This registration is not awaiting approval.' then raise; end if;
   end;
   begin
     perform public.admin_approve_pending_player('cd202609-1318-4000-8000-000000000006','cd202609-1318-4000-8000-000000000003');
