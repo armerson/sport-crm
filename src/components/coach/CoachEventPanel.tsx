@@ -1,5 +1,6 @@
 import { CoachOverview } from './CoachOverview.tsx'
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
+import { clubSessionStorage } from '../../clubos/runtime.ts'
 import { useAttendanceStats } from '../../hooks/useAttendanceStats.ts'
 import { useCoachClubData } from '../../hooks/useCoachClubData.ts'
 import { useTeamPlayers } from '../../hooks/useTeamPlayers.ts'
@@ -297,7 +298,7 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
   }
   const selectedTeamStorageKey = `clubos-coach-team-${coachId}`
   const [selectedTeamId, setSelectedTeamId] = useState(() => {
-    try { return sessionStorage.getItem(selectedTeamStorageKey) ?? '' } catch { return '' }
+    try { return clubSessionStorage()?.getItem(selectedTeamStorageKey) ?? '' } catch { return '' }
   })
   const [selectedEventId, setSelectedEventId] = useState('')
   const [scheduleFilter, setScheduleFilter] = useState<'upcoming' | 'past' | 'all'>('upcoming')
@@ -402,8 +403,8 @@ export function CoachEventPanel({ coachId, profile, activeTab, onTabChange }: Co
 
     if (nextTeamId !== selectedTeamId) setSelectedTeamId(nextTeamId)
     try {
-      if (nextTeamId) sessionStorage.setItem(selectedTeamStorageKey, nextTeamId)
-      else sessionStorage.removeItem(selectedTeamStorageKey)
+      if (nextTeamId) clubSessionStorage()?.setItem(selectedTeamStorageKey, nextTeamId)
+      else clubSessionStorage()?.removeItem(selectedTeamStorageKey)
     } catch { /* Continue without session persistence when storage is unavailable. */ }
   }, [loadingTeams, selectedTeamId, selectedTeamStorageKey, teams])
 

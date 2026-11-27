@@ -1,4 +1,5 @@
 import { requireSupabase } from '../services/supabaseHelpers.ts'
+import { supabaseUrl } from './supabase.ts'
 
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined
 
@@ -168,7 +169,6 @@ export async function sendPushToUsers(userIds: string[], title: string, body: st
   if (!userIds.length) return false
 
   const client = requireSupabase()
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 
   try {
     const response = await fetch(`${supabaseUrl}/functions/v1/send-push-notification`, {

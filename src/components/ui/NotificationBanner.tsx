@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { readClubPreference, writeClubPreference } from '../../clubos/runtime.ts'
 import { getNotificationPermission, isPushSupported, requestPermissionAndSubscribe } from '../../lib/pushNotifications.ts'
 
 const VAPID_CONFIGURED = Boolean(import.meta.env.VITE_VAPID_PUBLIC_KEY)
@@ -33,7 +34,7 @@ const DISMISS_KEY = 'push_banner_dismissed'
 export function NotificationBanner({ userId }: NotificationBannerProps) {
   const [permission, setPermission] = useState<NotificationPermission>(getNotificationPermission)
   const [loading, setLoading] = useState(false)
-  const [dismissed, setDismissed] = useState(() => localStorage.getItem(DISMISS_KEY) === '1')
+  const [dismissed, setDismissed] = useState(() => readClubPreference(DISMISS_KEY) === '1')
 
   if (!isPushSupported() || !VAPID_CONFIGURED || permission === 'denied' || permission === 'granted' || dismissed) {
     return null
@@ -49,7 +50,7 @@ export function NotificationBanner({ userId }: NotificationBannerProps) {
   }
 
   function handleDismiss() {
-    localStorage.setItem(DISMISS_KEY, '1')
+    writeClubPreference(DISMISS_KEY, '1')
     setDismissed(true)
   }
 

@@ -1,17 +1,16 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase.ts'
+import { readClubPreference, writeClubPreference } from '../clubos/runtime.ts'
 
 const readEvent = 'clubos:messages-read'
 function storageKey(profileId: string) { return `msgs_last_read_${profileId}` }
 function getLastRead(profileId: string): string {
-  try {
-    const value = localStorage.getItem(storageKey(profileId))
-    if (value && Number.isFinite(Date.parse(value))) return new Date(value).toISOString()
-  } catch { /* Storage is optional. */ }
+  const value = readClubPreference(storageKey(profileId))
+  if (value && Number.isFinite(Date.parse(value))) return new Date(value).toISOString()
   return new Date(0).toISOString()
 }
 function saveReadTime(profileId: string) {
-  try { localStorage.setItem(storageKey(profileId), new Date().toISOString()) } catch { /* Storage is optional. */ }
+  writeClubPreference(storageKey(profileId), new Date().toISOString())
 }
 export function markMessagesRead(profileId: string) {
   if (!profileId) return
