@@ -99,6 +99,12 @@ device-wide. `tests/clubStorageGuard.test.ts` fails if code outside
   production data is not an isolated test environment.
 - Production: one Vercel project and one Supabase project per club in
   standalone mode.
+- Optional per-deployment switches: `VITE_GUEST_CHECKOUT_ENABLED=true` turns on
+  guest camp payment links (`/pay/camp`). Leave it off until the backend has
+  `guest_checkout_registrations` and the `create-guest-checkout-session`
+  function and the flow has passed in Stripe test mode.
+- Hosted databases whose migration history differs from this repo (Ambassadors
+  live) get new migrations one file at a time, never `supabase db push`.
 
 ## Verification
 

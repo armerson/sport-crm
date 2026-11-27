@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { clubShareUrl } from '../../clubos/runtime.ts'
+import { guestCheckoutEnabled } from '../../utils/guestCheckoutConfig.ts'
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { TabNav } from '../ui/TabNav.tsx'
 import { SuccessMessage } from '../ui/SuccessMessage.tsx'
@@ -244,7 +245,7 @@ function ProductsSection() {
                 >
                   Edit
                 </button>
-                {product.active && (product.billingType === 'one_off' || product.billingType === 'membership') ? (
+                {guestCheckoutEnabled && product.active && (product.billingType === 'one_off' || product.billingType === 'membership') ? (
                   <button
                     type="button"
                     onClick={() => {

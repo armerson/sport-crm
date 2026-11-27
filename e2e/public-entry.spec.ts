@@ -41,3 +41,10 @@ test('registration page fits within a phone viewport', async ({ page }, testInfo
   expect(hasHorizontalOverflow).toBe(false)
   await expect(page.getByRole('link', { name: /Register as a parent/ })).toBeInViewport()
 })
+
+test('camp payment links explain when online payment is not set up', async ({ page }) => {
+  await page.goto('/pay/camp/00000000-0000-4000-8000-000000000000')
+
+  await expect(page.getByText("Online payment isn't available")).toBeVisible()
+  await expect(page.getByText('Please contact the club to book a place.')).toBeVisible()
+})

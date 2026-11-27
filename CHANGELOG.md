@@ -1,5 +1,47 @@
 # Changelog
 
+## Unreleased — Restore match stats and guard camp payment links (`claude/restore-match-stats`)
+
+### Fixed
+- `player_match_stats` was missing on the Ambassadors live database (removed
+  outside the migration history), so coaches could not save goals, assists or
+  cards and the season Stats tab was empty. Migration
+  `20261127120000_restore_player_match_stats.sql` recreates it where missing.
+- Privacy: the table's original read policy let anyone, including signed-out
+  visitors, read children's match stats. Reading is now limited to signed-in
+  people who can see the team (admins, its coaches, parents and linked players
+  of its squad). Writing is limited to admins and the team's coaches; a coach
+  can only record players in their squad, for that team's own matches.
+- "Copy guest pay link" (Admin > Billing) and `/pay/camp` no longer offer a
+  payment that cannot work. Guest checkout is off unless
+  `VITE_GUEST_CHECKOUT_ENABLED=true`; the page asks visitors to contact the club.
+
+### Tests
+- `supabase/tests/player_match_stats_access.sql`: anonymous, parent, unrelated
+  parent, coach and admin access, the app's upsert, and a check that no open
+  read policy returns. Verified it fails against the old policy and that the
+  migration works on a database without the table, run twice.
+- Unit test for the guest checkout switch; browser test for the camp page.
+
+### Not changed
+- Live database: not modified. Guest checkout table and Edge Function are not
+  created or deployed; that needs Stripe test-mode verification first.
+
+### Applying to live (needs owner approval)
+Do not run `supabase db push`: the live migration history uses different
+version numbers and the project is shared with other tools. Apply only this
+file, e.g. `supabase db query --linked -f supabase/migrations/20261127120000_restore_player_match_stats.sql`,
+then record it with `supabase migration repair --status applied 20261127120000`.
+
+### Limitations
+- Any stats that existed before the table was removed on live are not recovered.
+- The Stats tab still hides load errors silently.
+
+### Rollback
+Code: revert the branch. Database: the migration only creates the table and
+replaces its policies; to undo on a database that lacked it,
+`drop table public.player_match_stats;` (deletes stats recorded since).
+
 ## Unreleased — ClubOS Phase 1 foundation (`claude/clubos-phase1-foundation`)
 
 Builds on PR #30 (`codex/multi-club-foundation`).
