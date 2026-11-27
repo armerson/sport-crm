@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { clubShareUrl } from '../../clubos/runtime.ts'
 import { Button } from '../ui/Button.tsx'
 import { ConfirmInline } from '../ui/ConfirmInline.tsx'
 import { SelectField } from '../ui/SelectField.tsx'
@@ -245,8 +246,6 @@ export function FormsManageSection({ profile, teams }: FormsManageSectionProps) 
   function updateField(i: number, patch: Partial<FieldInput>) {
     setFields((prev) => prev.map((f, idx) => idx === i ? { ...f, ...patch } : f))
   }
-
-  const shareBase = window.location.origin
 
   if (loading) return <p className="text-sm text-slate-500">Loading forms…</p>
 
@@ -539,7 +538,7 @@ export function FormsManageSection({ profile, teams }: FormsManageSectionProps) 
       ) : (
         <div className="space-y-3">
           {forms.map((form) => {
-            const link = `${shareBase}/register/${form.slug}`
+            const link = clubShareUrl(`/register/${form.slug}`)
             return (
               <article key={form.id} className="rounded-2xl border border-white/70 bg-white/85 p-4 shadow-sm">
                 <div className="flex flex-wrap items-start justify-between gap-3">

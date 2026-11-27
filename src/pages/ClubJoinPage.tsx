@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { clubSessionStorage } from '../clubos/runtime.ts'
 import { useParams } from 'react-router-dom'
 import { applyClubInvite, getClubInviteInfo, type ClubInviteInfo } from '../services/teamInvites.ts'
 import { useAuth } from '../hooks/useAuth.ts'
@@ -65,11 +66,11 @@ export function ClubJoinPage() {
     if (!name.trim()) { setFormError('Please enter your name.'); return }
     setSubmitting(true)
     try {
-      sessionStorage.setItem('pending_club_invite_code', code)
+      clubSessionStorage()?.setItem('pending_club_invite_code', code)
       await signUp({ email, password, name: name.trim(), roles: info!.role === 'coach' ? ['coach'] : ['admin'], emailRedirectPath: `/join/club/${code}` })
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Sign up failed.')
-      sessionStorage.removeItem('pending_club_invite_code')
+      clubSessionStorage()?.removeItem('pending_club_invite_code')
     } finally {
       setSubmitting(false)
     }
@@ -80,11 +81,11 @@ export function ClubJoinPage() {
     setFormError(null)
     setSubmitting(true)
     try {
-      sessionStorage.setItem('pending_club_invite_code', code)
+      clubSessionStorage()?.setItem('pending_club_invite_code', code)
       await signIn({ email, password })
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Sign in failed.')
-      sessionStorage.removeItem('pending_club_invite_code')
+      clubSessionStorage()?.removeItem('pending_club_invite_code')
     } finally {
       setSubmitting(false)
     }

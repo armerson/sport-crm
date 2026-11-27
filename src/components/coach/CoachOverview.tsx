@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { clubShareUrl } from '../../clubos/runtime.ts'
 import type { EventRecord, TeamRecord } from '../../types/club.ts'
 import { Button } from '../ui/Button.tsx'
 import { formatDateTimeRelative } from '../../utils/date.ts'
@@ -27,7 +28,7 @@ export function CoachOverview({ name, events, teams, loading, attendanceCounts, 
   const repliesDue = weekEvents.reduce((sum, event) => sum + (attendanceCounts.get(event.id)?.pending ?? 0), 0)
   const players = new Set(teams.flatMap((team) => team.players)).size
   const nextCounts = next ? attendanceCounts.get(next.id) : undefined
-  const registrationUrl = `${window.location.origin}/register`
+  const registrationUrl = clubShareUrl('/register')
 
   async function copyRegistration() {
     try {

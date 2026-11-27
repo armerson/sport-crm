@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { clubShareUrl } from '../../clubos/runtime.ts'
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { TabNav } from '../ui/TabNav.tsx'
 import { SuccessMessage } from '../ui/SuccessMessage.tsx'
@@ -247,7 +248,7 @@ function ProductsSection() {
                   <button
                     type="button"
                     onClick={() => {
-                      const url = `${window.location.origin}/pay/camp/${product.id}`
+                      const url = clubShareUrl(`/pay/camp/${product.id}`)
                       void navigator.clipboard.writeText(url).then(() => {
                         setSuccessMsg('Guest pay link copied — share with anyone; no club login required.')
                       })

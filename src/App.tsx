@@ -2,6 +2,10 @@ import { Suspense, lazy } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { ProtectedRoute } from './router/ProtectedRoute.tsx'
 import { PublicOnlyRoute } from './router/PublicOnlyRoute.tsx'
+import { ClubDirectoryPage } from './pages/ClubDirectoryPage.tsx'
+import { ClubEntryPage } from './pages/ClubEntryPage.tsx'
+import { activeClub, clubOSMode } from './clubos/runtime.ts'
+import { PublicClubSitePage } from './pages/PublicClubSitePage.tsx'
 
 const RegistrationLandingPage = lazy(async () => {
   const module = await import('./pages/RegistrationLandingPage.tsx')
@@ -66,9 +70,23 @@ function RouteFallback() {
 }
 
 function App() {
+  // Directory deployments have no backend. Multi-club apps have none until a
+  // club is chosen. Either way, only the club finder and club links are open.
+  if (clubOSMode === 'directory' || (clubOSMode === 'multi' && !activeClub)) {
+    return (
+      <Routes>
+        <Route path="/clubs" element={<ClubDirectoryPage />} />
+        <Route path="/clubs/:code/*" element={<ClubEntryPage />} />
+        <Route path="*" element={<Navigate to="/clubs" replace />} />
+      </Routes>
+    )
+  }
   return (
     <Suspense fallback={<RouteFallback />}>
       <Routes>
+        <Route path="/clubs" element={<ClubDirectoryPage />} />
+        <Route path="/clubs/:code/*" element={<ClubEntryPage />} />
+        <Route path="/club-website" element={<PublicClubSitePage />} />
         {UiPreview && <Route path="/ui-preview" element={<UiPreview />} />}
         <Route element={<PublicOnlyRoute />}>
           <Route path="/login" element={<AuthPage />} />

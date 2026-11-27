@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { readClubPreference, writeClubPreference } from '../../clubos/runtime.ts'
 import { useTeamMessages } from '../../hooks/useTeamMessages.ts'
 import { AnnouncementsPanel } from './AnnouncementsPanel.tsx'
 import type { UserProfile } from '../../types/auth.ts'
@@ -32,7 +33,7 @@ export function TeamMessagesPanel({ profile, initialTeamId = '' }: TeamMessagesP
 
   const draftKey = `msg-draft-${profile.id}-${activeTarget}`
   const savedDraft = useMemo(() => {
-    try { return localStorage.getItem(draftKey) ?? '' } catch { return '' }
+    return readClubPreference(draftKey) ?? ''
   }, [draftKey])
   const draft = drafts[draftKey] ?? savedDraft
   function setDraft(value: string) {
@@ -78,7 +79,7 @@ export function TeamMessagesPanel({ profile, initialTeamId = '' }: TeamMessagesP
     try {
       await sendMessage(activeTarget, draft.trim())
       setDraft('')
-      try { localStorage.removeItem(draftKey) } catch { /* Storage may be unavailable. */ }
+      writeClubPreference(draftKey, null)
     } catch {
       // Hook exposes a user-facing error.
     }
@@ -241,12 +242,7 @@ export function TeamMessagesPanel({ profile, initialTeamId = '' }: TeamMessagesP
                 className="ui-input min-h-36 resize-y"
                 onChange={(e) => {
                   setDraft(e.target.value)
-                  if (activeTarget) {
-                    try {
-                      if (e.target.value) localStorage.setItem(draftKey, e.target.value)
-                      else localStorage.removeItem(draftKey)
-                    } catch { /* Keep the in-memory draft when storage is unavailable. */ }
-                  }
+                  if (activeTarget) writeClubPreference(draftKey, e.target.value || null)
                 }}
                 placeholder={canSend ? 'Write your message…' : 'Select a destination to send a message…'}
                 value={draft}
