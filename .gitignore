@@ -43,3 +43,5 @@ temp_*.sql
 
 # Claude agent tooling
 .claude
+control-plane/supabase/.temp
+control-plane/supabase/.branches

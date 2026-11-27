@@ -1,5 +1,44 @@
 # Changelog
 
+## Unreleased — Control plane foundation (`claude/control-plane-foundation`)
+
+Phase 2, step 1 (ADR 0001 option C).
+
+### Added
+- `control-plane/supabase`: a separate operator-owned Supabase project with
+  `clubs`, `club_domains`, `platform_admins`, `onboarding_applications` and an
+  append-only `support_access_log`, plus the public `clubs_public` view (active
+  clubs shaped as registry entries). Self sign-up is off. The database rejects
+  secret/service-role keys, non-HTTPS backends and shared backends or origins.
+- `control-plane/supabase/tests/control_plane_access.sql` and
+  `npm run test:control-plane`: public, signed-in non-operator and operator
+  access, data rules and append-only support log. Verified to fail when the
+  log is made editable or the view exposes every club.
+- `src/clubos/controlPlane.ts` and `directoryBootstrap.ts`: in directory/multi
+  mode with `VITE_CLUBOS_CONTROL_PLANE_URL` and `_ANON_KEY` set, the app reads
+  the directory before creating its Supabase client, validates it with the
+  registry parser (any invalid entry rejects it all), caches the last good copy
+  on the device and falls back to the bundled registry. 7 unit tests. Checked
+  against the local control-plane stack over HTTP.
+
+### Changed
+- `src/main.tsx` now loads the directory first and then imports
+  `src/startApp.tsx` (the previous entry point, unchanged).
+
+### Not changed
+- Standalone builds (Ambassadors live) never contact a control plane.
+- No hosted project was created; no live database changes.
+
+### Limitations
+- No hosted control plane yet; no operator UI or onboarding form yet.
+- Onboarding applications have no rate limiting or spam protection yet.
+- Support access grants and showing the log to club admins are not built.
+- CI does not run the control-plane tests (they need Docker).
+
+### Rollback
+Revert the branch. Builds without the two control-plane variables behave as
+before.
+
 ## Unreleased — Cross-club session test (`claude/club-isolation-test`)
 
 ### Added

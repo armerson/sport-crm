@@ -1,6 +1,8 @@
 /// <reference types="vite/client" />
 
 declare const __APP_VERSION__: string
+// eslint-disable-next-line no-var -- global set once before the app loads
+declare var __CLUBOS_DIRECTORY_JSON__: string | undefined
 
 interface ImportMetaEnv {
   readonly VITE_CLUBOS_MODE?: 'standalone' | 'directory' | 'multi'
@@ -21,6 +23,8 @@ interface ImportMetaEnv {
   readonly VITE_SUPABASE_ANON_KEY?: string
   readonly VITE_VAPID_PUBLIC_KEY?: string
   readonly VITE_GUEST_CHECKOUT_ENABLED?: string
+  readonly VITE_CLUBOS_CONTROL_PLANE_URL?: string
+  readonly VITE_CLUBOS_CONTROL_PLANE_ANON_KEY?: string
 }
 
 interface ImportMeta {

@@ -2,6 +2,7 @@
  * Browser wiring for the ClubOS registry and club session.
  * Evaluated once at start-up, before the Supabase client is created.
  */
+import { registryOptionsFromEnv } from './controlPlane.ts'
 import { parseClubRegistry, type RegistryClub } from './registry.ts'
 import {
   clubSharePath,
@@ -23,12 +24,12 @@ function browserStorage(kind: 'localStorage' | 'sessionStorage'): KeyValueStorag
 
 function loadRegistry(): { clubs: RegistryClub[]; error: string | null } {
   try {
-    const raw = import.meta.env.VITE_CLUBOS_REGISTRY_JSON || import.meta.env.VITE_CLUB_DIRECTORY_JSON
-    const allowedBackendHosts = (import.meta.env.VITE_CLUBOS_BACKEND_HOSTS ?? '')
-      .split(',')
-      .map((host) => host.trim())
-      .filter(Boolean)
-    return { clubs: parseClubRegistry(raw, { allowLocalBackends: import.meta.env.DEV, allowedBackendHosts }), error: null }
+    // Set by directoryBootstrap.ts from the control plane before this module loads.
+    const raw =
+      globalThis.__CLUBOS_DIRECTORY_JSON__ ||
+      import.meta.env.VITE_CLUBOS_REGISTRY_JSON ||
+      import.meta.env.VITE_CLUB_DIRECTORY_JSON
+    return { clubs: parseClubRegistry(raw, registryOptionsFromEnv(import.meta.env)), error: null }
   } catch (error) {
     // Reject the whole registry rather than trust part of a malformed one.
     console.error('[ClubOS] Club registry rejected:', error)
