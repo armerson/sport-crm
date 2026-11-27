@@ -74,11 +74,14 @@ Next:
 Phase 1 is complete apart from replaying migrations on a fresh *hosted*
 project, which needs the second test club from Phase 2.
 
-### Phase 2 — multi-club administration
-- Control-plane Supabase project: `clubs`, `club_domains`, `club_features`,
-  `onboarding_applications`, `platform_admins`, `support_access_log`. Public
-  view for the directory; operator-only writes. App fetches it and validates
-  with the same registry parser.
+### Phase 2 — multi-club administration (in progress)
+- [x] Control-plane schema (`control-plane/supabase`): `clubs` (features as a
+      JSON column rather than a separate table), `club_domains`,
+      `onboarding_applications`, `platform_admins`, `support_access_log`;
+      public `clubs_public` view; operator-only writes; permission tests.
+- [x] App fetches the directory and validates it with the same registry
+      parser, with device cache and bundled fallback.
+- [ ] Hosted control-plane project (needs owner approval: new infrastructure).
 - Onboarding form (club name, sport, badge, colours, location, contacts,
   website, age groups/teams, fees, season dates, payment methods, required
   registration fields, website wanted) saved as an application for operator

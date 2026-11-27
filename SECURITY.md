@@ -31,11 +31,24 @@ Evidence from the September 2026 access-control repair is in
 
 ## Platform operators
 
-Operators manage clubs, plans and features in the control plane (Phase 2). They
-have no standing access to club databases. Support access will require a
-reason, be time-limited, be logged in `support_access_log`, and be visible to
-the club's administrators. Children's records are out of scope for support
-unless the club grants access for a specific request.
+Operators manage clubs, plans and features in the control plane
+(`control-plane/`, its own Supabase project). It holds no member, child, payment
+or safeguarding records, and operators have no standing access to club
+databases.
+
+- `platform_admins` lists operators. It can only be changed with the service
+  role; nobody can make themselves an operator. Self sign-up is off.
+- The public reads only `clubs_public` (active clubs, public keys and branding;
+  never operator notes) and may submit an onboarding application, which it
+  cannot read back, approve or attach to a club.
+- The database rejects secret and service-role keys and non-HTTPS backends, and
+  two clubs sharing a backend or origin.
+- Support access is recorded in `support_access_log`: a reason, a scope, at most
+  24 hours, and only under the operator's own identity. The log is append-only
+  (no updates or deletes). Showing it to the club's administrators and granting
+  the access itself are not built yet.
+- Tests: `control-plane/supabase/tests/control_plane_access.sql`
+  (`npm run test:control-plane`).
 
 ## Never
 

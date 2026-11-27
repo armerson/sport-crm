@@ -71,6 +71,27 @@ Code that is pure (no `import.meta.env`, no `window`) lives in `registry.ts`,
 A club needs `origin`, `backend` or both. Only `active` clubs are shown or
 selectable. The whole registry is rejected if any entry is invalid.
 
+## Control plane
+
+`control-plane/supabase` is a separate Supabase project owned by the ClubOS
+operator (ADR 0001, option C). Tables: `clubs`, `club_domains`,
+`platform_admins`, `onboarding_applications`, `support_access_log`. No club
+member data. Locally it runs as a second stack on ports 546xx:
+
+```bash
+supabase start --workdir control-plane -x studio,imgproxy,logflare,vector,edge-runtime,supavisor,mailpit,postgres-meta,storage-api,realtime
+npm run test:control-plane
+```
+
+In `directory` and `multi` modes with `VITE_CLUBOS_CONTROL_PLANE_URL` and
+`VITE_CLUBOS_CONTROL_PLANE_ANON_KEY` set, `src/main.tsx` first runs
+`prepareClubDirectory()` (`src/clubos/directoryBootstrap.ts`), which reads
+`clubs_public`, validates it with the registry parser and caches the last good
+copy on the device. Only then does the app (and its Supabase client) load.
+Standalone builds never contact the control plane. A hosted control plane is
+not provisioned yet (it is new paid-tier infrastructure and needs owner
+approval).
+
 ## Club links
 
 - `/clubs` — finder (search by name, code or town; "Continue" to last club).
