@@ -43,7 +43,7 @@ parse), and keeps its website starter.
 
 Ordered by risk reduced per unit of effort.
 
-### Phase 1 — architecture and foundation (in progress)
+### Phase 1 — architecture and foundation (complete)
 
 Done on `claude/clubos-phase1-foundation`:
 - [x] ADR and architecture docs; AGENTS.md conventions.
@@ -61,15 +61,18 @@ Done on `claude/clubos-phase1-foundation`:
       finder and club links; manual two-club browser run.
 
 Next:
-1. Commit the uncommitted `main` work (finding 4) on its own branch.
-2. `supabase start` locally; replay all migrations on an empty database; run
-   `supabase/tests`. Fix any migration that fails on a fresh project.
-3. Add a SQL test that creates two local club databases (or two schemas in CI)
-   and proves a club A token is rejected by club B's API.
+1. ~~Commit the uncommitted `main` work (finding 4) on its own branch.~~ Done (PR #32).
+2. ~~Replay all migrations on an empty local database and run
+   `supabase/tests`.~~ Done: `npm run test:db`; two broken migrations fixed.
+3. ~~Prove a club A token is rejected by club B's API.~~ Done:
+   `npm run test:isolation` (API, auth and storage).
 4. ~~Scope the remaining UI preferences to the club in multi mode.~~ Done:
    drafts, unread markers, banner dismissals and the coach's selected team
    are club-scoped.
-5. Move the dangerous repo-root SQL scripts out of the working tree.
+5. ~~Move the dangerous repo-root SQL scripts out of the working tree.~~ Done.
+
+Phase 1 is complete apart from replaying migrations on a fresh *hosted*
+project, which needs the second test club from Phase 2.
 
 ### Phase 2 — multi-club administration
 - Control-plane Supabase project: `clubs`, `club_domains`, `club_features`,

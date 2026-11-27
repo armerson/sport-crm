@@ -54,8 +54,15 @@ unless the club grants access for a specific request.
 - `tests/clubRegistry.test.ts`: registry validation including key-role checks.
 - `supabase/tests/*.sql`: role permissions for admin, coach, parent, player and
   anonymous users, run in rollback-only transactions.
+- `scripts/test-club-isolation.mjs` (`npm run test:isolation`, also run by
+  `npm run test:db`): a session's claims re-signed with another club's keys, or
+  unsigned, are refused by the API (reads and writes), auth and storage. Local
+  stack only; it refuses hosted URLs.
+- Local stacks share Supabase's published default JWT secret, so two local
+  stacks are not isolated from each other. Hosted projects have their own keys;
+  never give two clubs the same project (the registry rejects shared backends).
 - Before a second production club: replay all migrations on a fresh project and
-  run the SQL suite there; prove a club A token cannot read club B's API.
+  run the SQL suite there.
 
 ## Data protection (UK GDPR)
 

@@ -25,4 +25,6 @@ for file in supabase/tests/*.sql; do
     echo "ok   $name"
   fi
 done
+# A backend must refuse sessions signed by any other club's keys.
+node scripts/test-club-isolation.mjs || failed=1
 exit $failed
