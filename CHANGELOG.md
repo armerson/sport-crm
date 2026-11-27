@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased — Cross-club session test (`claude/club-isolation-test`)
+
+### Added
+- `scripts/test-club-isolation.mjs` (`npm run test:isolation`, also run at the
+  end of `npm run test:db`). Signs in a throwaway user on the local stack, then
+  replays the same session claims signed with another club's keys (HS256 secret,
+  ES256 key with the same key id) and unsigned. API reads and writes, auth and
+  storage must all refuse them; the backend's own session must still work.
+  Deletes its user afterwards and refuses to run against a hosted URL.
+- Verified the test fails when the keys are shared: storage accepted a token
+  re-signed with the local stack's own secret.
+
+### Notes
+- Local Supabase stacks share the published default JWT secret, so they are not
+  isolated from each other. Hosted projects have their own keys.
+- Phase 1 roadmap items are marked done.
+
+### Rollback
+Revert the branch. Test and documentation only; no app or database change.
+
 ## Unreleased — Restore match stats and guard camp payment links (`claude/restore-match-stats`)
 
 ### Fixed
