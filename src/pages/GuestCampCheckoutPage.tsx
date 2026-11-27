@@ -4,12 +4,21 @@ import { fetchClubSettings } from '../services/forms.ts'
 import { fetchGuestProduct, startGuestCheckout, type GuestProductInfo } from '../services/guestCheckout.ts'
 import type { ClubSettings } from '../types/forms.ts'
 import { formatPence } from '../lib/pricing.ts'
+import { guestCheckoutEnabled } from '../utils/guestCheckoutConfig.ts'
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 export function GuestCampCheckoutPage() {
   const { productId } = useParams<{ productId: string }>()
+  if (!guestCheckoutEnabled) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 px-4 text-center">
+        <p className="text-lg font-semibold text-slate-800">Online payment isn't available</p>
+        <p className="mt-2 text-sm text-slate-500">Please contact the club to book a place.</p>
+      </div>
+    )
+  }
   return <GuestCampCheckoutContent key={productId} productId={productId} />
 }
 
